@@ -139,82 +139,12 @@ const DB_SERVICE = {
     if (!isLocalhost) return false;
 
     const res = await this.probeServer('');
-    if (res.success) {
+    if (res && res.success) {
       this.mode = 'sqlite_server';
       this.setServerUrl('');
       await this.loadInitialData();
       this.connectRealtimeSSE();
       this.emitStatus();
-      return true;
-    }
-    return false;
-  },
-      'http://192.168.1.36:3000',
-      'http://192.168.1.35:3000'
-    ];
-    for (const ip of knownIps) {
-      if (!candidates.includes(ip)) candidates.push(ip);
-    }
-
-    let winningCandidate = null;
-    try {
-      const probePromises = candidates.map(candidate => {
-        const pingUrl = candidate ? `${candidate}/api/ping` : '/api/ping';
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 650);
-        return fetch(pingUrl, { cache: 'no-store', signal: controller.signal })
-          .then(r => r.json())
-          .then(data => {
-            clearTimeout(timeoutId);
-            if (data && (data.success || data.ok)) return candidate;
-            return null;
-          })
-          .catch(() => {
-            clearTimeout(timeoutId);
-            return null;
-          });
-      });
-
-      const probeResults = await Promise.all(probePromises);
-      winningCandidate = probeResults.find(c => c !== null);
-    } catch (e) {}
-
-    // Fallback Subnet Scan: If candidates didn't respond, probe 192.168.1.1 to 192.168.1.30
-    if (!winningCandidate) {
-      try {
-        const subnetIps = [];
-        for (let i = 1; i <= 30; i++) {
-          const ip = `http://192.168.1.${i}:3000`;
-          if (!candidates.includes(ip)) subnetIps.push(ip);
-        }
-        const subnetPromises = subnetIps.map(ip => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 450);
-          return fetch(`${ip}/api/ping`, { cache: 'no-store', signal: controller.signal })
-            .then(r => r.json())
-            .then(d => {
-              clearTimeout(timeoutId);
-              if (d && (d.success || d.ok)) return ip;
-              return null;
-            })
-            .catch(() => {
-              clearTimeout(timeoutId);
-              return null;
-            });
-        });
-        const subnetResults = await Promise.all(subnetPromises);
-        winningCandidate = subnetResults.find(c => c !== null);
-      } catch (e) {}
-    }
-
-    if (winningCandidate !== null && winningCandidate !== undefined) {
-      this.mode = 'sqlite_server';
-      this.setServerUrl(winningCandidate);
-      await this.loadInitialData();
-      this.connectRealtimeSSE();
-      this.emitStatus();
-      this.replayOfflineQueue();
-      this.mirrorAllTablesToSupabase();
       return true;
     }
     return false;
