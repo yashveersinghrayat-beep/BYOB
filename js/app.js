@@ -888,9 +888,9 @@ const APP = {
 
     // Mobile tabs active styling
     const mobTabs = {
+      'Ground Floor': 'mobile-floor-tab-gf',
       '1st Floor': 'mobile-floor-tab-f1',
       '2nd Floor': 'mobile-floor-tab-f2',
-      'Rooftop': 'mobile-floor-tab-rt',
       'all': 'mobile-floor-tab-all'
     };
     Object.entries(mobTabs).forEach(([f, id]) => {
@@ -906,9 +906,9 @@ const APP = {
 
     // Web tabs active styling
     const webTabs = {
+      'Ground Floor': 'web-floor-tab-gf',
       '1st Floor': 'web-floor-tab-f1',
       '2nd Floor': 'web-floor-tab-f2',
-      'Rooftop': 'web-floor-tab-rt',
       'all': 'web-floor-tab-all'
     };
     Object.entries(webTabs).forEach(([f, id]) => {
@@ -929,7 +929,7 @@ const APP = {
     const mobileGrid = document.getElementById('app-floor-grid');
     const webStrip = document.getElementById('web-tables-strip');
 
-    const currentFloor = this.state.activeFloorFilter || '1st Floor';
+    const currentFloor = this.state.activeFloorFilter || 'Ground Floor';
     const filteredTables = (currentFloor === 'all') 
       ? RESTAURANT_TABLES 
       : RESTAURANT_TABLES.filter(t => t.floor === currentFloor);
@@ -2280,6 +2280,121 @@ const APP = {
   printThermalFromTableUpi() {
     this.closeTableUpiModal();
     this.openEpsonReceiptModal(true);
+  },
+
+  openCardFailureModal() {
+    const table = this.getTable();
+    const { grandTotal } = this.calculateTotalBill();
+    const modal = document.getElementById('card-failure-modal');
+    const tableLabel = document.getElementById('card-failure-table-label');
+    const amtLabel = document.getElementById('card-failure-amount-label');
+
+    if (tableLabel) tableLabel.textContent = (table.name || 'Table') + ' • ' + (table.floor || 'Ground Floor');
+    if (amtLabel) amtLabel.textContent = '₹' + grandTotal.toLocaleString('en-IN');
+    if (modal) modal.classList.remove('hidden');
+    this.haptic('selection');
+  },
+
+  closeCardFailureModal() {
+    const modal = document.getElementById('card-failure-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  async submitCardFailureReason() {
+    const selected = document.querySelector('input[name="card-failure-reason"]:checked')?.value || 'Machine Declined / Insufficient Balance';
+    const table = this.getTable();
+    const { grandTotal } = this.calculateTotalBill();
+    const staffName = this.getStaffName();
+
+    const failureRecord = {
+      id: 'FAIL-' + Date.now(),
+      table_id: this.state.selectedTableId,
+      table_name: table.name,
+      floor: table.floor,
+      amount: grandTotal,
+      payment_mode: 'card',
+      reason: selected,
+      staff_name: staffName,
+      created_at: new Date().toISOString()
+    };
+
+    if (window.DB && typeof window.DB.logPaymentFailure === 'function') {
+      await window.DB.logPaymentFailure(failureRecord);
+    } else {
+      try {
+        await fetch('/api/payment/failure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(failureRecord)
+        });
+      } catch (e) {
+        console.warn('Payment failure logging error:', e);
+      }
+    }
+
+    this.closeCardFailureModal();
+    this.showToast('⚠️ Logged Card Failure: ' + selected + ' to Manager Dashboard');
+
+    if (selected.includes('Wants to Pay UPI')) {
+      this.setPayMode('upi');
+      if (document.getElementById('table-upi-modal') && !document.getElementById('table-upi-modal').classList.contains('hidden')) {
+        this.setTableModalMode('upi');
+      }
+    } else if (selected.includes('Wants to Pay Cash')) {
+      this.setPayMode('cash');
+      this.closeTableUpiModal();
+      this.openBillingPage();
+      this.setPayMode('cash');
+    }
+  },
+
+  async loadManagerPaymentFailures() {
+    const container = document.getElementById('mgr-card-failures-list');
+    const badge = document.getElementById('mgr-card-failure-badge');
+    if (!container) return;
+
+    let failures = [];
+    if (window.DB && typeof window.DB.getPaymentFailures === 'function') {
+      failures = await window.DB.getPaymentFailures(30);
+    } else {
+      try {
+        const res = await fetch('/api/payment/failures?limit=30');
+        const data = await res.json();
+        failures = data.failures || [];
+      } catch (e) {
+        failures = [];
+      }
+    }
+
+    if (badge) badge.textContent = `${failures.length} Logged`;
+
+    if (failures.length === 0) {
+      container.innerHTML = '<div class="text-center py-4 text-neutral-500">No failed card payments recorded today.</div>';
+      return;
+    }
+
+    container.innerHTML = failures.map(f => {
+      const dt = new Date(f.created_at);
+      const timeStr = isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="p-2.5 rounded-xl bg-[#141824] border border-rose-500/30 flex items-center justify-between text-xs">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-1.5 font-bold text-white">
+              <span class="text-rose-400">🛑 ${f.table_name || 'Table'}</span>
+              <span class="text-[10px] text-neutral-400 font-mono">(${f.floor || 'Ground'})</span>
+              <span class="text-amber-400 font-mono">₹${Number(f.amount || 0).toLocaleString('en-IN')}</span>
+            </div>
+            <div class="text-[11px] text-neutral-300 font-medium">
+              Reason: <span class="text-rose-300 font-bold">${f.reason}</span>
+            </div>
+          </div>
+          <div class="text-right text-[10px] text-neutral-400 font-mono">
+            <div>By: ${f.staff_name || 'Staff'}</div>
+            <div class="text-neutral-500">${timeStr}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
   },
 
   openBillingPage(push = true) {
@@ -4943,24 +5058,24 @@ const APP = {
     if (upiEl) upiEl.textContent = `₹${(modes.upi?.amount || 0).toLocaleString('en-IN')}`;
     if (cardEl) cardEl.textContent = `Card: ₹${(modes.card?.amount || 0).toLocaleString('en-IN')}`;
 
-    // 3-Floor Tables Occupancy
+    // 3-Floor Tables Occupancy (Ground Floor 18 | 1st Floor 7 | 2nd Floor 17 = 42 Tables)
     const tables = typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : (this.state.tables || []);
     let occupiedCount = 0;
-    let f1Occ = 0, f2Occ = 0, rfOcc = 0;
+    let gfOcc = 0, f1Occ = 0, f2Occ = 0;
     tables.forEach(t => {
       const live = this.getLiveTable ? this.getLiveTable(t.id) : (this.state.orders[t.id] ? { status: 'occupied' } : { status: 'vacant' });
       const isOcc = (live.currentSubtotal > 0) || live.status === 'occupied' || (live.placedOrders && live.placedOrders.length > 0);
       if (isOcc) {
         occupiedCount++;
-        if (t.floor === '1st Floor') f1Occ++;
+        if (t.floor === 'Ground Floor') gfOcc++;
+        else if (t.floor === '1st Floor') f1Occ++;
         else if (t.floor === '2nd Floor') f2Occ++;
-        else if (t.floor === 'Rooftop') rfOcc++;
       }
     });
     const occEl = document.getElementById('mgr-kpi-occupancy');
     const occFloorsEl = document.getElementById('mgr-kpi-occupancy-floors');
-    if (occEl) occEl.textContent = `${occupiedCount} / ${tables.length || 35}`;
-    if (occFloorsEl) occFloorsEl.textContent = `F1: ${f1Occ}/15 | F2: ${f2Occ}/10 | Roof: ${rfOcc}/10`;
+    if (occEl) occEl.textContent = `${occupiedCount} / ${tables.length || 42}`;
+    if (occFloorsEl) occFloorsEl.textContent = `GF: ${gfOcc}/18 | 1F: ${f1Occ}/7 | 2F: ${f2Occ}/17`;
 
     // Anti-Theft Void Shrinkage
     const voidLogs = this.state.mgrVoidLogs || [];
@@ -5548,7 +5663,7 @@ const APP = {
     filterBtns.forEach(btn => {
       btn.className = "mgr-floor-filter px-3 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white bg-[#1a2030]";
     });
-    const map = { 'All': 'mgr-floor-btn-all', '1st Floor': 'mgr-floor-btn-f1', '2nd Floor': 'mgr-floor-btn-f2', 'Rooftop': 'mgr-floor-btn-rf' };
+    const map = { 'All': 'mgr-floor-btn-all', 'Ground Floor': 'mgr-floor-btn-gf', '1st Floor': 'mgr-floor-btn-f1', '2nd Floor': 'mgr-floor-btn-f2' };
     const activeBtn = document.getElementById(map[floor]);
     if (activeBtn) activeBtn.className = "mgr-floor-filter active px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-black shadow";
     this.renderManagerTables();
@@ -6047,6 +6162,7 @@ const APP = {
   },
 
   async loadManagerVoidLogs() {
+    this.loadManagerPaymentFailures();
     try {
       const res = await fetch('/api/kots/voids?limit=50');
       if (res.ok) {

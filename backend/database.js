@@ -165,6 +165,18 @@ function initDatabase() {
     );
 
     -- 10. Audit Trail: Cancelled / Voided Items (Anti-Theft Protection)
+    CREATE TABLE IF NOT EXISTS payment_failure_logs (
+      id TEXT PRIMARY KEY,
+      table_id TEXT NOT NULL,
+      table_name TEXT NOT NULL,
+      floor TEXT DEFAULT 'Ground Floor',
+      amount REAL NOT NULL,
+      payment_mode TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      staff_name TEXT DEFAULT 'Staff',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS void_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       kot_item_id INTEGER,
@@ -980,8 +992,8 @@ module.exports = {
       GROUP BY floor
     `).all(start, end);
 
-    const floorTableCounts = { '1st Floor': 15, '2nd Floor': 10, 'Rooftop': 10 };
-    const floorEfficiency = ['1st Floor', '2nd Floor', 'Rooftop'].map(fName => {
+    const floorTableCounts = { 'Ground Floor': 18, '1st Floor': 7, '2nd Floor': 17 };
+    const floorEfficiency = ['Ground Floor', '1st Floor', '2nd Floor'].map(fName => {
       const match = floorRows.find(r => r.floor && r.floor.toLowerCase().includes(fName.toLowerCase().slice(0, 3))) || { bills_count: 0, revenue: 0 };
       const rev = Number(match.revenue) || 0;
       const bCnt = Number(match.bills_count) || 0;

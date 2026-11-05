@@ -1030,6 +1030,45 @@ const DB_SERVICE = {
   },
 
   // Settle Bill
+  async logPaymentFailure(failureData) {
+    try {
+      if (this.isSupabaseDirect()) {
+        const client = this.getSupabaseClient();
+        if (client) {
+          await client.from('payment_failure_logs').insert([{
+            id: failureData.id || ('FAIL-' + Date.now()),
+            table_id: failureData.table_id || failureData.tableId,
+            table_name: failureData.table_name || failureData.tableName,
+            floor: failureData.floor || 'Ground Floor',
+            amount: Number(failureData.amount || 0),
+            payment_mode: failureData.payment_mode || failureData.paymentMode || 'card',
+            reason: failureData.reason || 'Payment Cancelled',
+            staff_name: failureData.staff_name || failureData.staffName || 'Staff'
+          }]).catch(() => {});
+        }
+      }
+      const res = await fetch(`${getApiBase()}/api/payment/failure`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(failureData)
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('logPaymentFailure client error:', e);
+      return { success: false };
+    }
+  },
+
+  async getPaymentFailures(limit = 50) {
+    try {
+      const res = await fetch(`${getApiBase()}/api/payment/failures?limit=${limit}`);
+      const data = await res.json();
+      return data.failures || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
   async settleBill(billData) {
     const billId = 'BILL-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
     const invNo = billData.invoiceNumber || ('INV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Date.now().toString(36).toUpperCase().slice(-4) + Math.floor(100 + Math.random() * 900));

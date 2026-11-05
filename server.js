@@ -347,6 +347,17 @@ async function handleRequest(req, res) {
     }
 
     // --- Billing & Settlement ---
+    if (pathname === '/api/payment/failure' && method === 'POST') {
+      const body = await parseBody(req);
+      const logged = DB.logPaymentFailure(body);
+      return sendJSON(res, 200, { success: true, logged });
+    }
+    if (pathname === '/api/payment/failures' && method === 'GET') {
+      const limit = parseInt(parsedUrl.searchParams.get('limit') || '50');
+      const failures = DB.getPaymentFailures(limit);
+      return sendJSON(res, 200, { success: true, failures });
+    }
+
     if (pathname === '/api/bills/settle' && method === 'POST') {
       const body = await parseBody(req);
       const bill = DB.settleBill(body);
