@@ -675,8 +675,14 @@ const APP = {
     const screenTables = document.getElementById('app-screen-tables');
     const screenMenu = document.getElementById('app-screen-menu');
 
-    if (screenTables) screenTables.classList.remove('hidden');
-    if (screenMenu) screenMenu.classList.add('hidden');
+    if (screenTables) {
+      screenTables.classList.remove('hidden');
+      screenTables.style.setProperty('display', 'flex', 'important');
+    }
+    if (screenMenu) {
+      screenMenu.classList.add('hidden');
+      screenMenu.style.setProperty('display', 'none', 'important');
+    }
 
     if (push && typeof history !== 'undefined') {
       if (window.location.hash !== '#tables') {
@@ -722,8 +728,14 @@ const APP = {
     const screenTables = document.getElementById('app-screen-tables');
     const screenMenu = document.getElementById('app-screen-menu');
 
-    if (screenTables) screenTables.classList.add('hidden');
-    if (screenMenu) screenMenu.classList.remove('hidden');
+    if (screenTables) {
+      screenTables.classList.add('hidden');
+      screenTables.style.setProperty('display', 'none', 'important');
+    }
+    if (screenMenu) {
+      screenMenu.classList.remove('hidden');
+      screenMenu.style.setProperty('display', 'flex', 'important');
+    }
 
     if (push && typeof history !== 'undefined') {
       if (window.location.hash !== '#menu') {
@@ -822,9 +834,18 @@ const APP = {
       this.closeManagerSidebar();
       document.body.classList.remove('mgr-view-active');
       document.body.classList.remove('mgr-sidebar-open');
-      if (containerApp) containerApp.classList.remove('hidden');
-      if (containerWeb) containerWeb.classList.add('hidden');
-      if (containerMgr) containerMgr.classList.add('hidden');
+      if (containerApp) {
+        containerApp.classList.remove('hidden');
+        containerApp.style.setProperty('display', 'flex', 'important');
+      }
+      if (containerWeb) {
+        containerWeb.classList.add('hidden');
+        containerWeb.style.setProperty('display', 'none', 'important');
+      }
+      if (containerMgr) {
+        containerMgr.classList.add('hidden');
+        containerMgr.style.setProperty('display', 'none', 'important');
+      }
       if (hdrBtn) { hdrBtn.classList.add('hidden'); hdrBtn.style.display = 'none'; }
       if (hdrSecPill) { hdrSecPill.classList.add('hidden'); hdrSecPill.classList.remove('flex'); hdrSecPill.style.display = 'none'; }
       if (btnApp) btnApp.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center gap-1 shadow";
@@ -835,9 +856,18 @@ const APP = {
       this.closeManagerSidebar();
       document.body.classList.remove('mgr-view-active');
       document.body.classList.remove('mgr-sidebar-open');
-      if (containerApp) containerApp.classList.add('hidden');
-      if (containerWeb) containerWeb.classList.remove('hidden');
-      if (containerMgr) containerMgr.classList.add('hidden');
+      if (containerApp) {
+        containerApp.classList.add('hidden');
+        containerApp.style.setProperty('display', 'none', 'important');
+      }
+      if (containerWeb) {
+        containerWeb.classList.remove('hidden');
+        containerWeb.style.setProperty('display', 'block', 'important');
+      }
+      if (containerMgr) {
+        containerMgr.classList.add('hidden');
+        containerMgr.style.setProperty('display', 'none', 'important');
+      }
       if (hdrBtn) { hdrBtn.classList.add('hidden'); hdrBtn.style.display = 'none'; }
       if (hdrSecPill) { hdrSecPill.classList.add('hidden'); hdrSecPill.classList.remove('flex'); hdrSecPill.style.display = 'none'; }
       if (btnWeb) btnWeb.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center gap-1 shadow";
@@ -845,9 +875,18 @@ const APP = {
       if (btnMgr) btnMgr.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center gap-1";
     } else if (view === 'manager') {
       document.body.classList.add('mgr-view-active');
-      if (containerApp) containerApp.classList.add('hidden');
-      if (containerWeb) containerWeb.classList.add('hidden');
-      if (containerMgr) containerMgr.classList.remove('hidden');
+      if (containerApp) {
+        containerApp.classList.add('hidden');
+        containerApp.style.setProperty('display', 'none', 'important');
+      }
+      if (containerWeb) {
+        containerWeb.classList.add('hidden');
+        containerWeb.style.setProperty('display', 'none', 'important');
+      }
+      if (containerMgr) {
+        containerMgr.classList.remove('hidden');
+        containerMgr.style.setProperty('display', 'block', 'important');
+      }
       if (hdrBtn) { hdrBtn.classList.remove('hidden'); hdrBtn.style.display = 'flex'; }
       if (hdrSecPill) { hdrSecPill.classList.remove('hidden'); hdrSecPill.classList.add('flex'); hdrSecPill.style.display = 'flex'; }
       if (btnMgr) btnMgr.className = "px-3.5 py-1.5 rounded-lg text-xs font-black transition-all bg-gradient-to-r from-amber-500 to-amber-600 text-black flex items-center gap-1 shadow-lg";

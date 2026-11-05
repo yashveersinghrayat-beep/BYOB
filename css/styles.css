@@ -606,8 +606,8 @@ body.mgr-sidebar-open #main-app-header {
    Strictly prevents headers, table grids, or bottom docks from shifting
    ========================================================================== */
 
-#app-container,
-#view-app-container {
+#app-container:not(.hidden),
+#view-app-container:not(.hidden) {
   height: 100vh !important;
   max-height: 100vh !important;
   display: flex !important;
@@ -615,13 +615,22 @@ body.mgr-sidebar-open #main-app-header {
   overflow: hidden !important;
 }
 
-#app-screen-tables,
-#app-screen-menu {
+#app-screen-tables:not(.hidden),
+#app-screen-menu:not(.hidden) {
   flex: 1 1 0% !important;
   min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+}
+
+#app-screen-tables.hidden,
+#app-screen-menu.hidden,
+#app-container.hidden,
+#view-app-container.hidden,
+#view-web-container.hidden,
+#view-manager-container.hidden {
+  display: none !important;
 }
 
 #floor-bottom-dock,
