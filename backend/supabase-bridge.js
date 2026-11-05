@@ -145,13 +145,52 @@ class SupabaseBridge {
     if (kotId && this.syncedKotIds.has(kotId)) return;
 
     try {
-      console.log(`⚡ [Supabase Bridge] Instant Remote KOT Broadcast received: Table ${payload.tableId} (${payload.tableName})`);
-      if (Array.isArray(payload.items) && payload.items.length > 0) {
+      // Normalize table ID: if 't5' -> extract 5, if 'table-5' -> 5, etc.
+      let cleanTableId = payload.tableId;
+      if (typeof cleanTableId === 'string' && /^[a-zA-Z]+(\d+)$/.test(cleanTableId)) {
+        cleanTableId = parseInt(cleanTableId.replace(/^[a-zA-Z]+/, ''), 10);
+      } else if (typeof cleanTableId === 'string' && /^\d+$/.test(cleanTableId)) {
+        cleanTableId = parseInt(cleanTableId, 10);
+      }
+
+      // Match table in local SQLite
+      const allTables = this.db.getTables();
+      let localTable = allTables.find(t => String(t.id) === String(cleanTableId));
+      if (!localTable && payload.tableName) {
+        localTable = allTables.find(t => t.name.toLowerCase().trim() === payload.tableName.toLowerCase().trim());
+        if (localTable) cleanTableId = localTable.id;
+      }
+      if (!localTable && allTables.length > 0) {
+        cleanTableId = allTables[0].id;
+      }
+
+      // Ensure menu item IDs exist in local SQLite to satisfy foreign key
+      const validMenuItems = this.db.getMenuItems ? this.db.getMenuItems() : [];
+      const firstValidId = validMenuItems.length > 0 ? validMenuItems[0].id : 1;
+
+      const normalizedItems = (payload.items || []).map(it => {
+        let itemId = it.id;
+        const exists = validMenuItems.some(m => String(m.id) === String(itemId));
+        if (!exists) {
+          itemId = firstValidId;
+        }
+        return {
+          id: itemId,
+          name: it.name,
+          price: it.price || 0,
+          qty: it.qty || 1,
+          is_bar: Boolean(it.is_bar),
+          notes: it.notes || ''
+        };
+      });
+
+      console.log(`⚡ [Supabase Bridge] Instant Remote KOT Broadcast received: Table ${cleanTableId} (${payload.tableName})`);
+      if (normalizedItems.length > 0) {
         this.db.punchKOT({
-          tableId: payload.tableId,
-          tableName: payload.tableName || ('Table ' + payload.tableId),
+          tableId: cleanTableId,
+          tableName: payload.tableName || ('Table ' + cleanTableId),
           waiterName: payload.waiterName || 'Remote Staff',
-          items: payload.items
+          items: normalizedItems
         });
       }
       if (kotId) this.syncedKotIds.add(kotId);
@@ -163,23 +202,30 @@ class SupabaseBridge {
         this.broadcast('KOT_PUNCHED', { tables: updatedTables, activeKots });
       }
     } catch (err) {
-      console.warn('[Supabase Bridge] Failed to process instant KOT broadcast:', err.message);
+      console.warn('[Supabase Bridge] Remote KOT sync note:', err.message);
     }
   }
 
   handleRemoteBillSettledBroadcast(payload) {
     if (!payload || !payload.tableId) return;
     try {
-      console.log(`⚡ [Supabase Bridge] Instant Remote Bill Settled broadcast: Table ${payload.tableId}`);
-      this.db.forceClearTable(payload.tableId);
+      let cleanTableId = payload.tableId;
+      if (typeof cleanTableId === 'string' && /^[a-zA-Z]+(\d+)$/.test(cleanTableId)) {
+        cleanTableId = parseInt(cleanTableId.replace(/^[a-zA-Z]+/, ''), 10);
+      } else if (typeof cleanTableId === 'string' && /^\d+$/.test(cleanTableId)) {
+        cleanTableId = parseInt(cleanTableId, 10);
+      }
+
+      console.log(`⚡ [Supabase Bridge] Instant Remote Bill Settled broadcast: Table ${cleanTableId}`);
+      this.db.forceClearTable(cleanTableId);
       const updatedTables = this.db.getTables();
       const activeKots = this.db.getAllActiveKOTs();
       if (this.broadcast) {
         this.broadcast('TABLES_UPDATED', updatedTables);
-        this.broadcast('BILL_SETTLED', { tableId: payload.tableId, tables: updatedTables, activeKots });
+        this.broadcast('BILL_SETTLED', { tableId: cleanTableId, tables: updatedTables, activeKots });
       }
     } catch (err) {
-      console.warn('[Supabase Bridge] Failed to process instant settle broadcast:', err.message);
+      console.warn('[Supabase Bridge] Remote settle sync note:', err.message);
     }
   }
 

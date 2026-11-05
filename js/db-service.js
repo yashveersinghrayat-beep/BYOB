@@ -1869,5 +1869,6 @@ const DB_SERVICE = {
 // Auto initialize on load
 if (typeof window !== 'undefined') {
   window.DB = DB_SERVICE;
+  window.DB_SERVICE = DB_SERVICE;
   DB_SERVICE.init();
 }
