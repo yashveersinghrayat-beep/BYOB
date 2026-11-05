@@ -256,16 +256,16 @@ body {
   animation: syncPulse 2s infinite ease-in-out;
 }
 
-/* ================= EPSON 80MM THERMAL RECEIPT STYLES ================= */
+/* ================= EPSON 80MM THERMAL RECEIPT SYSTEM ================= */
 .epson-receipt {
-  width: 340px;
+  width: 320px;
   max-width: 100%;
-  background: #ffffff;
-  color: #000000;
-  font-family: 'JetBrains Mono', Courier, monospace;
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   font-size: 11px;
   line-height: 1.35;
-  padding: 16px 14px;
+  padding: 14px 12px;
   margin: 0 auto;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
   border-radius: 6px;
@@ -275,51 +275,102 @@ body {
 
 .epson-receipt hr {
   border: none;
-  border-top: 1px dashed #444;
-  margin: 6px 0;
+  border-top: 1px dashed #000000 !important;
+  margin: 5px 0;
 }
 
 .epson-receipt .double-hr {
   border: none;
-  border-top: 2px solid #000;
-  margin: 6px 0;
+  border-top: 2px solid #000000 !important;
+  margin: 5px 0;
 }
 
-/* Thermal printer 80mm zero-waste sheet rules */
+/* Thermal printer continuous 80mm roll zero-margin sheet rules */
 @page {
   size: 80mm auto;
-  margin: 0;
+  margin: 0mm;
 }
 
 @media print {
+  @page {
+    size: 80mm auto;
+    margin: 0mm;
+  }
+
   html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #fff !important;
-  }
-  body * {
-    visibility: hidden;
-  }
-  #epson-print-wrapper, #epson-print-wrapper * {
-    visibility: visible;
-  }
-  #epson-print-wrapper {
-    position: absolute;
-    left: 0;
-    top: 0;
     width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
     padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'JetBrains Mono', 'Courier New', Courier, monospace !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    overflow: visible !important;
+  }
+
+  /* Completely remove all app frames, navbars, sidebars, headers from printable flow */
+  body > *:not(#epson-modal) {
+    display: none !important;
+  }
+
+  #epson-modal {
+    display: block !important;
+    position: static !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  #epson-modal > div {
+    width: 80mm !important;
+    max-width: 80mm !important;
     margin: 0 !important;
-    background: #fff !important;
-    color: #000 !important;
+    padding: 0 !important;
+  }
+
+  #epson-print-wrapper {
+    display: block !important;
+    position: static !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    padding: 2mm 2.5mm 6mm 2.5mm !important;
+    margin: 0 auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
   }
+
   .epson-receipt {
-    width: 78mm !important;
+    width: 100% !important;
+    max-width: 75mm !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
-    padding: 2mm 1mm !important;
+    padding: 0 !important;
     border-radius: 0 !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+
+  .epson-receipt * {
+    color: #000000 !important;
+  }
+
+  /* Hide print buttons and back controls during printing */
+  #epson-modal button,
+  #epson-modal .mt-3,
+  #epson-modal .print-hide {
+    display: none !important;
   }
 }
 
