@@ -746,6 +746,7 @@ const APP = {
     const dockBadge = document.getElementById('dock-table-badge');
     const dockInfo = document.getElementById('dock-table-info');
     const dockBillBtn = document.getElementById('dock-bill-btn');
+    const dockUpiBtn = document.getElementById('dock-upi-btn');
     const dockMenuBtn = document.getElementById('dock-menu-btn');
     const dockIcon = document.getElementById('dock-status-icon');
     const summaryBadge = document.getElementById('floor-summary-badge');
@@ -770,6 +771,7 @@ const APP = {
         dockIcon.textContent = "🔴";
       }
       if (dockBillBtn) dockBillBtn.classList.remove('hidden');
+      if (dockUpiBtn) dockUpiBtn.classList.remove('hidden');
       if (dockMenuBtn) dockMenuBtn.innerHTML = `<span>🍽️ Add Items (${table.name}) →</span>`;
     } else {
       if (dockBadge) {
@@ -781,6 +783,7 @@ const APP = {
         dockIcon.textContent = "🟢";
       }
       if (dockBillBtn) dockBillBtn.classList.add('hidden');
+      if (dockUpiBtn) dockUpiBtn.classList.add('hidden');
       if (dockMenuBtn) dockMenuBtn.innerHTML = `<span>🍽️ Take Order (${table.name}) →</span>`;
     }
   },
@@ -2187,6 +2190,53 @@ const APP = {
     this.refreshBillingModalData();
   },
 
+  openTableUpiModal(tableId) {
+    if (tableId) {
+      this.state.selectedTableId = tableId;
+    }
+    const table = this.getTable();
+    const liveTable = this.getLiveTable();
+    const placedOrders = liveTable.placedOrders || [];
+    const subtotal = liveTable.currentSubtotal || placedOrders.reduce((s, i) => s + (i.price * i.qty), 0);
+
+    if (placedOrders.length === 0 && subtotal === 0) {
+      this.showToast('⚠️ No active orders on ' + table.name);
+      return;
+    }
+
+    const { grandTotal } = this.calculateTotalBill();
+    const store = (window.DB && window.DB.storeSettings) || {};
+    const upiId = store.upi_vpa || 'Q676029996@ybl';
+
+    const modal = document.getElementById('table-upi-modal');
+    const amtEl = document.getElementById('table-upi-modal-amount');
+    const tableEl = document.getElementById('table-upi-header-table');
+    const upiEl = document.getElementById('table-upi-id-chip');
+
+    if (amtEl) amtEl.textContent = '₹' + grandTotal.toLocaleString('en-IN');
+    if (tableEl) tableEl.textContent = table.name + ' • ' + (table.position || '').split('•')[0].trim();
+    if (upiEl) upiEl.textContent = upiId;
+
+    if (modal) modal.classList.remove('hidden');
+    this.haptic('selection');
+  },
+
+  closeTableUpiModal() {
+    const modal = document.getElementById('table-upi-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  async settleFromTableUpiModal() {
+    this.state.payMode = 'upi';
+    await this.settleTable();
+    this.closeTableUpiModal();
+  },
+
+  printThermalFromTableUpi() {
+    this.closeTableUpiModal();
+    this.openEpsonReceiptModal(true);
+  },
+
   openBillingPage(push = true) {
     const modal = document.getElementById('billing-modal');
     const table = this.getTable();
@@ -2214,6 +2264,8 @@ const APP = {
     const liveTable = this.getLiveTable();
     const placedOrders = liveTable.placedOrders || [];
     const { subtotal, discountAmount, taxable, cgst, sgst, roundOff, grandTotal, perPerson } = this.calculateTotalBill();
+    const payUpiLiveAmt = document.getElementById('pay-upi-live-amount');
+    if (payUpiLiveAmt) payUpiLiveAmt.textContent = '₹' + grandTotal.toLocaleString('en-IN');
 
     const itemsContainer = document.getElementById('bill-detailed-items');
     const roundsCountEl = document.getElementById('bill-rounds-count');
@@ -2303,8 +2355,8 @@ const APP = {
     if (perPersonEl) perPersonEl.textContent = `₹${perPerson}`;
   },
 
-  copyUpiId() {
-    const el = document.getElementById('pay-modal-upi-id');
+  copyUpiId(elementId = 'pay-modal-upi-id') {
+    const el = document.getElementById(elementId);
     const txt = (el ? el.innerText : '').trim() || 'Q676029996@ybl';
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(txt).then(() => {
