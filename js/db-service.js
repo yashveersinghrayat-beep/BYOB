@@ -1099,32 +1099,10 @@ const DB_SERVICE = {
             current_subtotal: 0
           }).eq('id', billData.tableId);
 
-          return { id: billId, invoice_number: invNo, ...billData };
-        } catch (e) {
-          console.warn('Supabase cloud settle notice:', e);
-        }
-      }
-    }
-              qty: Number(it.qty),
-              amount: Number(it.price) * Number(it.qty),
-              is_archived: false
-            }));
-            await client.from('bill_items').insert(billItems);
-          }
-
-          // Mark active KOTs as served in Supabase
-          await client.from('kots').update({ status: 'served' }).eq('table_id', billData.tableId).neq('status', 'cancelled');
-
-          // Mark table vacant in Supabase
-          await client.from('tables').update({
-            status: 'vacant',
-            current_subtotal: 0
-          }).eq('id', billData.tableId);
-
           await this.loadSupabaseData();
           return { id: billId, invoice_number: invNo, ...billData };
         } catch (e) {
-          console.warn('Supabase cloud settle failed, falling back to local:', e);
+          console.warn('Supabase cloud settle notice:', e);
         }
       }
     }
@@ -1152,11 +1130,11 @@ const DB_SERVICE = {
     }
 
     // Local resilient settlement
-    let t = this.tables.find(x => x.id === billData.tableId);
-    if (t) {
-      t.status = 'vacant';
-      t.placedOrders = [];
-      t.currentSubtotal = 0;
+    const localT = this.tables.find(x => x.id === billData.tableId);
+    if (localT) {
+      localT.status = 'vacant';
+      localT.placedOrders = [];
+      localT.currentSubtotal = 0;
     }
     this.saveLocalTables();
     this.notifyTables();

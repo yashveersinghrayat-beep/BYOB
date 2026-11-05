@@ -661,6 +661,10 @@ const APP = {
     }
   },
 
+  updateCloudStatusBadge(status) {
+    this.checkSystemHealth();
+  },
+
   // ================= 3. TABLE NAVIGATION (FLOOR MAP FIRST) =================
   // Open Floor Map Screen
   goToTables(push = true) {
@@ -3917,39 +3921,59 @@ const APP = {
   initSystemHealthMonitor() {
     // Initial health check immediately
     this.checkSystemHealth();
-    // Re-check periodically every 6 seconds
-    setInterval(() => this.checkSystemHealth(), 6000);
+    // Re-check periodically every 8 seconds
+    setInterval(() => this.checkSystemHealth(), 8000);
   },
+
+  _smoothedServerLatency: null,
+  _smoothedDbLatency: null,
+  _consecutiveSlowCount: 0,
 
   async checkSystemHealth() {
     let serverHealth = { status: 'red', latency: 0, label: 'Down' };
     let dbHealth = { status: 'red', latency: 0, label: 'Offline' };
 
-    // 1. Check Server Latency via /api/ping
+    // 1. Check Server Latency via /api/ping with Moving Average Smoothing
     try {
       const t0 = performance.now();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       
       const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
-      const res = await fetch(`${apiBase}/api/ping`, { signal: controller.signal });
+      const res = await fetch(`${apiBase}/api/ping`, { cache: 'no-store', signal: controller.signal });
       clearTimeout(timeoutId);
-      const latency = Math.round(performance.now() - t0);
+      const rawLatency = Math.round(performance.now() - t0);
 
       if (res.ok) {
-        if (latency < 250) {
-          serverHealth = { status: 'green', latency, label: `${latency}ms` };
+        if (this._smoothedServerLatency === null) {
+          this._smoothedServerLatency = rawLatency;
         } else {
-          serverHealth = { status: 'yellow', latency, label: `Slow (${latency}ms)` };
+          // Exponential moving average (70% previous, 30% current) prevents jitter flickering
+          this._smoothedServerLatency = Math.round((this._smoothedServerLatency * 0.7) + (rawLatency * 0.3));
+        }
+
+        const displayLatency = this._smoothedServerLatency;
+        // Commercial threshold: <= 380ms is solid green for cloud/mobile edge
+        if (displayLatency <= 380) {
+          this._consecutiveSlowCount = 0;
+          serverHealth = { status: 'green', latency: displayLatency, label: `${displayLatency}ms` };
+        } else {
+          this._consecutiveSlowCount = (this._consecutiveSlowCount || 0) + 1;
+          if (this._consecutiveSlowCount >= 2) {
+            serverHealth = { status: 'yellow', latency: displayLatency, label: `Slow (${displayLatency}ms)` };
+          } else {
+            // Absorb single spike without flickering UI
+            serverHealth = { status: 'green', latency: displayLatency, label: `${displayLatency}ms` };
+          }
         }
       } else {
-        serverHealth = { status: 'red', latency, label: 'Err' };
+        serverHealth = { status: 'red', latency: rawLatency, label: 'Err' };
         if (window.DB && typeof window.DB.autoDiscoverServer === 'function') {
           window.DB.autoDiscoverServer();
         }
       }
     } catch (err) {
-      serverHealth = { status: 'red', latency, label: 'Down' };
+      serverHealth = { status: 'red', latency: 0, label: 'Down' };
       if (window.DB && typeof window.DB.autoDiscoverServer === 'function') {
         window.DB.autoDiscoverServer();
       }
@@ -3957,23 +3981,30 @@ const APP = {
 
     // 2. Check Database Status
     try {
-      if (window.DB && window.DB.mode === 'supabase_cloud' && typeof ONYX_CLOUD_CONFIG !== 'undefined') {
+      const dbMode = window.DB ? window.DB.mode : null;
+      if (dbMode === 'supabase_cloud' && typeof ONYX_CLOUD_CONFIG !== 'undefined') {
         const client = ONYX_CLOUD_CONFIG.getClient();
         if (client) {
           const t0 = performance.now();
           const { data, error } = await client.from('tables').select('id').limit(1);
-          const dbLat = Math.round(performance.now() - t0);
+          const rawDbLat = Math.round(performance.now() - t0);
           if (!error) {
-            if (dbLat < 350) {
-              dbHealth = { status: 'green', latency: dbLat, label: 'Cloud' };
+            if (this._smoothedDbLatency === null) {
+              this._smoothedDbLatency = rawDbLat;
             } else {
-              dbHealth = { status: 'yellow', latency: dbLat, label: `Slow (${dbLat}ms)` };
+              this._smoothedDbLatency = Math.round((this._smoothedDbLatency * 0.7) + (rawDbLat * 0.3));
+            }
+            const dbLat = this._smoothedDbLatency;
+            if (dbLat <= 450) {
+              dbHealth = { status: 'green', latency: dbLat, label: 'Live' };
+            } else {
+              dbHealth = { status: 'yellow', latency: dbLat, label: `Cloud (${dbLat}ms)` };
             }
           } else {
-            dbHealth = { status: 'red', latency: dbLat, label: 'Cloud Err' };
+            dbHealth = { status: 'red', latency: rawDbLat, label: 'Cloud Err' };
           }
         }
-      } else if (window.DB && window.DB.mode === 'sqlite_server') {
+      } else if (dbMode === 'sqlite_server') {
         if (serverHealth.status === 'green') {
           dbHealth = { status: 'green', latency: serverHealth.latency, label: 'SQLite' };
         } else if (serverHealth.status === 'yellow') {
@@ -3981,8 +4012,11 @@ const APP = {
         } else {
           dbHealth = { status: 'red', latency: 0, label: 'Offline' };
         }
+      } else if (dbMode === 'offline_fallback') {
+        dbHealth = { status: 'yellow', latency: 0, label: 'Local Cache' };
       } else {
-        dbHealth = { status: 'yellow', latency: 0, label: 'Cache' };
+        // Mode resolving or connecting
+        dbHealth = { status: 'green', latency: 0, label: 'Live' };
       }
     } catch (e) {
       dbHealth = { status: 'red', latency: 0, label: 'Offline' };
