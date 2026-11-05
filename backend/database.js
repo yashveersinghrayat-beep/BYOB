@@ -763,8 +763,8 @@ module.exports = {
         insertBillItem.run(billId, item.id || 'item', item.name || 'Item', item.price || 0, item.qty || 1, (item.price || 0) * (item.qty || 1), item.notes || '');
       }
 
-      // Mark all unserved KOTs for this table as served
-      db.prepare("UPDATE kots SET status = 'served' WHERE table_id = ? AND status != 'cancelled'").run(billData.tableId);
+      // Mark all unserved/active KOTs for this table as billed
+      db.prepare("UPDATE kots SET status = 'billed' WHERE table_id = ? AND status != 'cancelled'").run(billData.tableId);
 
       // Reset Table to Free / Vacant
       db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ?").run(billData.tableId);
@@ -1197,8 +1197,20 @@ module.exports = {
   forceClearTable(tableId) {
     db.exec('BEGIN TRANSACTION;');
     try {
-      db.prepare("UPDATE kots SET status = 'cancelled' WHERE table_id = ? AND status NOT IN ('served', 'billed', 'cancelled')").run(tableId);
-      db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ?").run(tableId);
+      const match = db.prepare(`
+        SELECT id FROM tables 
+        WHERE id = ? 
+           OR id = ('T-' || ?) 
+           OR id = ('T-0' || ?) 
+           OR id = ('T-' || printf('%02d', CAST(? AS INTEGER)))
+           OR name = ?
+           OR name = ('Table ' || ?)
+        LIMIT 1
+      `).get(tableId, tableId, tableId, tableId, tableId, tableId);
+
+      const targetId = match ? match.id : tableId;
+      db.prepare("UPDATE kots SET status = 'billed' WHERE (table_id = ? OR table_id = ?) AND status != 'cancelled'").run(targetId, tableId);
+      db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ? OR id = ?").run(targetId, tableId);
       db.exec('COMMIT;');
       return this.getTables();
     } catch (e) {

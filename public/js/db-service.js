@@ -333,6 +333,7 @@ const DB_SERVICE = {
         fssai: bill.fssai
       }]);
 
+      await client.from('kots').update({ status: 'billed' }).eq('table_id', bill.table_id).neq('status', 'cancelled');
       await client.from('tables').update({
         status: 'vacant',
         current_subtotal: 0
@@ -391,7 +392,12 @@ const DB_SERVICE = {
 
       if (tblRes.data && tblRes.data.length > 0) {
         this.tables = tblRes.data.map(t => {
-          const tableKots = (kotRes.data || []).filter(k => k.table_id === t.id);
+          const norm = (id) => String(id || '').replace(/^T-0?/, '');
+          const isTableVacant = (t.status === 'vacant');
+          const tableKots = isTableVacant 
+            ? [] 
+            : (kotRes.data || []).filter(k => (k.table_id === t.id || norm(k.table_id) === norm(t.id)) && k.status !== 'billed' && k.status !== 'cancelled');
+
           const placedOrders = [];
           tableKots.forEach(k => {
             if (Array.isArray(k.kot_items)) {
@@ -418,9 +424,9 @@ const DB_SERVICE = {
             landmark: t.landmark,
             seats: t.seats,
             sort_order: t.sort_order,
-            status: (t.status === 'occupied' || calculatedSubtotal > 0) ? 'occupied' : 'vacant',
+            status: (!isTableVacant && (t.status === 'occupied' || calculatedSubtotal > 0)) ? 'occupied' : 'vacant',
             placedOrders,
-            currentSubtotal: calculatedSubtotal || parseFloat(t.current_subtotal) || 0
+            currentSubtotal: isTableVacant ? 0 : (calculatedSubtotal || parseFloat(t.current_subtotal) || 0)
           };
         });
       }
@@ -517,7 +523,8 @@ const DB_SERVICE = {
 
   applyKotPunchedFromRemote(data) {
     if (!data || !data.tableId) return;
-    let t = this.tables.find(x => x.id === data.tableId);
+    const norm = (id) => String(id || '').replace(/^T-0?/, '');
+    let t = this.tables.find(x => x.id === data.tableId || norm(x.id) === norm(data.tableId));
     if (!t) {
       t = { id: data.tableId, name: data.tableName || ('Table ' + data.tableId), status: 'occupied', placedOrders: [], currentSubtotal: 0 };
       this.tables.push(t);
@@ -566,13 +573,14 @@ const DB_SERVICE = {
 
   applyBillSettledFromRemote(data) {
     if (!data || !data.tableId) return;
-    let t = this.tables.find(x => x.id === data.tableId);
+    const norm = (id) => String(id || '').replace(/^T-0?/, '');
+    let t = this.tables.find(x => x.id === data.tableId || norm(x.id) === norm(data.tableId));
     if (t) {
       t.status = 'vacant';
       t.placedOrders = [];
       t.currentSubtotal = 0;
     }
-    this.kots = this.kots.filter(k => k.table_id !== data.tableId);
+    this.kots = this.kots.filter(k => k.table_id !== data.tableId && norm(k.table_id) !== norm(data.tableId));
     this.saveLocalTables();
     this.notifyTables();
     this.notifyKots();
@@ -1090,14 +1098,20 @@ const DB_SERVICE = {
             await client.from('bill_items').insert(billItems);
           }
 
-          // Mark active KOTs as served in Supabase
-          await client.from('kots').update({ status: 'served' }).eq('table_id', billData.tableId).neq('status', 'cancelled');
+          // Mark active KOTs as billed in Supabase
+          await client.from('kots').update({ status: 'billed' }).eq('table_id', billData.tableId).neq('status', 'cancelled');
+          const altTableId = billData.tableId.includes('-0') ? billData.tableId.replace('-0', '-') : billData.tableId.replace(/^T-(\d)$/, 'T-0$1');
+          await client.from('kots').update({ status: 'billed' }).eq('table_id', altTableId).neq('status', 'cancelled');
 
           // Mark table vacant in Supabase
           await client.from('tables').update({
             status: 'vacant',
             current_subtotal: 0
           }).eq('id', billData.tableId);
+          await client.from('tables').update({
+            status: 'vacant',
+            current_subtotal: 0
+          }).eq('id', altTableId);
 
           await this.loadSupabaseData();
           return { id: billId, invoice_number: invNo, ...billData };

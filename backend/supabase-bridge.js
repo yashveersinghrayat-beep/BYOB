@@ -209,20 +209,14 @@ class SupabaseBridge {
   handleRemoteBillSettledBroadcast(payload) {
     if (!payload || !payload.tableId) return;
     try {
-      let cleanTableId = payload.tableId;
-      if (typeof cleanTableId === 'string' && /^[a-zA-Z]+(\d+)$/.test(cleanTableId)) {
-        cleanTableId = parseInt(cleanTableId.replace(/^[a-zA-Z]+/, ''), 10);
-      } else if (typeof cleanTableId === 'string' && /^\d+$/.test(cleanTableId)) {
-        cleanTableId = parseInt(cleanTableId, 10);
-      }
-
-      console.log(`⚡ [Supabase Bridge] Instant Remote Bill Settled broadcast: Table ${cleanTableId}`);
-      this.db.forceClearTable(cleanTableId);
+      const rawTableId = payload.tableId;
+      console.log(`⚡ [Supabase Bridge] Instant Remote Bill Settled broadcast: Table ${rawTableId}`);
+      this.db.forceClearTable(rawTableId);
       const updatedTables = this.db.getTables();
       const activeKots = this.db.getAllActiveKOTs();
       if (this.broadcast) {
         this.broadcast('TABLES_UPDATED', updatedTables);
-        this.broadcast('BILL_SETTLED', { tableId: cleanTableId, tables: updatedTables, activeKots });
+        this.broadcast('BILL_SETTLED', { tableId: rawTableId, tables: updatedTables, activeKots });
       }
     } catch (err) {
       console.warn('[Supabase Bridge] Remote settle sync note:', err.message);
@@ -408,8 +402,8 @@ class SupabaseBridge {
         }
       } catch (be) {}
 
-      // 3. Mark KOTs as billed in cloud
-      await fetch(`${SUPABASE_URL}/rest/v1/kots?table_id=eq.${encodeURIComponent(bill.table_id)}&status=eq.pending`, {
+      // 3. Mark all active KOTs as billed in cloud
+      await fetch(`${SUPABASE_URL}/rest/v1/kots?table_id=eq.${encodeURIComponent(bill.table_id)}&status=neq.cancelled`, {
         method: 'PATCH',
         headers: HEADERS,
         body: JSON.stringify({ status: 'billed' }),
