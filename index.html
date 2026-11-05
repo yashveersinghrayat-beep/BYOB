@@ -35,19 +35,42 @@
       padding: 0;
       -webkit-font-smoothing: antialiased;
     }
-    /* Core Layout Guarantees */
+    button, input, select {
+      font-family: inherit;
+    }
+    button {
+      background-color: #161a26;
+      color: #ffffff;
+      border: 1px solid #283247;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    /* Core Layout & Isolation Guarantees */
     .grid { display: grid; }
     .flex { display: flex; }
     .hidden { display: none !important; }
     .block { display: block; }
+    #mgr-sidebar-hover-zone,
+    #mgr-sidebar-trigger-pill,
+    #mgr-sliding-sidebar,
+    #mgr-sidebar-backdrop {
+      display: none !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
   </style>
 
-  <!-- Local High-Speed Tailwind Engine (Zero-lag Offline, 100% Styling) -->
-  <script src="js/tailwind.js"></script>
+  <!-- Official High-Speed Tailwind CDN Engine (With local offline fallback) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    if (!window.tailwind) {
+      document.write('<script src="/js/tailwind.js"><\/script>');
+    }
+  </script>
 
   <!-- Local Compiled CSS & Custom POS Design System -->
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/tailwind-compiled.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/tailwind-compiled.css">
 </head>
 <body class="bg-[#090a0e] text-white min-h-screen">
 
@@ -3743,18 +3766,18 @@
   <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-2 rounded-xl text-xs font-bold shadow-xl z-50 hidden transition-all"></div>
 
   <!-- Supabase Cloud SDK & App Scripts (Local High-Speed) -->
-  <script src="js/supabase.js"></script>
-  <script src="js/cloud-config.js"></script>
-  <script src="js/telemetry.js"></script>
-  <script src="js/menu-data.js"></script>
-  <script src="js/db-service.js"></script>
-  <script src="js/app.js"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/cloud-config.js"></script>
+  <script src="/js/telemetry.js"></script>
+  <script src="/js/menu-data.js"></script>
+  <script src="/js/db-service.js"></script>
+  <script src="/js/app.js"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
+        navigator.serviceWorker.register('/sw.js')
           .then(reg => console.log('✅ ServiceWorker Registered'))
           .catch(err => console.log('ServiceWorker registration failed:', err));
       });
