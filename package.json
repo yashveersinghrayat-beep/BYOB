@@ -1,0 +1,15 @@
+{
+  "name": "onyx-byob-hospitality",
+  "version": "1.0.0",
+  "description": "ONYX (Operational Network for Yield & eXperience) - Android & Web App Suite for BYOB Indirapuram",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "keywords": ["hospitality", "restaurant-bar", "byob", "pos", "billing"],
+  "author": "Antigravity",
+  "license": "ISC"
+}

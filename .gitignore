@@ -1,0 +1,17 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vercel build output
+.vercel/
+
+# Temporary and test scripts
+scratch/
+test-*.js
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,541 @@
+/* BYOB INDIRAPURAM - App & Web POS Design System */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-main: #0a0b0f;
+  --bg-surface: #12151e;
+  --bg-surface-elevated: #1a1e2b;
+  --border-color: #242b3d;
+  --text-main: #ffffff;
+  --text-muted: #9ba3b8;
+  --primary: #f59e0b;
+  --primary-hover: #d97706;
+  --veg: #22c55e;
+  --nonveg: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: #333a4d;
+  border-radius: 999px;
+}
+
+/* Veg / Non-Veg Badges */
+.badge-veg {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--veg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: rgba(34, 197, 94, 0.15);
+  flex-shrink: 0;
+}
+.badge-veg::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--veg);
+  border-radius: 50%;
+}
+
+.badge-nonveg {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--nonveg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: rgba(239, 68, 68, 0.15);
+  flex-shrink: 0;
+}
+.badge-nonveg::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--nonveg);
+  border-radius: 50%;
+}
+
+/* Native Full-Screen Layout (Auto-adjusts to any phone / tablet / desktop screen) */
+.app-frame {
+  width: 100%;
+  max-width: 100%;
+  min-height: calc(100vh - 58px);
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #0f1118;
+}
+
+/* On large desktop screens, give it a clean centered max-width container if in waiter mode without artificial phone frames */
+@media (min-width: 1200px) {
+  .app-frame {
+    max-width: 580px;
+    margin: 12px auto;
+    border-radius: 16px;
+    border: 1px solid #23293a;
+    min-height: calc(100vh - 84px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Vertical Category Rail (Left in Waiter Mode) */
+.category-rail {
+  width: 78px;
+  background: #131620;
+  border-right: 1px solid #252b3b;
+  overflow-y: auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+}
+
+.rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ba3b8;
+  transition: all 0.15s ease;
+  text-align: center;
+  line-height: 1.15;
+  border: 1px solid transparent;
+}
+.rail-btn:active {
+  transform: scale(0.95);
+}
+.rail-btn.active {
+  background: #f59e0b;
+  color: #000000;
+  border-color: #fbbf24;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+/* High-Speed Waiter Order Tile */
+.speed-tile {
+  background: #151824;
+  border: 1.5px solid #273044;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+@media (max-width: 420px) {
+  .category-rail {
+    width: 68px;
+    padding: 4px 2px;
+  }
+  .rail-btn {
+    padding: 6px 2px;
+    font-size: 9px;
+  }
+  .speed-tile {
+    padding: 8px;
+    gap: 6px;
+  }
+}
+.speed-tile:hover {
+  border-color: #4b587a;
+  background: #1c2132;
+}
+.speed-tile.has-qty {
+  border-color: #f59e0b !important;
+  background: #281d0c !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.3) !important;
+}
+
+/* ================= VIBRANT HIGH-CONTRAST TABLE FLOOR CARDS ================= */
+.floor-table-card {
+  border-radius: 18px;
+  transition: all 0.16s ease-in-out;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.floor-table-card:active {
+  transform: scale(0.97);
+}
+
+/* 1. 🟢 BRIGHT SOLID GREEN (VACANT / FREE TABLE) */
+.table-card-free {
+  background: linear-gradient(145deg, #093c24 0%, #042415 100%) !important;
+  border: 2.5px solid #10b981 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25) !important;
+  color: #ffffff !important;
+}
+.table-card-free:hover {
+  border-color: #34d399 !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* 2. 🔴 BRIGHT SOLID RED (OCCUPIED / ACTIVE RUNNING ORDERS) */
+.table-card-occupied {
+  background: linear-gradient(145deg, #4c0d16 0%, #29060c 100%) !important;
+  border: 2.5px solid #ef4444 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
+  color: #ffffff !important;
+}
+.table-card-occupied:hover {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.55) !important;
+}
+
+/* 3A. 🟡 SELECTED FREE TABLE */
+.table-card-selected-free {
+  background: linear-gradient(145deg, #0e4c2f 0%, #062b1a 100%) !important;
+  border: 3.5px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.8), inset 0 0 12px rgba(251, 191, 36, 0.25) !important;
+  color: #ffffff !important;
+}
+
+/* 3B. 🟡 SELECTED OCCUPIED TABLE */
+.table-card-selected-occupied {
+  background: linear-gradient(145deg, #57101b 0%, #32070e 100%) !important;
+  border: 3.5px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.8), inset 0 0 12px rgba(251, 191, 36, 0.25) !important;
+  color: #ffffff !important;
+}
+
+/* Fallback for selected table */
+.table-card-selected {
+  border: 3.5px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.8) !important;
+}
+
+/* Pulse animation for live sync */
+@keyframes syncPulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+.sync-pulse {
+  animation: syncPulse 2s infinite ease-in-out;
+}
+
+/* ================= EPSON 80MM THERMAL RECEIPT STYLES ================= */
+.epson-receipt {
+  width: 340px;
+  max-width: 100%;
+  background: #ffffff;
+  color: #000000;
+  font-family: 'JetBrains Mono', Courier, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 16px 14px;
+  margin: 0 auto;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  position: relative;
+  letter-spacing: -0.2px;
+}
+
+.epson-receipt hr {
+  border: none;
+  border-top: 1px dashed #444;
+  margin: 6px 0;
+}
+
+.epson-receipt .double-hr {
+  border: none;
+  border-top: 2px solid #000;
+  margin: 6px 0;
+}
+
+/* Thermal printer 80mm zero-waste sheet rules */
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
+@media print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #epson-print-wrapper, #epson-print-wrapper * {
+    visibility: visible;
+  }
+  #epson-print-wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+  .epson-receipt {
+    width: 78mm !important;
+    box-shadow: none !important;
+    padding: 2mm 1mm !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Hide scrollbar helper */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbar for Preference Modals & Drawers */
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: #0f121a;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #2b354b;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
+.pref-chip {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ================= MANAGER SLIDING HOVER SIDEBAR & HEADER INTEGRATION ================= */
+/* STRICT SECURITY & CONTEXT ISOLATION:
+   The Manager Sidebar, hover zone, trigger pill, and backdrop are STRICTLY restricted to Manager Dashboard.
+   In Waiter Mobile view ('app'), Customer Web view ('web'), or when console is locked, they are COMPLETELY DISABLED. */
+#mgr-sidebar-hover-zone,
+#mgr-sidebar-trigger-pill,
+#mgr-sliding-sidebar,
+#mgr-sidebar-backdrop {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* STRICTLY ACTIVE ONLY WHEN body has .mgr-view-active (Manager Console unlocked & active) */
+body.mgr-view-active #mgr-sidebar-hover-zone {
+  display: block !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  position: fixed;
+  top: 57px;
+  left: 0;
+  width: 24px;
+  height: calc(100vh - 57px);
+  z-index: 45;
+  background: transparent;
+}
+
+body.mgr-view-active #mgr-sidebar-trigger-pill {
+  display: flex !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  position: fixed;
+  top: 72px;
+  left: 0;
+  z-index: 46;
+  background: #141824;
+  border: 1.5px solid #f59e0b;
+  border-left: none;
+  border-radius: 0 14px 14px 0;
+  padding: 8px 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
+  align-items: center;
+  gap: 6px;
+  color: #fbbf24;
+}
+
+body.mgr-view-active #mgr-sidebar-trigger-pill:hover {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000000;
+  padding-left: 14px;
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6);
+  transform: translateX(3px);
+}
+
+body.mgr-view-active.mgr-sidebar-open #mgr-sidebar-trigger-pill {
+  opacity: 0;
+  pointer-events: none !important;
+  transform: translateX(-100%);
+}
+
+body.mgr-view-active #mgr-sidebar-backdrop {
+  display: block !important;
+  position: fixed;
+  top: 57px;
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 57px);
+  background: rgba(3, 5, 8, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 47;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  visibility: visible !important;
+}
+
+body.mgr-view-active #mgr-sidebar-backdrop.active {
+  opacity: 1;
+  pointer-events: auto !important;
+}
+
+body.mgr-view-active #mgr-sliding-sidebar {
+  display: flex !important;
+  visibility: visible !important;
+  position: fixed;
+  top: 57px;
+  left: 0;
+  width: 290px;
+  height: calc(100vh - 57px);
+  z-index: 48;
+  background: rgba(14, 18, 27, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid #232c3f;
+  border-top: 1px solid #232c3f;
+  box-shadow: 12px 0 45px rgba(0, 0, 0, 0.85);
+  transform: translateX(-100%);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
+  flex-direction: column;
+  pointer-events: auto !important;
+}
+
+body.mgr-view-active #mgr-sliding-sidebar.open,
+body.mgr-view-active #mgr-sliding-sidebar.pinned {
+  transform: translateX(0);
+}
+
+/* Morphing Animated Hamburger Button in Header */
+#hdr-sidebar-toggle-btn {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#hdr-sidebar-toggle-btn:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+}
+
+#hdr-sidebar-toggle-btn .hdr-bar {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s, background-color 0.2s;
+}
+
+#hdr-sidebar-toggle-btn.is-active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.2));
+  border-color: #f59e0b;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.5);
+}
+
+#hdr-sidebar-toggle-btn.is-active .bar-top {
+  transform: translateY(5px) rotate(45deg);
+  background-color: #fbbf24;
+}
+
+#hdr-sidebar-toggle-btn.is-active .bar-mid {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+#hdr-sidebar-toggle-btn.is-active .bar-bot {
+  transform: translateY(-5px) rotate(-45deg);
+  background-color: #fbbf24;
+}
+
+/* Header border pulse when sidebar is open */
+body.mgr-sidebar-open #main-app-header {
+  border-bottom-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+.mgr-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.mgr-nav-item:hover {
+  background: rgba(245, 158, 11, 0.12);
+  color: #ffffff;
+  border-color: rgba(245, 158, 11, 0.3);
+  transform: translateX(4px);
+}
+
+.mgr-nav-item.active {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000000;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  border-color: #fbbf24;
+}
+
+.mgr-nav-item.active:hover {
+  color: #000000;
+  transform: none;
+}
