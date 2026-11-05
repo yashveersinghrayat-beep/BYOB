@@ -109,27 +109,35 @@
         position: static !important;
         width: 80mm !important;
         max-width: 80mm !important;
-        margin: 0 !important;
-        padding: 2mm 2.5mm 4mm 2.5mm !important;
+        margin: 0 auto !important;
+        padding: 0mm 0mm 4mm 0mm !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-sizing: border-box !important;
       }
       .epson-receipt {
-        width: 100% !important;
-        max-width: 75mm !important;
+        width: 70mm !important;
+        max-width: 70mm !important;
         margin: 0 auto !important;
-        padding: 0 !important;
+        padding: 2mm 1mm !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-shadow: none !important;
         border-radius: 0 !important;
         border: none !important;
-        font-size: 11px !important;
-        line-height: 1.35 !important;
+        font-size: 10px !important;
+        line-height: 1.3 !important;
       }
       .epson-receipt * {
         color: #000000 !important;
+      }
+      .qr-img {
+        width: 76px !important;
+        height: 76px !important;
+        display: block !important;
+        margin: 0 auto !important;
+        image-rendering: pixelated !important;
+        image-rendering: crisp-edges !important;
       }
       #epson-modal button,
       #epson-modal .mt-3,
@@ -143,8 +151,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Local Compiled CSS & Custom POS Design System -->
-  <link rel="stylesheet" href="/css/styles.css?v=2.6">
-  <link rel="stylesheet" href="/css/tailwind-compiled.css?v=2.6">
+  <link rel="stylesheet" href="/css/styles.css?v=3.1">
+  <link rel="stylesheet" href="/css/tailwind-compiled.css?v=3.1">
 </head>
 <body class="bg-[#090a0e] text-white min-h-screen">
 
@@ -2349,22 +2357,43 @@
 
             <!-- MODE 1: UPI SCAN & PAY -->
             <div id="pay-section-upi" class="text-center py-2">
-              <div class="inline-block p-2 bg-white rounded-xl shadow-lg border border-neutral-300">
-                <!-- SVG UPI QR Code -->
-                <svg class="w-32 h-32 mx-auto" viewBox="0 0 100 100" fill="#000">
-                  <path d="M0,0 h30 v30 h-30 z M5,5 v20 h20 v-20 z M10,10 h10 v10 h-10 z" />
-                  <path d="M70,0 h30 v30 h-30 z M75,5 v20 h20 v-20 z M80,10 h10 v10 h-10 z" />
-                  <path d="M0,70 h30 v30 h-30 z M5,75 v20 h20 v-20 z M10,80 h10 v10 h-10 z" />
-                  <rect x="35" y="5" width="5" height="15" />
-                  <rect x="45" y="10" width="15" height="5" />
-                  <rect x="35" y="35" width="30" height="30" />
-                  <rect x="75" y="45" width="10" height="10" />
-                  <rect x="50" y="75" width="20" height="10" />
-                  <rect x="80" y="75" width="15" height="15" />
-                </svg>
+              <div class="inline-flex flex-col items-center bg-white rounded-2xl p-3 shadow-2xl border-2 border-[#5f259f]/40 text-black max-w-[270px] mx-auto">
+                <!-- PhonePe Brand Header -->
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <div class="w-6 h-6 rounded-full bg-[#5f259f] flex items-center justify-center text-white font-black text-xs shadow-sm">
+                    पे
+                  </div>
+                  <span class="font-black text-sm tracking-tight text-[#5f259f]">PhonePe</span>
+                  <span class="text-[9px] font-bold text-neutral-500 uppercase tracking-wider ml-1">SCAN &amp; PAY</span>
+                </div>
+
+                <!-- High-Resolution Razor-Sharp QR Code Extracted from PhonePe Standee -->
+                <div class="bg-white p-1.5 rounded-xl border border-neutral-300 shadow-inner">
+                  <img src="/icons/payment-qr.png" alt="PhonePe QR Code" class="w-36 h-36 mx-auto block object-contain" style="image-rendering: pixelated;">
+                </div>
+
+                <!-- UPI ID Details -->
+                <div class="mt-2 text-center w-full">
+                  <div class="text-[9px] font-bold text-neutral-600 uppercase tracking-wider">UPI ID</div>
+                  <div id="pay-modal-upi-id" onclick="APP.copyUpiId()" class="text-xs font-mono font-black text-[#5f259f] bg-purple-50 px-2 py-0.5 rounded border border-purple-200 select-all cursor-pointer truncate" title="Click to copy">
+                    Q676029996@ybl
+                  </div>
+                </div>
+
+                <!-- Accepted Payment Apps Badge Row -->
+                <div class="flex items-center justify-center gap-1.5 mt-2 pt-1.5 border-t border-neutral-200 w-full text-[9px] font-bold text-neutral-600">
+                  <span class="text-[#5f259f]">PhonePe</span>
+                  <span>•</span>
+                  <span class="text-[#4285F4]">GPay</span>
+                  <span>•</span>
+                  <span class="text-[#00B9F1]">Paytm</span>
+                  <span>•</span>
+                  <span class="text-[#00796B]">BHIM</span>
+                </div>
               </div>
-              <div class="text-[11px] font-bold text-white mt-2">GPay • PhonePe • Paytm</div>
-              <div class="text-[10px] text-amber-400 font-mono">byobindirapuram@icici</div>
+              <div class="text-[11px] text-neutral-300 font-medium mt-2">
+                Scan with <span class="text-amber-400 font-bold">ANY UPI App</span> to pay
+              </div>
             </div>
 
             <!-- MODE 2: CARD MACHINE -->
@@ -2640,22 +2669,13 @@
           <hr>
 
           <!-- Embedded Thermal UPI QR Code -->
-          <div class="text-center py-2">
-            <div class="text-[9px] font-bold mb-1 uppercase tracking-wider">SCAN TO PAY OR TIP SERVER</div>
+          <div class="text-center py-1.5 my-0.5">
+            <div class="text-[8px] font-black uppercase tracking-wider text-black mb-1">SCAN &amp; PAY VIA ANY UPI APP</div>
             <div class="inline-block p-1 bg-white border border-black rounded">
-              <svg class="w-20 h-20 mx-auto" viewBox="0 0 100 100" fill="#000">
-                <path d="M0,0 h30 v30 h-30 z M5,5 v20 h20 v-20 z M10,10 h10 v10 h-10 z" />
-                <path d="M70,0 h30 v30 h-30 z M75,5 v20 h20 v-20 z M80,10 h10 v10 h-10 z" />
-                <path d="M0,70 h30 v30 h-30 z M5,75 v20 h20 v-20 z M10,80 h10 v10 h-10 z" />
-                <rect x="35" y="5" width="5" height="15" />
-                <rect x="45" y="10" width="15" height="5" />
-                <rect x="35" y="35" width="30" height="30" />
-                <rect x="75" y="45" width="10" height="10" />
-                <rect x="50" y="75" width="20" height="10" />
-                <rect x="80" y="75" width="15" height="15" />
-              </svg>
+              <img src="/icons/payment-qr.png" alt="PhonePe UPI QR" class="w-[76px] h-[76px] mx-auto block qr-img" style="image-rendering: pixelated; -webkit-print-color-adjust: exact;">
             </div>
-            <div id="epson-upi-id" class="text-[9px] font-mono mt-0.5">UPI ID: byobindirapuram@icici</div>
+            <div id="epson-upi-id" class="text-[8.5px] font-mono font-bold mt-1 text-black">UPI ID: Q676029996@ybl</div>
+            <div class="text-[7.5px] font-bold text-neutral-700 uppercase tracking-tight mt-0.5">PhonePe • GPay • Paytm • BHIM</div>
           </div>
 
           <!-- Barcode Simulation -->
@@ -3526,7 +3546,7 @@
             <input 
               type="text" 
               id="store-setting-upi" 
-              placeholder="e.g. byobindirapuram@icici"
+              placeholder="e.g. Q676029996@ybl"
               class="w-full px-2.5 py-1.5 rounded-lg bg-[#0c0e15] border border-[#2e374d] text-emerald-400 text-xs font-mono font-bold outline-none focus:border-amber-400">
           </div>
 
@@ -3848,12 +3868,12 @@
   <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-2 rounded-xl text-xs font-bold shadow-xl z-50 hidden transition-all"></div>
 
   <!-- Core Dependencies & App Engine -->
-  <script src="/js/supabase.js?v=3.0"></script>
-  <script src="/js/cloud-config.js?v=3.0"></script>
-  <script src="/js/telemetry.js?v=3.0"></script>
-  <script src="/js/menu-data.js?v=3.0"></script>
-  <script src="/js/db-service.js?v=3.0"></script>
-  <script src="/js/app.js?v=3.0"></script>
+  <script src="/js/supabase.js?v=3.1"></script>
+  <script src="/js/cloud-config.js?v=3.1"></script>
+  <script src="/js/telemetry.js?v=3.1"></script>
+  <script src="/js/menu-data.js?v=3.1"></script>
+  <script src="/js/db-service.js?v=3.1"></script>
+  <script src="/js/app.js?v=3.1"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

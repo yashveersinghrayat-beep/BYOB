@@ -2303,6 +2303,20 @@ const APP = {
     if (perPersonEl) perPersonEl.textContent = `₹${perPerson}`;
   },
 
+  copyUpiId() {
+    const el = document.getElementById('pay-modal-upi-id');
+    const txt = (el ? el.innerText : '').trim() || 'Q676029996@ybl';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(() => {
+        this.showToast('📋 Copied UPI ID: ' + txt);
+      }).catch(() => {
+        this.showToast('📋 UPI ID: ' + txt);
+      });
+    } else {
+      this.showToast('📋 UPI ID: ' + txt);
+    }
+  },
+
   setPayMode(mode) {
     this.state.payMode = mode;
     const tabUpi = document.getElementById('pay-tab-upi');
@@ -2322,6 +2336,9 @@ const APP = {
     if (mode === 'upi') {
       if (tabUpi) tabUpi.className = "py-2 rounded-lg font-bold bg-amber-500 text-black";
       if (secUpi) secUpi.classList.remove('hidden');
+      const store = (window.DB && window.DB.storeSettings) || {};
+      const upiIdEl = document.getElementById('pay-modal-upi-id');
+      if (upiIdEl) upiIdEl.textContent = store.upi_vpa || 'Q676029996@ybl';
     } else if (mode === 'card') {
       if (tabCard) tabCard.className = "py-2 rounded-lg font-bold bg-amber-500 text-black";
       if (secCard) secCard.classList.remove('hidden');
@@ -2578,7 +2595,7 @@ const APP = {
     const address = store.address || 'Plot 14, Dr. Sushila Naiyyar Marg, Indirapuram, Ghaziabad';
     const gstin = customBill?.gstin || store.gstin || '07AABCB1234F1Z9';
     const fssai = customBill?.fssai || store.fssai || '12724055000123';
-    const upi = store.upi_vpa || 'byobindirapuram@icici';
+    const upi = store.upi_vpa || 'Q676029996@ybl';
     const footer = store.bill_footer || 'Guests are welcome to Bring Their Own Bottle.';
 
     const restNameEl = document.getElementById('epson-restaurant-name');
@@ -2775,25 +2792,33 @@ const APP = {
       width: 80mm;
       max-width: 80mm;
       margin: 0 auto;
-      padding: 2mm 2.5mm 6mm 2.5mm;
+      padding: 0mm 0mm 5mm 0mm;
       background: #ffffff;
       color: #000000;
       font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
-      font-size: 11px;
-      line-height: 1.35;
+      font-size: 10px;
+      line-height: 1.3;
       font-weight: 600;
     }
     .epson-receipt {
-      width: 100%;
-      max-width: 75mm;
+      width: 70mm;
+      max-width: 70mm;
       margin: 0 auto;
       background: #ffffff;
       color: #000000;
-      padding: 0;
+      padding: 2mm 1mm;
       box-shadow: none;
     }
     .epson-receipt * {
       color: #000000 !important;
+    }
+    .qr-img {
+      width: 76px !important;
+      height: 76px !important;
+      display: block !important;
+      margin: 0 auto !important;
+      image-rendering: pixelated !important;
+      image-rendering: crisp-edges !important;
     }
     .text-center { text-align: center; }
     .text-left { text-align: left; }
@@ -3788,7 +3813,7 @@ const APP = {
     if (emailEl) emailEl.value = store.email || 'contact@byobindirapuram.com';
     if (gstinEl) gstinEl.value = store.gstin || '07AABCB1234F1Z9';
     if (fssaiEl) fssaiEl.value = store.fssai || '12724055000123';
-    if (upiEl) upiEl.value = store.upi_vpa || 'byobindirapuram@icici';
+    if (upiEl) upiEl.value = store.upi_vpa || 'Q676029996@ybl';
     if (cgstEl) cgstEl.value = store.cgst_percent || '2.5';
     if (sgstEl) sgstEl.value = store.sgst_percent || '2.5';
     if (serviceEl) serviceEl.value = store.service_charge_percent || '0';
@@ -6145,7 +6170,7 @@ const APP = {
         setVal('mgr-store-cgst', s.cgst_percent !== undefined ? s.cgst_percent : 2.5);
         setVal('mgr-store-sgst', s.sgst_percent !== undefined ? s.sgst_percent : 2.5);
         setVal('mgr-store-service-charge', s.service_charge_percent || 0);
-        setVal('mgr-store-upi-id', s.upi_vpa || 'byobindirapuram@icici');
+        setVal('mgr-store-upi-id', s.upi_vpa || 'Q676029996@ybl');
         setVal('mgr-store-footer', s.receipt_footer || s.bill_footer || 'Thank You! Visit Again.');
       }
     } catch (e) {

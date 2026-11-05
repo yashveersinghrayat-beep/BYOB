@@ -286,7 +286,7 @@ function seedDefaultStoreData() {
     email: 'contact@byobindirapuram.com',
     gstin: '07AABCB1234F1Z9',
     fssai: '12724055000123',
-    upi_vpa: 'byobindirapuram@icici',
+    upi_vpa: 'Q676029996@ybl',
     currency_symbol: '₹',
     cgst_percent: '2.5',
     sgst_percent: '2.5',

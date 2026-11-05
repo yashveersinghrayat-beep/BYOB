@@ -258,14 +258,14 @@ body {
 
 /* ================= EPSON 80MM THERMAL RECEIPT SYSTEM ================= */
 .epson-receipt {
-  width: 320px;
+  width: 290px;
   max-width: 100%;
   background: #ffffff !important;
   color: #000000 !important;
   font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
-  font-size: 11px;
-  line-height: 1.35;
-  padding: 14px 12px;
+  font-size: 10.5px;
+  line-height: 1.32;
+  padding: 12px 10px;
   margin: 0 auto;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
   border-radius: 6px;
@@ -342,25 +342,34 @@ body {
     position: static !important;
     width: 80mm !important;
     max-width: 80mm !important;
-    padding: 2mm 2.5mm 4mm 2.5mm !important;
-    margin: 0 !important;
+    padding: 0mm 0mm 4mm 0mm !important;
+    margin: 0 auto !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-sizing: border-box !important;
   }
 
   .epson-receipt {
-    width: 100% !important;
-    max-width: 75mm !important;
+    width: 70mm !important;
+    max-width: 70mm !important;
     margin: 0 auto !important;
     box-shadow: none !important;
-    padding: 0 !important;
+    padding: 2mm 1mm !important;
     border-radius: 0 !important;
     border: none !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-size: 11px !important;
-    line-height: 1.35 !important;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+  }
+
+  .qr-img {
+    width: 76px !important;
+    height: 76px !important;
+    display: block !important;
+    margin: 0 auto !important;
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
   }
 
   .epson-receipt * {

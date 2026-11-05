@@ -1,5 +1,5 @@
 // Service Worker for ONYX Hospitality Engine
-const CACHE_NAME = 'onyx-cache-v12';
+const CACHE_NAME = 'onyx-cache-v13';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -14,7 +14,9 @@ const STATIC_ASSETS = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/favicon.png',
-  '/icons/apple-touch-icon.png'
+  '/icons/apple-touch-icon.png',
+  '/icons/payment-qr.png',
+  '/icons/payment-qr.svg'
 ];
 
 self.addEventListener('install', (event) => {
