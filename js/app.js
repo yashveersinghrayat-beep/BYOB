@@ -3995,10 +3995,10 @@ const APP = {
               this._smoothedDbLatency = Math.round((this._smoothedDbLatency * 0.7) + (rawDbLat * 0.3));
             }
             const dbLat = this._smoothedDbLatency;
-            if (dbLat <= 450) {
+            if (dbLat <= 650) {
               dbHealth = { status: 'green', latency: dbLat, label: 'Live' };
             } else {
-              dbHealth = { status: 'yellow', latency: dbLat, label: `Cloud (${dbLat}ms)` };
+              dbHealth = { status: 'yellow', latency: dbLat, label: `Slow (${dbLat}ms)` };
             }
           } else {
             dbHealth = { status: 'red', latency: rawDbLat, label: 'Cloud Err' };
@@ -4006,7 +4006,7 @@ const APP = {
         }
       } else if (dbMode === 'sqlite_server') {
         if (serverHealth.status === 'green') {
-          dbHealth = { status: 'green', latency: serverHealth.latency, label: 'SQLite' };
+          dbHealth = { status: 'green', latency: serverHealth.latency, label: 'Live' };
         } else if (serverHealth.status === 'yellow') {
           dbHealth = { status: 'yellow', latency: serverHealth.latency, label: 'Slow' };
         } else {
