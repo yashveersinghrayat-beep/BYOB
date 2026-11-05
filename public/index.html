@@ -60,13 +60,8 @@
     }
   </style>
 
-  <!-- Official High-Speed Tailwind CDN Engine (With local offline fallback) -->
+  <!-- Official High-Speed Tailwind CDN Engine -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    if (!window.tailwind) {
-      document.write('<script src="/js/tailwind.js"><\/script>');
-    }
-  </script>
 
   <!-- Local Compiled CSS & Custom POS Design System -->
   <link rel="stylesheet" href="/css/styles.css">
@@ -3765,13 +3760,8 @@
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-2 rounded-xl text-xs font-bold shadow-xl z-50 hidden transition-all"></div>
 
-  <!-- Supabase Cloud SDK & App Scripts (Local High-Speed with Global CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    if (!window.supabase) {
-      document.write('<script src="/js/supabase.js"><\/script>');
-    }
-  </script>
+  <!-- Core Dependencies & App Engine -->
+  <script src="/js/supabase.js"></script>
   <script src="/js/cloud-config.js"></script>
   <script src="/js/telemetry.js"></script>
   <script src="/js/menu-data.js"></script>
