@@ -2,16 +2,16 @@
 // Seamlessly connects Frontend to Native SQLite Backend via REST API & SSE Realtime Stream
 
 let _ACTIVE_API_BASE = (typeof window !== 'undefined' && (window.location.protocol === 'http:' || window.location.protocol === 'https:'))
-  ? ''
-  : (typeof localStorage !== 'undefined' && localStorage.getItem('onyx_server_url'))
-    ? localStorage.getItem('onyx_server_url')
-    : 'http://192.168.1.6:3000';
+  ? (window.location.hostname.includes('vercel.app') ? '' : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://byob-orcin.vercel.app'))
+  : 'https://byob-orcin.vercel.app';
 
 function getApiBase() {
   if (typeof window !== 'undefined' && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-    return '';
+    if (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return '';
+    }
   }
-  return _ACTIVE_API_BASE || 'http://192.168.1.6:3000';
+  return _ACTIVE_API_BASE || 'https://byob-orcin.vercel.app';
 }
 
 const DB_SERVICE = {
@@ -108,34 +108,9 @@ const DB_SERVICE = {
       });
     }
 
-    const isVercelHost = typeof window !== 'undefined' && (
-      window.location.hostname.includes('vercel.app') ||
-      window.location.hostname.includes('now.sh')
-    );
-
-    // 1. If running on Vercel Cloud, connect to Supabase 24/7 Cloud as PRIMARY Realtime Engine
-    if (isVercelHost) {
-      console.log('☁️ Vercel Cloud host detected -> Connecting via Supabase 24/7 Realtime Cloud Engine...');
-      if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
-        const cloudSuccess = await this.initSupabaseCloud();
-        if (cloudSuccess) {
-          this.emitStatus();
-          this.replayOfflineQueue();
-          return;
-        }
-      }
-    }
-
-    // 2. Proactively auto-discover local server (Wi-Fi / Localhost / Subnet Auto-Scan)
-    const serverFound = await this.autoDiscoverServer();
-    if (serverFound) {
-      // In local server mode, ALSO connect to Supabase Realtime channel for cross-network sync
-      this.subscribeSupabaseRealtime();
-      return;
-    }
-
-    // 3. Fall back to Supabase 24/7 Cloud (For remote phone connections outside Wi-Fi)
+    // 1. Primary 24/7 Engine: Supabase Cloud Realtime (<25ms WebSocket sync for All Devices)
     if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
+      console.log('☁️ Connecting via Supabase 24/7 Realtime Cloud Engine...');
       const cloudSuccess = await this.initSupabaseCloud();
       if (cloudSuccess) {
         this.emitStatus();
@@ -144,30 +119,36 @@ const DB_SERVICE = {
       }
     }
 
-    // 4. Fall back to local offline storage (already loaded in 0ms)
+    // 2. Fall back to local server only if running directly on localhost development machine
+    const serverFound = await this.autoDiscoverServer();
+    if (serverFound) {
+      this.subscribeSupabaseRealtime();
+      return;
+    }
+
+    // 3. Fall back to local offline storage (already loaded in 0ms)
     this.emitStatus();
   },
 
-  // Proactive multi-candidate server probing and fast subnet discovery
+  // Proactive multi-candidate server probing (Only for localhost dev machine)
   async autoDiscoverServer() {
-    const isVercelHost = typeof window !== 'undefined' && (
-      window.location.hostname.includes('vercel.app') ||
-      window.location.hostname.includes('now.sh')
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
     );
-    if (isVercelHost) return false;
+    if (!isLocalhost) return false;
 
-    const candidates = [];
-    if (typeof window !== 'undefined' && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-      candidates.push('');
+    const res = await this.probeServer('');
+    if (res.success) {
+      this.mode = 'sqlite_server';
+      this.setServerUrl('');
+      await this.loadInitialData();
+      this.connectRealtimeSSE();
+      this.emitStatus();
+      return true;
     }
-    const savedServer = (typeof localStorage !== 'undefined') ? localStorage.getItem('onyx_server_url') : null;
-    if (savedServer && !candidates.includes(savedServer)) candidates.push(savedServer);
-
-    const knownIps = [
-      'http://192.168.1.6:3000',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://10.0.2.2:3000',
+    return false;
+  },
       'http://192.168.1.36:3000',
       'http://192.168.1.35:3000'
     ];

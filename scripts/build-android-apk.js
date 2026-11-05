@@ -96,8 +96,8 @@ fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), `<?xml versio
 const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.onyx.pos"
-    android:versionCode="2"
-    android:versionName="2.4">
+    android:versionCode="4"
+    android:versionName="3.5">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -120,9 +120,9 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|density"
             android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="unspecified">
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -139,6 +139,7 @@ import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -146,6 +147,8 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -154,7 +157,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private WebView webView;
-    private static final String SERVER_URL = "http://192.168.1.6:3000";
+    private static final String SERVER_URL = "https://byob-orcin.vercel.app";
     private static final String LOCAL_FALLBACK = "file:///android_asset/index.html";
 
     private static class PosWebViewClient extends WebViewClient {
@@ -167,7 +170,7 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             if (request != null && request.getUrl() != null) {
                 String url = request.getUrl().toString();
                 if (url.endsWith(".apk") || url.contains(".apk?")) {
@@ -179,7 +182,14 @@ public class MainActivity extends Activity {
 
         @Override
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-            if (failingUrl != null && (failingUrl.startsWith("http://") || failingUrl.startsWith("https://"))) {
+            if (failingUrl != null && failingUrl.startsWith("http")) {
+                view.loadUrl(LOCAL_FALLBACK);
+            }
+        }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            if (request != null && request.isForMainFrame()) {
                 view.loadUrl(LOCAL_FALLBACK);
             }
         }
@@ -229,6 +239,9 @@ public class MainActivity extends Activity {
         // Keep Screen Awake (Restaurant POS standard)
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        // Strictly Lock Screen Orientation to Portrait (prevents auto-rotate displacement during waiter movement)
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
         // Enable Fullscreen Kiosk Mode
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -256,8 +269,8 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new PosWebViewClient());
         webView.setDownloadListener(new PosDownloadListener(this));
 
-        // Load embedded local assets instantly (0ms startup time, zero black screen)
-        webView.loadUrl(LOCAL_FALLBACK);
+        // Connect directly to Live Vercel Web App (falls back instantly to bundled assets if offline)
+        webView.loadUrl(SERVER_URL);
     }
 
     @Override
@@ -337,8 +350,18 @@ const desktopApk = path.join(process.env.USERPROFILE, 'Desktop', 'ONYX_POS.apk')
 
 execSync(`"${APKSIGNER}" sign --ks "${keystore}" --ks-pass pass:android --out "${finalApk}" "${alignedApk}"`, { stdio: 'inherit' });
 
-// Copy to Desktop as well
+// Copy to Desktop and public downloads folder
 fs.copyFileSync(finalApk, desktopApk);
+try {
+  const publicDir = path.join(ROOT_DIR, 'public');
+  if (fs.existsSync(publicDir)) {
+    fs.copyFileSync(finalApk, path.join(publicDir, 'ONYX_POS.apk'));
+    fs.copyFileSync(finalApk, path.join(publicDir, 'byob-pos-latest.apk'));
+    console.log('   🌐 Web Download: Copied to public/ONYX_POS.apk & public/byob-pos-latest.apk');
+  }
+} catch (e) {
+  console.warn('Could not copy to public:', e.message);
+}
 
 console.log('\n🎉 ==============================================================');
 console.log('   💎 ANDROID APK BUILT & SIGNED SUCCESSFULLY!');
