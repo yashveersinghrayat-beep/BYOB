@@ -1031,31 +1031,41 @@ const DB_SERVICE = {
 
   // Settle Bill
   async logPaymentFailure(failureData) {
+    const entry = {
+      id: failureData.id || ('FAIL-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6)),
+      table_id: failureData.table_id || failureData.tableId || 'T-00',
+      table_name: failureData.table_name || failureData.tableName || 'Table',
+      floor: failureData.floor || 'Ground Floor',
+      amount: Number(failureData.amount || 0),
+      payment_mode: failureData.payment_mode || failureData.paymentMode || 'card',
+      reason: failureData.reason || 'Payment Cancelled',
+      staff_name: failureData.staff_name || failureData.staffName || 'Staff',
+      created_at: failureData.created_at || new Date().toISOString()
+    };
+
+    // Local client backup cache
+    try {
+      const existing = JSON.parse(localStorage.getItem('byob_card_failures') || '[]');
+      existing.unshift(entry);
+      localStorage.setItem('byob_card_failures', JSON.stringify(existing.slice(0, 50)));
+    } catch (e) {}
+
     try {
       if (this.isSupabaseDirect()) {
         const client = this.getSupabaseClient();
         if (client) {
-          await client.from('payment_failure_logs').insert([{
-            id: failureData.id || ('FAIL-' + Date.now()),
-            table_id: failureData.table_id || failureData.tableId,
-            table_name: failureData.table_name || failureData.tableName,
-            floor: failureData.floor || 'Ground Floor',
-            amount: Number(failureData.amount || 0),
-            payment_mode: failureData.payment_mode || failureData.paymentMode || 'card',
-            reason: failureData.reason || 'Payment Cancelled',
-            staff_name: failureData.staff_name || failureData.staffName || 'Staff'
-          }]).catch(() => {});
+          await client.from('payment_failure_logs').insert([entry]).catch(() => {});
         }
       }
       const res = await fetch(`${getApiBase()}/api/payment/failure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(failureData)
+        body: JSON.stringify(entry)
       });
       return await res.json();
     } catch (e) {
-      console.warn('logPaymentFailure client error:', e);
-      return { success: false };
+      console.warn('logPaymentFailure client sync notice (cached locally):', e);
+      return { success: true, logged: entry };
     }
   },
 
@@ -1063,7 +1073,14 @@ const DB_SERVICE = {
     try {
       const res = await fetch(`${getApiBase()}/api/payment/failures?limit=${limit}`);
       const data = await res.json();
-      return data.failures || [];
+      if (data && Array.isArray(data.failures) && data.failures.length > 0) {
+        return data.failures;
+      }
+    } catch (e) {}
+
+    try {
+      const cached = JSON.parse(localStorage.getItem('byob_card_failures') || '[]');
+      return cached.slice(0, limit);
     } catch (e) {
       return [];
     }

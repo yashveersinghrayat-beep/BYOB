@@ -1697,5 +1697,31 @@ module.exports = {
     );
 
     return this.getAppUpdateInfo();
+  },
+
+  logPaymentFailure(log) {
+    const id = 'FAIL-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    this.db.prepare(`
+      INSERT INTO payment_failure_logs (id, table_id, table_name, floor, amount, payment_mode, reason, staff_name, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(
+      id,
+      log.table_id || 'T-00',
+      log.table_name || 'Table',
+      log.floor || 'Ground Floor',
+      Number(log.amount) || 0,
+      log.payment_mode || 'card',
+      log.reason || 'Card Declined',
+      log.staff_name || log.waiter_name || 'Staff'
+    );
+    return { id, success: true, ...log };
+  },
+
+  getPaymentFailures(limit = 50) {
+    return this.db.prepare(`
+      SELECT * FROM payment_failure_logs 
+      ORDER BY datetime(created_at) DESC 
+      LIMIT ?
+    `).all(limit);
   }
 };
