@@ -128,6 +128,9 @@ const APP = {
 
   openWelcomeAuthModal() {
     const modal = document.getElementById('welcome-auth-modal');
+    this.setTableModalMode('upi');
+    const tableCardAmt = document.getElementById('table-modal-card-amount');
+    if (tableCardAmt) tableCardAmt.textContent = '₹' + grandTotal.toLocaleString('en-IN');
     if (modal) modal.classList.remove('hidden');
     const err = document.getElementById('manager-login-error');
     if (err) err.classList.add('hidden');
@@ -2190,6 +2193,48 @@ const APP = {
     this.refreshBillingModalData();
   },
 
+  setTableModalMode(mode) {
+    this.state.tableModalMode = mode;
+    const tabUpi = document.getElementById('table-modal-tab-upi');
+    const tabCard = document.getElementById('table-modal-tab-card');
+    const viewUpi = document.getElementById('table-modal-view-upi');
+    const viewCard = document.getElementById('table-modal-view-card');
+
+    if (mode === 'card') {
+      if (tabCard) tabCard.className = "py-1.5 rounded-lg font-black bg-amber-500 text-black transition-all flex items-center justify-center gap-1.5 shadow";
+      if (tabUpi) tabUpi.className = "py-1.5 rounded-lg font-bold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1.5";
+      if (viewCard) viewCard.classList.remove('hidden');
+      if (viewUpi) viewUpi.classList.add('hidden');
+      const { grandTotal } = this.calculateTotalBill();
+      const cardAmt = document.getElementById('table-modal-card-amount');
+      if (cardAmt) cardAmt.textContent = '₹' + grandTotal.toLocaleString('en-IN');
+    } else {
+      if (tabUpi) tabUpi.className = "py-1.5 rounded-lg font-black bg-amber-500 text-black transition-all flex items-center justify-center gap-1.5 shadow";
+      if (tabCard) tabCard.className = "py-1.5 rounded-lg font-bold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1.5";
+      if (viewUpi) viewUpi.classList.remove('hidden');
+      if (viewCard) viewCard.classList.add('hidden');
+    }
+  },
+
+  async confirmCardPayment() {
+    this.state.payMode = 'card';
+    const inputRef = (document.getElementById('card-approval-ref')?.value || '').trim();
+    const finalRef = inputRef ? `PhonePe Card (Ref: ${inputRef})` : 'PhonePe EDC (Manual Verified)';
+    this.state.customCardRef = finalRef;
+    await this.settleTable();
+    this.showToast('✅ Card payment verified & table settled!');
+  },
+
+  async confirmCardPaymentFromTable() {
+    this.state.payMode = 'card';
+    const inputRef = (document.getElementById('table-card-ref')?.value || '').trim();
+    const finalRef = inputRef ? `PhonePe Card (Ref: ${inputRef})` : 'PhonePe EDC (Manual Verified)';
+    this.state.customCardRef = finalRef;
+    await this.settleTable();
+    this.closeTableUpiModal();
+    this.showToast('✅ Card payment verified & table settled!');
+  },
+
   openTableUpiModal(tableId) {
     if (tableId) {
       this.state.selectedTableId = tableId;
@@ -2394,6 +2439,9 @@ const APP = {
     } else if (mode === 'card') {
       if (tabCard) tabCard.className = "py-2 rounded-lg font-bold bg-amber-500 text-black";
       if (secCard) secCard.classList.remove('hidden');
+      const { grandTotal: cardGrandTotal } = this.calculateTotalBill();
+      const cardChargeAmtEl = document.getElementById('card-charge-amount');
+      if (cardChargeAmtEl) cardChargeAmtEl.textContent = '₹' + cardGrandTotal.toLocaleString('en-IN');
     } else if (mode === 'cash') {
       if (tabCash) tabCash.className = "py-2 rounded-lg font-bold bg-amber-500 text-black";
       if (secCash) secCash.classList.remove('hidden');
