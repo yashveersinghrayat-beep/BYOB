@@ -595,6 +595,31 @@ const APP = {
         const billingModal = document.getElementById('billing-modal');
         if (billingModal && !billingModal.classList.contains('hidden')) { this.closeBillingPage(false); return; }
       }
+
+      // Keyboard Shortcut Ctrl+P / Cmd+P -> Strict 80mm Thermal Receipt Print
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        const epsonModal = document.getElementById('epson-modal');
+        if (epsonModal && !epsonModal.classList.contains('hidden')) {
+          this.printThermalReceipt();
+        } else {
+          this.openEpsonReceiptModal(true);
+        }
+        return;
+      }
+    });
+
+    // Native browser print trigger (e.g. Chrome File -> Print) dynamic roll height injection
+    window.addEventListener('beforeprint', () => {
+      const receiptEl = document.getElementById('epson-print-wrapper');
+      const heightMm = Math.max(140, Math.ceil((receiptEl ? (receiptEl.scrollHeight || receiptEl.offsetHeight) : 600) * 0.264583) + 15);
+      let dynStyle = document.getElementById('dynamic-epson-page-style');
+      if (!dynStyle) {
+        dynStyle = document.createElement('style');
+        dynStyle.id = 'dynamic-epson-page-style';
+        document.head.appendChild(dynStyle);
+      }
+      dynStyle.textContent = `@page { size: 80mm ${heightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${heightMm}mm !important; margin: 0mm !important; } }`;
     });
   },
 
@@ -2695,6 +2720,18 @@ const APP = {
       return;
     }
 
+    // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 15mm tear margin
+    const computedHeightMm = Math.max(120, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 600) * 0.264583) + 15);
+
+    // Update dynamic @page style on main document
+    let dynStyle = document.getElementById('dynamic-epson-page-style');
+    if (!dynStyle) {
+      dynStyle = document.createElement('style');
+      dynStyle.id = 'dynamic-epson-page-style';
+      document.head.appendChild(dynStyle);
+    }
+    dynStyle.textContent = `@page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } }`;
+
     const receiptHtml = receiptEl.innerHTML;
     const invNo = document.getElementById('epson-inv-no')?.textContent || 'RECEIPT';
 
@@ -2705,20 +2742,22 @@ const APP = {
   <title>${invNo} - BYOB Indirapuram</title>
   <style>
     @page {
-      size: 80mm auto;
+      size: 80mm ${computedHeightMm}mm;
       margin: 0mm;
     }
     @media print {
       @page {
-        size: 80mm auto;
+        size: 80mm ${computedHeightMm}mm;
         margin: 0mm;
       }
       html, body {
         width: 80mm !important;
+        max-width: 80mm !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
         color: #000000 !important;
+        overflow: visible !important;
       }
     }
     * {

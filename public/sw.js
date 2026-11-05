@@ -1,5 +1,5 @@
 // Service Worker for ONYX Hospitality Engine
-const CACHE_NAME = 'onyx-cache-v9';
+const CACHE_NAME = 'onyx-cache-v10';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
