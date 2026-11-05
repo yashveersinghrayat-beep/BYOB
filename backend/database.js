@@ -669,12 +669,21 @@ module.exports = {
   },
 
   getMenuItems() {
-    return db.prepare('SELECT * FROM menu_items WHERE in_stock >= 0 AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY category_id, name').all();
+    const items = db.prepare('SELECT * FROM menu_items WHERE in_stock >= 0 AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY category_id, name').all();
+    return items.map(r => {
+      const isVeg = r.is_veg === 1 || r.is_veg === true || r.is_veg === '1' || r.is_veg === 'true';
+      return {
+        ...r,
+        is_veg: isVeg ? 1 : 0,
+        isVeg: isVeg
+      };
+    });
   },
 
   saveMenuItem(item) {
+    const isVeg = (item.is_veg === true || item.is_veg === 1 || item.is_veg === '1' || item.is_veg === 'true' || item.isVeg === true || item.isVeg === 1 || item.isVeg === '1' || item.isVeg === 'true');
     db.prepare('INSERT OR REPLACE INTO menu_items (id, category_id, name, price, is_veg, is_top_hit, in_stock, description, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(item.id, item.category_id, item.name, item.price, item.is_veg ? 1 : 0, item.is_top_hit ? 1 : 0, item.in_stock ? 1 : 0, item.description || '', item.image || '');
+      .run(item.id, item.category_id, item.name, item.price, isVeg ? 1 : 0, item.is_top_hit ? 1 : 0, item.in_stock ? 1 : 0, item.description || '', item.image || '');
     return this.getMenuItems();
   },
 

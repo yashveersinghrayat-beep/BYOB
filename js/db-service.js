@@ -43,6 +43,41 @@ const DB_SERVICE = {
 
   latencyMs: 4,
 
+  normalizeMenuItem(item) {
+    if (!item) return item;
+    let isVeg = true;
+    if (item.is_veg !== undefined && item.is_veg !== null) {
+      if (typeof item.is_veg === 'boolean') isVeg = item.is_veg;
+      else if (typeof item.is_veg === 'number') isVeg = item.is_veg === 1;
+      else if (typeof item.is_veg === 'string') isVeg = item.is_veg.toLowerCase() === 'true' || item.is_veg === '1' || item.is_veg.toLowerCase() === 'veg';
+    } else if (item.isVeg !== undefined && item.isVeg !== null) {
+      if (typeof item.isVeg === 'boolean') isVeg = item.isVeg;
+      else if (typeof item.isVeg === 'number') isVeg = item.isVeg === 1;
+      else if (typeof item.isVeg === 'string') isVeg = item.isVeg.toLowerCase() === 'true' || item.isVeg === '1' || item.isVeg.toLowerCase() === 'veg';
+    } else if (item.type) {
+      isVeg = String(item.type).toLowerCase() === 'veg';
+    } else {
+      const cat = String(item.category_id || item.category || '').toLowerCase();
+      if (cat.includes('nonveg') || cat.includes('non_veg')) {
+        isVeg = false;
+      } else {
+        const name = String(item.name || '').toLowerCase();
+        const nonVegKeywords = ['chicken', 'mutton', 'fish', 'egg', 'prawn', 'keema', 'meat', 'tandoori chicken', 'shami kabab', 'seekh kebab', 'amritsari fish', 'lollipop', 'wings', 'bhurji'];
+        for (const kw of nonVegKeywords) {
+          if (name.includes(kw)) {
+            isVeg = false;
+            break;
+          }
+        }
+      }
+    }
+    return {
+      ...item,
+      is_veg: isVeg ? 1 : 0,
+      isVeg: isVeg
+    };
+  },
+
   getApiBase() {
     return getApiBase();
   },
@@ -298,7 +333,7 @@ const DB_SERVICE = {
       }
 
       if (catRes.data && catRes.data.length > 0) this.categories = catRes.data;
-      if (itemRes.data && itemRes.data.length > 0) this.menuItems = itemRes.data;
+      if (itemRes.data && itemRes.data.length > 0) this.menuItems = itemRes.data.map(i => this.normalizeMenuItem(i));
       if (kotRes.data) this.kots = kotRes.data;
 
       if (tblRes.data && tblRes.data.length > 0) {
@@ -544,11 +579,12 @@ const DB_SERVICE = {
 
   applyMenuUpdatedFromRemote(data) {
     if (!data || !data.item) return;
-    const idx = this.menuItems.findIndex(m => m.id === data.item.id);
+    const normalized = this.normalizeMenuItem(data.item);
+    const idx = this.menuItems.findIndex(m => m.id === normalized.id);
     if (idx !== -1) {
-      this.menuItems[idx] = { ...this.menuItems[idx], ...data.item };
+      this.menuItems[idx] = this.normalizeMenuItem({ ...this.menuItems[idx], ...normalized });
     } else {
-      this.menuItems.push(data.item);
+      this.menuItems.push(normalized);
     }
     this.notifyMenu();
   },
@@ -609,7 +645,7 @@ const DB_SERVICE = {
         this.loadLocalFallback();
       }
       if (menuRes && menuRes.items) {
-        this.menuItems = menuRes.items;
+        this.menuItems = menuRes.items.map(i => this.normalizeMenuItem(i));
         this.categories = menuRes.categories;
       }
       if (kotsRes && kotsRes.kots) {
@@ -652,7 +688,7 @@ const DB_SERVICE = {
       this.categories = CATEGORIES;
     }
     if (typeof MENU_ITEMS !== 'undefined' && (!this.menuItems || this.menuItems.length === 0)) {
-      this.menuItems = MENU_ITEMS;
+      this.menuItems = MENU_ITEMS.map(i => this.normalizeMenuItem(i));
     }
   },
 
@@ -783,7 +819,7 @@ const DB_SERVICE = {
 
       this.sse.addEventListener('MENU_UPDATED', (e) => {
         const data = JSON.parse(e.data);
-        if (data.items) this.menuItems = data.items;
+        if (data.items) this.menuItems = data.items.map(i => this.normalizeMenuItem(i));
         if (data.categories) this.categories = data.categories;
         this.notifyMenu();
       });
@@ -1451,22 +1487,23 @@ const DB_SERVICE = {
   // Add / Edit Menu Item
   async saveMenuItem(item) {
     // 0. Optimistic instant local update (0ms)
-    const idx = this.menuItems.findIndex(m => m.id === item.id);
+    const normalized = this.normalizeMenuItem(item);
+    const idx = this.menuItems.findIndex(m => m.id === normalized.id);
     if (idx !== -1) {
-      this.menuItems[idx] = { ...this.menuItems[idx], ...item };
+      this.menuItems[idx] = this.normalizeMenuItem({ ...this.menuItems[idx], ...normalized });
     } else {
-      this.menuItems.push(item);
+      this.menuItems.push(normalized);
     }
     this.notifyMenu();
 
     // 1. Instant Realtime Broadcast (<25ms)
-    this.broadcastRealtime('MENU_UPDATED', { item });
+    this.broadcastRealtime('MENU_UPDATED', { item: normalized });
 
     if (this.mode === 'supabase_cloud') {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
-          await client.from('menu_items').upsert(item);
+          await client.from('menu_items').upsert(normalized);
           return this.menuItems;
         } catch (e) {
           console.warn('Supabase saveMenuItem notice:', e);
@@ -1478,13 +1515,13 @@ const DB_SERVICE = {
       const res = await fetch(`${getApiBase()}/api/menu/item`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
+        body: JSON.stringify(normalized)
       });
       const data = await res.json();
       if (data.success) {
-        this.menuItems = data.items;
+        this.menuItems = (data.items || []).map(i => this.normalizeMenuItem(i));
         this.notifyMenu();
-        return data.items;
+        return this.menuItems;
       }
     } catch (e) {}
     return this.menuItems;

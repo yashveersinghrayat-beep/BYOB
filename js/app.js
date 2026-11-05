@@ -1183,6 +1183,27 @@ const APP = {
     `).join('');
   },
 
+  isItemVeg(item) {
+    if (!item) return true;
+    if (item.is_veg === true || item.is_veg === 1 || item.is_veg === 'true' || item.is_veg === '1') return true;
+    if (item.is_veg === false || item.is_veg === 0 || item.is_veg === 'false' || item.is_veg === '0') return false;
+    if (item.isVeg === true || item.isVeg === 1 || item.isVeg === 'true' || item.isVeg === '1') return true;
+    if (item.isVeg === false || item.isVeg === 0 || item.isVeg === 'false' || item.isVeg === '0') return false;
+    if (item.type) {
+      const t = String(item.type).toLowerCase();
+      if (t === 'veg') return true;
+      if (t === 'nonveg' || t === 'non-veg') return false;
+    }
+    const cat = String(item.category_id || item.category || '').toLowerCase();
+    if (cat.includes('nonveg') || cat.includes('non_veg')) return false;
+    const name = String(item.name || item.item_name || '').toLowerCase();
+    const nonVegKeywords = ['chicken', 'mutton', 'fish', 'egg', 'prawn', 'keema', 'meat', 'tandoori chicken', 'shami kabab', 'seekh kebab', 'amritsari fish', 'lollipop', 'wings', 'bhurji'];
+    for (const kw of nonVegKeywords) {
+      if (name.includes(kw)) return false;
+    }
+    return true;
+  },
+
   renderMenuItems() {
     const appContainer = document.getElementById('app-items-container');
     const webContainer = document.getElementById('web-menu-list');
@@ -1204,9 +1225,9 @@ const APP = {
 
     // Filter Diet
     if (this.state.dietFilter === 'veg') {
-      items = items.filter(i => i.isVeg || i.is_veg === 1);
+      items = items.filter(i => this.isItemVeg(i));
     } else if (this.state.dietFilter === 'nonveg') {
-      items = items.filter(i => !(i.isVeg || i.is_veg === 1));
+      items = items.filter(i => !this.isItemVeg(i));
     }
 
     // Smart Acronym, Alias & Fast Substring Search
@@ -1272,7 +1293,7 @@ const APP = {
         appContainer.innerHTML = items.map(item => {
           const inCart = currentCart.find(c => c.id === item.id);
           const qty = inCart ? inCart.qty : 0;
-          const isVeg = item.isVeg || item.is_veg === 1;
+          const isVeg = this.isItemVeg(item);
           const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
 
@@ -1342,7 +1363,7 @@ const APP = {
         appContainer.innerHTML = items.map(item => {
           const inCart = currentCart.find(c => c.id === item.id);
           const qty = inCart ? inCart.qty : 0;
-          const isVeg = item.isVeg || item.is_veg === 1;
+          const isVeg = this.isItemVeg(item);
           const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
 
@@ -1415,7 +1436,7 @@ const APP = {
         webContainer.innerHTML = items.map(item => {
           const inCart = currentCart.find(c => c.id === item.id);
           const qty = inCart ? inCart.qty : 0;
-          const isVeg = item.isVeg || item.is_veg === 1;
+          const isVeg = this.isItemVeg(item);
           const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
 
@@ -1932,7 +1953,7 @@ const APP = {
     if (price) price.textContent = `₹${item.price}`;
     if (desc) desc.textContent = item.desc || item.description || 'Specialty chef preparation with authentic restaurant ingredients.';
     if (diet) {
-      const isVeg = item.isVeg || item.is_veg === 1;
+      const isVeg = this.isItemVeg(item);
       diet.className = isVeg ? 'badge-veg absolute bottom-3 left-3 shadow ring-2 ring-black' : 'badge-nonveg absolute bottom-3 left-3 shadow ring-2 ring-black';
     }
     if (addBtn) {
@@ -5418,7 +5439,7 @@ const APP = {
         topDishesTbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-neutral-500 italic">No items billed in this timeframe</td></tr>`;
       } else {
         topDishesTbody.innerHTML = items.slice(0, 10).map((item, idx) => {
-          const isVeg = item.is_veg === 1;
+          const isVeg = this.isItemVeg(item);
           const vegBadge = isVeg ? '<span class="text-emerald-400">🟢</span>' : '<span class="text-rose-400">🔴</span>';
           return `
             <tr class="hover:bg-[#161b28] transition-colors">
@@ -5918,7 +5939,7 @@ const APP = {
     const cat = catFilter ? catFilter.value : 'ALL';
     const type = typeFilter ? typeFilter.value : 'ALL';
 
-    const allItems = typeof MENU_ITEMS !== 'undefined' ? MENU_ITEMS : (this.state.menu || []);
+    const allItems = (window.DB && window.DB.menuItems && window.DB.menuItems.length > 0) ? window.DB.menuItems : (typeof MENU_ITEMS !== 'undefined' ? MENU_ITEMS : (this.state.menu || []));
     let items = allItems.filter(item => !item.is_deleted);
 
     if (search) {
@@ -5933,10 +5954,7 @@ const APP = {
     }
     if (type !== 'ALL') {
       const wantVeg = type === 'VEG';
-      items = items.filter(i => {
-        const itemIsVeg = i.isVeg !== undefined ? Boolean(i.isVeg) : (i.is_veg !== undefined ? Boolean(i.is_veg) : (i.type === 'veg' || i.category === 'chakna' || i.category === 'mixers' || i.category === 'breads' || i.category === 'desserts_salads'));
-        return itemIsVeg === wantVeg;
-      });
+      items = items.filter(i => this.isItemVeg(i) === wantVeg);
     }
 
     if (items.length === 0) {
@@ -5945,7 +5963,7 @@ const APP = {
     }
 
     tbody.innerHTML = items.map(item => {
-      const isVeg = item.isVeg !== undefined ? Boolean(item.isVeg) : (item.is_veg !== undefined ? Boolean(item.is_veg) : (item.type === 'veg' || item.category === 'chakna' || item.category === 'mixers' || item.category === 'breads' || item.category === 'desserts_salads'));
+      const isVeg = this.isItemVeg(item);
       const inStock = item.in_stock !== 0 && item.in_stock !== false;
       const imgPath = item.image || 'images/dishes/peanut_masala.jpg';
 

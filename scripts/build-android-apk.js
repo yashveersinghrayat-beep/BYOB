@@ -96,8 +96,8 @@ fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), `<?xml versio
 const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.onyx.pos"
-    android:versionCode="5"
-    android:versionName="3.6">
+    android:versionCode="6"
+    android:versionName="3.7">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
