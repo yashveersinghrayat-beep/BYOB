@@ -1936,8 +1936,8 @@
             <input type="number" step="0.1" id="mgr-store-sgst" class="w-full px-3 py-2 rounded-xl bg-[#0c0e15] border border-[#2e374d] text-white font-mono outline-none focus:border-amber-400">
           </div>
           <div>
-            <label class="block font-bold text-neutral-400 mb-1">Service Charge %:</label>
-            <input type="number" step="0.1" id="mgr-store-service-charge" class="w-full px-3 py-2 rounded-xl bg-[#0c0e15] border border-[#2e374d] text-white font-mono outline-none focus:border-amber-400">
+            <label class="block font-bold text-neutral-400 mb-1">Service Charge (Fixed ₹):</label>
+            <input type="number" step="1" min="0" placeholder="0" id="mgr-store-service-charge" class="w-full px-3 py-2 rounded-xl bg-[#0c0e15] border border-[#2e374d] text-white font-mono outline-none focus:border-amber-400">
           </div>
           <div>
             <label class="block font-bold text-neutral-400 mb-1">UPI VPA ID (for Dynamic QR):</label>
@@ -2225,7 +2225,11 @@
             <h3 class="text-base sm:text-lg font-black text-white" id="bill-page-title">Table 4 — Detailed Billing & Settlement</h3>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono border border-emerald-500/30">Live Bill</span>
           </div>
-          <p class="text-xs text-neutral-400 mt-0.5" id="bill-page-subtitle">Table Orders & Settlement</p>
+          <div class="flex items-center gap-2 mt-1">
+            <p class="text-xs text-neutral-400" id="bill-page-subtitle">Table Orders & Settlement</p>
+            <span class="text-neutral-600">•</span>
+            <span id="bill-page-datetime" class="text-xs font-mono font-bold text-amber-300 bg-[#161a25] px-2 py-0.5 rounded-lg border border-[#273044]">05-Nov-2026 09:30 PM</span>
+          </div>
         </div>
         <button onclick="APP.closeBillingPage()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-bold text-xs transition-all shadow">
           <span class="text-amber-400 font-bold">←</span>
@@ -2329,6 +2333,10 @@
 
           <!-- Detailed Tax & Charges Breakdown -->
           <div class="bg-[#171a25]/60 border border-[#252b3b] rounded-2xl p-3.5 space-y-1.5 text-xs">
+            <div class="flex justify-between items-center pb-2 border-b border-[#252b3b]">
+              <span class="text-neutral-400 font-bold uppercase text-[10px] tracking-wider">Bill Date &amp; Time:</span>
+              <span id="bill-summary-datetime" class="font-mono text-amber-300 font-bold text-xs">--</span>
+            </div>
             <div class="flex justify-between text-neutral-400">
               <span>Food & Mixers Subtotal:</span>
               <span id="bill-subtotal" class="font-mono text-white">₹0</span>
@@ -2344,6 +2352,10 @@
             <div class="flex justify-between text-neutral-400">
               <span>SGST (2.5%):</span>
               <span id="bill-sgst" class="font-mono text-white">₹0</span>
+            </div>
+            <div id="bill-service-charge-row" class="flex justify-between text-neutral-400 hidden">
+              <span id="bill-service-charge-label">Service Charge (Fixed):</span>
+              <span id="bill-service-charge" class="font-mono text-white">₹0</span>
             </div>
             <div id="bill-roundoff-row" class="flex justify-between text-neutral-400">
               <span>Round-off:</span>
@@ -2805,7 +2817,11 @@
           <div class="text-[10px] space-y-0.5">
             <div class="flex justify-between font-bold">
               <span id="epson-inv-no">INV #: BYOB-8492</span>
-              <span id="epson-date-time">03-Nov-2026 08:45 PM</span>
+              <span>POS: Terminal 01</span>
+            </div>
+            <div class="flex justify-between font-bold text-black border-y border-dashed border-neutral-400 py-0.5 my-0.5">
+              <span>DATE &amp; TIME:</span>
+              <span id="epson-date-time" class="font-mono font-black">05-Nov-2026 09:30 PM</span>
             </div>
             <div class="flex justify-between">
               <span id="epson-table-info" class="font-bold">TABLE: 04 (Middle • Left)</span>
@@ -2813,7 +2829,7 @@
             </div>
             <div class="flex justify-between text-neutral-700">
               <span id="epson-waiter-info">CAPTAIN: Rahul</span>
-              <span>POS: Terminal 01</span>
+              <span>TYPE: Dine In</span>
             </div>
             <div id="epson-guest-row" class="flex justify-between text-neutral-800 font-bold hidden">
               <span id="epson-guest-name">GUEST: Guest</span>
@@ -3747,11 +3763,12 @@
                 class="w-full px-2 py-1.5 rounded-lg bg-[#0c0e15] border border-[#2e374d] text-white text-xs font-mono font-bold outline-none focus:border-amber-400">
             </div>
             <div>
-              <label class="text-[10px] font-bold uppercase text-neutral-400 block mb-1">Service Chg (%):</label>
+              <label class="text-[10px] font-bold uppercase text-neutral-400 block mb-1">Service Chg (Fixed ₹):</label>
               <input 
                 type="number" 
                 id="store-setting-service" 
-                step="0.1"
+                step="1"
+                min="0"
                 placeholder="0"
                 class="w-full px-2 py-1.5 rounded-lg bg-[#0c0e15] border border-[#2e374d] text-white text-xs font-mono font-bold outline-none focus:border-amber-400">
             </div>

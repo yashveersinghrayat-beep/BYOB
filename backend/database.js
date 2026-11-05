@@ -302,6 +302,8 @@ function seedDefaultStoreData() {
     currency_symbol: '₹',
     cgst_percent: '2.5',
     sgst_percent: '2.5',
+    service_charge_fixed: '0',
+    service_charge: '0',
     service_charge_percent: '0',
     bill_footer: 'Thank you for visiting! Guests are welcome to Bring Their Own Bottle.'
   };

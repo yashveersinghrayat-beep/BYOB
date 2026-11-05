@@ -2106,15 +2106,15 @@ const APP = {
     const store = (window.DB && window.DB.storeSettings) || {};
     const cgstPct = parseFloat(store.cgst_percent !== undefined ? store.cgst_percent : 2.5);
     const sgstPct = parseFloat(store.sgst_percent !== undefined ? store.sgst_percent : 2.5);
-    const servPct = parseFloat(store.service_charge_percent !== undefined ? store.service_charge_percent : 0);
+    const servFixed = parseFloat(store.service_charge_fixed !== undefined ? store.service_charge_fixed : (store.service_charge !== undefined ? store.service_charge : (store.service_charge_percent || 0)));
 
     const cgstRate = isNaN(cgstPct) ? 0.025 : (cgstPct / 100);
     const sgstRate = isNaN(sgstPct) ? 0.025 : (sgstPct / 100);
-    const servRate = isNaN(servPct) ? 0 : (servPct / 100);
 
     const cgst = Math.round(taxable * cgstRate * 100) / 100;
     const sgst = Math.round(taxable * sgstRate * 100) / 100;
-    const serviceCharge = Math.round(taxable * servRate * 100) / 100;
+    const fixedServAmount = isNaN(servFixed) ? 0 : Math.max(0, Math.round(servFixed * 100) / 100);
+    const serviceCharge = taxable > 0 ? fixedServAmount : 0;
     const rawTotal = taxable + cgst + sgst + serviceCharge;
 
     let grandTotal = rawTotal;
@@ -2127,7 +2127,7 @@ const APP = {
     }
 
     const perPerson = Math.round(grandTotal / (this.state.splitCount || 1));
-    return { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct, servPct };
+    return { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct, servFixed, serviceChargeFixed: fixedServAmount };
   },
 
   // ================= 7. DETAILED BILLING & SETTLEMENT =================
@@ -2405,6 +2405,14 @@ const APP = {
     document.getElementById('bill-page-title').textContent = `${table.name} — Detailed Billing & Settlement`;
     document.getElementById('bill-page-subtitle').textContent = `${table.position} (${table.landmark}) • Server: ${this.getStaffName()}`;
 
+    // Update Live Bill Date & Time Badges
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const billDtBadge = document.getElementById('bill-page-datetime');
+    if (billDtBadge) billDtBadge.textContent = dateFormatted;
+    const billSummaryDt = document.getElementById('bill-summary-datetime');
+    if (billSummaryDt) billSummaryDt.textContent = dateFormatted;
+
     this.state.splitCount = 1;
     this.clearCashTendered();
     this.refreshBillingModalData();
@@ -2423,9 +2431,17 @@ const APP = {
   refreshBillingModalData() {
     const liveTable = this.getLiveTable();
     const placedOrders = liveTable.placedOrders || [];
-    const { subtotal, discountAmount, taxable, cgst, sgst, roundOff, grandTotal, perPerson } = this.calculateTotalBill();
+    const { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson } = this.calculateTotalBill();
     const payUpiLiveAmt = document.getElementById('pay-upi-live-amount');
     if (payUpiLiveAmt) payUpiLiveAmt.textContent = '₹' + grandTotal.toLocaleString('en-IN');
+
+    // Keep Date & Time refreshed
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const billDtBadge = document.getElementById('bill-page-datetime');
+    if (billDtBadge) billDtBadge.textContent = dateFormatted;
+    const billSummaryDt = document.getElementById('bill-summary-datetime');
+    if (billSummaryDt) billSummaryDt.textContent = dateFormatted;
 
     const itemsContainer = document.getElementById('bill-detailed-items');
     const roundsCountEl = document.getElementById('bill-rounds-count');
@@ -2480,6 +2496,18 @@ const APP = {
 
     document.getElementById('bill-cgst').textContent = `₹${cgst.toFixed(2)}`;
     document.getElementById('bill-sgst').textContent = `₹${sgst.toFixed(2)}`;
+
+    // Service Charge (Fixed ₹)
+    const servRow = document.getElementById('bill-service-charge-row');
+    const servAmtEl = document.getElementById('bill-service-charge');
+    if (servRow && servAmtEl) {
+      if (serviceCharge > 0) {
+        servRow.classList.remove('hidden');
+        servAmtEl.textContent = `₹${serviceCharge.toFixed(2)}`;
+      } else {
+        servRow.classList.add('hidden');
+      }
+    }
 
     // Round-off
     const roundOffEl = document.getElementById('bill-round-off');
@@ -2839,6 +2867,8 @@ const APP = {
     const servRow = document.getElementById('epson-service-charge-row');
     const servVal = document.getElementById('epson-service-charge');
     const servChargeAmount = customBill ? (parseFloat(customBill.service_charge) || 0) : (billTotals?.serviceCharge || 0);
+    const servLabel = document.getElementById('epson-service-charge-label');
+    if (servLabel) servLabel.textContent = 'Service Charge (Fixed):';
     if (servRow && servVal) {
       if (servChargeAmount > 0) {
         servRow.classList.remove('hidden');
@@ -2849,7 +2879,8 @@ const APP = {
     }
 
     document.getElementById('epson-inv-no').textContent = `INV: #${invId}`;
-    document.getElementById('epson-date-time').textContent = `${dateStr} ${timeStr}`;
+    const epsonDt = document.getElementById('epson-date-time');
+    if (epsonDt) epsonDt.textContent = `${dateStr} ${timeStr}`;
     document.getElementById('epson-table-info').textContent = `TABLE: ${tableName}`;
     document.getElementById('epson-waiter-info').textContent = `CAPTAIN: ${waiterName}`;
 
@@ -3829,7 +3860,7 @@ const APP = {
     const store = (window.DB && window.DB.storeSettings) || {};
     const cgstPct = parseFloat(store.cgst_percent !== undefined ? store.cgst_percent : 2.5) || 2.5;
     const sgstPct = parseFloat(store.sgst_percent !== undefined ? store.sgst_percent : 2.5) || 2.5;
-    const servPct = parseFloat(store.service_charge_percent !== undefined ? store.service_charge_percent : 0) || 0;
+    const servFixed = parseFloat(store.service_charge_fixed !== undefined ? store.service_charge_fixed : (store.service_charge !== undefined ? store.service_charge : (store.service_charge_percent || 0))) || 0;
 
     let cgst = 0;
     let sgst = 0;
@@ -3837,13 +3868,13 @@ const APP = {
     if (!skipTaxRecalc) {
       cgst = parseFloat((taxable * (cgstPct / 100)).toFixed(2));
       sgst = parseFloat((taxable * (sgstPct / 100)).toFixed(2));
-      servCharge = parseFloat((taxable * (servPct / 100)).toFixed(2));
+      servCharge = taxable > 0 ? Math.max(0, Math.round(servFixed * 100) / 100) : 0;
       const cgstEl = document.getElementById('edit-bill-cgst');
       const sgstEl = document.getElementById('edit-bill-sgst');
       const servEl = document.getElementById('edit-bill-service-charge');
       if (cgstEl) cgstEl.value = cgst;
       if (sgstEl) sgstEl.value = sgst;
-      if (servEl && servPct > 0) servEl.value = servCharge;
+      if (servEl) servEl.value = servCharge;
     } else {
       cgst = Number(document.getElementById('edit-bill-cgst')?.value || 0);
       sgst = Number(document.getElementById('edit-bill-sgst')?.value || 0);
@@ -4031,7 +4062,7 @@ const APP = {
     if (upiEl) upiEl.value = store.upi_vpa || 'Q676029996@ybl';
     if (cgstEl) cgstEl.value = store.cgst_percent || '2.5';
     if (sgstEl) sgstEl.value = store.sgst_percent || '2.5';
-    if (serviceEl) serviceEl.value = store.service_charge_percent || '0';
+    if (serviceEl) serviceEl.value = store.service_charge_fixed !== undefined ? store.service_charge_fixed : (store.service_charge !== undefined ? store.service_charge : (store.service_charge_percent || '0'));
     if (footerEl) footerEl.value = store.bill_footer || 'Thank you for visiting! Guests are welcome to Bring Their Own Bottle.';
     if (reasonEl) reasonEl.value = '';
 
@@ -4120,6 +4151,8 @@ const APP = {
       upi_vpa: (document.getElementById('store-setting-upi')?.value || '').trim(),
       cgst_percent: (document.getElementById('store-setting-cgst')?.value || '2.5').trim(),
       sgst_percent: (document.getElementById('store-setting-sgst')?.value || '2.5').trim(),
+      service_charge_fixed: (document.getElementById('store-setting-service')?.value || '0').trim(),
+      service_charge: (document.getElementById('store-setting-service')?.value || '0').trim(),
       service_charge_percent: (document.getElementById('store-setting-service')?.value || '0').trim(),
       bill_footer: (document.getElementById('store-setting-footer')?.value || '').trim()
     };
@@ -6385,7 +6418,7 @@ const APP = {
         setVal('mgr-store-fssai', s.fssai || '12724055000123');
         setVal('mgr-store-cgst', s.cgst_percent !== undefined ? s.cgst_percent : 2.5);
         setVal('mgr-store-sgst', s.sgst_percent !== undefined ? s.sgst_percent : 2.5);
-        setVal('mgr-store-service-charge', s.service_charge_percent || 0);
+        setVal('mgr-store-service-charge', s.service_charge_fixed !== undefined ? s.service_charge_fixed : (s.service_charge !== undefined ? s.service_charge : (s.service_charge_percent || 0)));
         setVal('mgr-store-upi-id', s.upi_vpa || 'Q676029996@ybl');
         setVal('mgr-store-footer', s.receipt_footer || s.bill_footer || 'Thank You! Visit Again.');
       }
@@ -6407,6 +6440,8 @@ const APP = {
       fssai: getVal('mgr-store-fssai'),
       cgst_percent: parseFloat(getVal('mgr-store-cgst') || '2.5'),
       sgst_percent: parseFloat(getVal('mgr-store-sgst') || '2.5'),
+      service_charge_fixed: parseFloat(getVal('mgr-store-service-charge') || '0'),
+      service_charge: parseFloat(getVal('mgr-store-service-charge') || '0'),
       service_charge_percent: parseFloat(getVal('mgr-store-service-charge') || '0'),
       upi_vpa: getVal('mgr-store-upi-id'),
       receipt_footer: footerVal,
