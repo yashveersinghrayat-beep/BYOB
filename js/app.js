@@ -4778,7 +4778,7 @@ const APP = {
     
     const tabTitles = {
       sales: 'Sales & Z-Report',
-      tables: '3-Floor Tables (35 Tables)',
+      tables: '3-Floor Tables (42 Tables)',
       menu: 'Menu & Live Pricing (86 Dishes)',
       invoices: 'Past Invoices & Audit',
       voids: 'Anti-Theft Void Logs',
@@ -4825,7 +4825,7 @@ const APP = {
     else if (tab === 'tables') this.renderManagerTables();
     else if (tab === 'menu') this.renderManagerMenu();
     else if (tab === 'invoices') this.loadManagerInvoices();
-    else if (tab === 'voids') this.loadManagerVoidLogs();
+    else if (tab === 'voids') { this.loadManagerVoidLogs(); this.loadManagerPaymentFailures(); }
     else if (tab === 'staff') this.loadManagerStaff();
     else if (tab === 'security') this.loadManagerSecurity();
     else if (tab === 'store') this.loadManagerStoreSettings();

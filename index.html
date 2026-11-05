@@ -1717,6 +1717,23 @@
           </table>
         </div>
       </div>
+
+      <!-- Declined & Cancelled Card / Digital Payments Audit Trail -->
+      <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-4 shadow space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-[#23293a]">
+          <div class="flex items-center gap-2">
+            <span class="text-base">💳</span>
+            <div>
+              <h4 class="text-xs font-black uppercase tracking-wider text-white">Declined & Cancelled Card Payments</h4>
+              <p class="text-[10px] text-neutral-400">Detailed reason logs when card swipe/tap failed or was cancelled</p>
+            </div>
+          </div>
+          <span id="mgr-card-failure-badge" class="px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono text-[10px] font-bold">0 Logged</span>
+        </div>
+        <div id="mgr-card-failures-list" class="space-y-2 max-h-72 overflow-y-auto no-scrollbar">
+          <!-- Rendered by APP.loadManagerPaymentFailures() -->
+        </div>
+      </div>
     </div>
 
     <!-- ================= PANE 6: STAFF & ACCESS PINS ================= -->
