@@ -937,7 +937,7 @@ const APP = {
     const summaryBadge = document.getElementById('floor-summary-badge');
     if (summaryBadge) {
       summaryBadge.textContent = currentFloor === 'all' 
-        ? '35 Tables (All Floors)' 
+        ? '42 Tables (All Floors)' 
         : `${filteredTables.length} Tables (${currentFloor})`;
     }
 

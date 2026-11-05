@@ -323,7 +323,7 @@
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-black text-white flex items-center gap-2">
               <span>🪑 Floor Tables</span>
-              <span id="floor-summary-badge" class="text-[10px] font-mono font-bold bg-[#1d2232] text-amber-400 px-2 py-0.5 rounded-full border border-amber-400/30">35 Tables (3 Floors)</span>
+              <span id="floor-summary-badge" class="text-[10px] font-mono font-bold bg-[#1d2232] text-amber-400 px-2 py-0.5 rounded-full border border-amber-400/30">42 Tables (3 Floors)</span>
             </h2>
             <!-- Clean Compact Status Legend -->
             <div class="flex items-center gap-1.5 text-[10px] font-bold">
@@ -564,22 +564,29 @@
   <!-- ================= VIEW 2: WEB & COUNTER POS VIEW (EXPANSIVE) ================= -->
   <div id="view-web-container" class="max-w-7xl mx-auto px-4 py-5 hidden">
     
-    <!-- Table Selector Bar for Web POS (3 Floors • 35 Tables) -->
+    <!-- Table Selector Bar for Web POS (3 Floors • 42 Tables) -->
     <div class="bg-[#131620] border border-[#23293a] rounded-2xl p-3.5 mb-4">
       <div class="flex flex-wrap items-center justify-between gap-2.5 mb-2.5">
         <div class="flex items-center gap-2">
           <h2 class="text-xs font-black uppercase tracking-wider text-neutral-200 flex items-center gap-2">
             <span>🪑 Floor Tables</span>
-            <span class="text-[10px] text-amber-400 font-mono font-bold bg-[#1d2232] px-2 py-0.5 rounded-full border border-amber-400/30">35 Tables</span>
+            <span class="text-[10px] text-amber-400 font-mono font-bold bg-[#1d2232] px-2 py-0.5 rounded-full border border-amber-400/30">42 Tables</span>
           </h2>
         </div>
         
         <!-- Floor Filter Tabs for Web POS -->
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <button 
+            id="web-floor-tab-gf" 
+            onclick="APP.setFloorFilter('Ground Floor')" 
+            class="web-floor-btn active px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1">
+            <span>🌾</span>
+            <span>Ground Floor (18)</span>
+          </button>
+          <button 
             id="web-floor-tab-f1" 
             onclick="APP.setFloorFilter('1st Floor')" 
-            class="web-floor-btn active px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1">
+            class="web-floor-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-[#1c2130] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1">
             <span>🏢</span>
             <span>1st Floor (7)</span>
           </button>
@@ -587,22 +594,15 @@
             id="web-floor-tab-f2" 
             onclick="APP.setFloorFilter('2nd Floor')" 
             class="web-floor-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-[#1c2130] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1">
-            <span>🏬</span>
+            <span>🌆</span>
             <span>2nd Floor (17)</span>
-          </button>
-          <button 
-            id="web-floor-tab-rt" 
-            onclick="APP.setFloorFilter('Rooftop')" 
-            class="web-floor-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-[#1c2130] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1">
-            <span>✨</span>
-            <span>Ground Floor (18)</span>
           </button>
           <button 
             id="web-floor-tab-all" 
             onclick="APP.setFloorFilter('all')" 
             class="web-floor-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-[#1c2130] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1">
             <span>🌐</span>
-            <span>All (35)</span>
+            <span>All (42)</span>
           </button>
         </div>
       </div>
@@ -1293,17 +1293,17 @@
         </div>
       </div>
 
-      <!-- 4. SECTION: 3-FLOOR SPACE EFFICIENCY (35 TABLES) -->
+      <!-- 4. SECTION: 3-FLOOR SPACE EFFICIENCY (42 TABLES) -->
       <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-4 sm:p-5 shadow">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
             <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
-              <span>🏢 3-Floor Space & Asset Efficiency (35 Tables Across 3 Zones)</span>
+              <span>🏢 3-Floor Space & Asset Efficiency (42 Tables Across 3 Zones)</span>
             </h3>
             <p class="text-xs text-neutral-400 mt-0.5">Floor turnover velocity, revenue per table, and capacity utilization across floors.</p>
           </div>
           <button onclick="APP.setManagerTab('tables')" class="px-3 py-1.5 rounded-xl bg-[#1e2536] hover:bg-[#2b354d] text-amber-300 text-xs font-bold flex items-center gap-1 transition-all">
-            <span>Manage 35 Tables Live ➔</span>
+            <span>Manage 42 Tables Live ➔</span>
           </button>
         </div>
 
@@ -1532,16 +1532,16 @@
 
     </div>
 
-    <!-- ================= PANE 2: 3-FLOOR TABLES (35 TABLES) ================= -->
+    <!-- ================= PANE 2: 3-FLOOR TABLES (42 TABLES) ================= -->
     <div id="mgr-content-tables" class="mgr-content-pane hidden space-y-4">
       <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-4 shadow flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <span class="text-xs font-black uppercase tracking-wider text-white">Filter Floor:</span>
           <div class="flex items-center gap-1">
             <button onclick="APP.setManagerFloorFilter('All')" id="mgr-floor-btn-all" class="mgr-floor-filter active px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-black shadow">All 42 Tables</button>
+            <button onclick="APP.setManagerFloorFilter('Ground Floor')" id="mgr-floor-btn-gf" class="mgr-floor-filter px-3 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white bg-[#1a2030]">Ground Floor (18)</button>
             <button onclick="APP.setManagerFloorFilter('1st Floor')" id="mgr-floor-btn-f1" class="mgr-floor-filter px-3 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white bg-[#1a2030]">1st Floor (7)</button>
             <button onclick="APP.setManagerFloorFilter('2nd Floor')" id="mgr-floor-btn-f2" class="mgr-floor-filter px-3 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white bg-[#1a2030]">2nd Floor (17)</button>
-            <button onclick="APP.setManagerFloorFilter('Ground Floor')" id="mgr-floor-btn-gf" class="mgr-floor-filter px-3 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white bg-[#1a2030]">Ground Floor (18)</button>
           </div>
         </div>
         <div class="text-xs text-neutral-400">
@@ -1549,7 +1549,7 @@
         </div>
       </div>
 
-      <!-- 35 Tables Grid for Manager -->
+      <!-- 42 Tables Grid for Manager -->
       <div id="mgr-tables-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         <!-- Rendered by APP.renderManagerTables() -->
       </div>
