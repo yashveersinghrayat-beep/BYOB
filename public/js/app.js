@@ -2499,8 +2499,11 @@ const APP = {
     let billTotals = null;
     if (customBill) {
       items = customBill.items || [];
+      if (typeof items === 'string') {
+        try { items = JSON.parse(items); } catch(e) { items = []; }
+      }
       subtotal = parseFloat(customBill.subtotal) || 0;
-      discountAmount = parseFloat(customBill.discount_amount) || 0;
+      discountAmount = parseFloat(customBill.discount_amount || customBill.discount) || 0;
       cgst = parseFloat(customBill.cgst) || 0;
       sgst = parseFloat(customBill.sgst) || 0;
       roundOff = parseFloat(customBill.round_off) || 0;
@@ -2680,6 +2683,186 @@ const APP = {
     if (modal) modal.classList.add('hidden');
     if (updateHistory && typeof history !== 'undefined' && window.location.hash === '#receipt') {
       history.back();
+    }
+  },
+
+  // ================= 8E. HIGH-PRECISION 80MM EPSON THERMAL ROLL ENGINE =================
+  printThermalReceipt(forceNewWindow = false) {
+    this.playBeep('click');
+    const receiptEl = document.getElementById('epson-print-wrapper');
+    if (!receiptEl) {
+      window.print();
+      return;
+    }
+
+    const receiptHtml = receiptEl.innerHTML;
+    const invNo = document.getElementById('epson-inv-no')?.textContent || 'RECEIPT';
+
+    const fullPrintDoc = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${invNo} - BYOB Indirapuram</title>
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 0mm;
+    }
+    @media print {
+      @page {
+        size: 80mm auto;
+        margin: 0mm;
+      }
+      html, body {
+        width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      width: 80mm;
+      max-width: 80mm;
+      margin: 0 auto;
+      padding: 2mm 2.5mm 6mm 2.5mm;
+      background: #ffffff;
+      color: #000000;
+      font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+    .epson-receipt {
+      width: 100%;
+      max-width: 75mm;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #000000;
+      padding: 0;
+      box-shadow: none;
+    }
+    .epson-receipt * {
+      color: #000000 !important;
+    }
+    .text-center { text-align: center; }
+    .text-left { text-align: left; }
+    .text-right { text-align: right; }
+    .font-bold { font-weight: 700; }
+    .font-black { font-weight: 900; }
+    .font-mono { font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; }
+    .uppercase { text-transform: uppercase; }
+    .tracking-widest { letter-spacing: 0.08em; }
+    .tracking-wider { letter-spacing: 0.04em; }
+    .flex { display: flex; justify-content: space-between; align-items: center; }
+    .flex-col { display: flex; flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .justify-center { justify-content: center; }
+    .w-full { width: 100%; }
+    .w-36 { width: 35mm; }
+    .w-8 { width: 8mm; }
+    .w-12 { width: 13mm; }
+    .w-14 { width: 16mm; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    hr {
+      border: none;
+      border-top: 1px dashed #000000 !important;
+      margin: 4px 0;
+    }
+    .double-hr {
+      border: none;
+      border-top: 2px solid #000000 !important;
+      margin: 5px 0;
+    }
+    .hidden { display: none !important; }
+    svg { display: block; margin: 0 auto; }
+    .space-y-0\\.5 > * + * { margin-top: 2px; }
+    .space-y-1 > * + * { margin-top: 3px; }
+    .py-1 { padding-top: 2px; padding-bottom: 2px; }
+    .py-2 { padding-top: 4px; padding-bottom: 4px; }
+    .pt-0\\.5 { padding-top: 2px; }
+    .pt-1 { padding-top: 3px; }
+    .mt-0\\.5 { margin-top: 2px; }
+    .mt-1 { margin-top: 3px; }
+    .mb-1 { margin-bottom: 3px; }
+    .text-sm { font-size: 13px; font-weight: 900; }
+    .text-xs { font-size: 11px; }
+    .text-\\[10px\\] { font-size: 10px; }
+    .text-\\[9px\\] { font-size: 9px; }
+    .text-\\[8px\\] { font-size: 8px; }
+    .text-\\[7px\\] { font-size: 7px; }
+  </style>
+</head>
+<body>
+  ${receiptHtml}
+</body>
+</html>`;
+
+    if (forceNewWindow) {
+      const printWin = window.open('', '_blank', 'width=360,height=650');
+      if (printWin) {
+        printWin.document.open();
+        printWin.document.write(fullPrintDoc);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(() => {
+          printWin.print();
+        }, 250);
+        return;
+      }
+    }
+
+    // Default seamless hidden iframe method
+    let printFrame = document.getElementById('onyx-thermal-print-frame');
+    if (!printFrame) {
+      printFrame = document.createElement('iframe');
+      printFrame.id = 'onyx-thermal-print-frame';
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = '0';
+      printFrame.style.opacity = '0';
+      printFrame.style.pointerEvents = 'none';
+      document.body.appendChild(printFrame);
+    }
+
+    try {
+      const frameDoc = printFrame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(fullPrintDoc);
+      frameDoc.close();
+
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch (e) {
+          console.warn('Iframe print failed, falling back to window.open:', e);
+          const printWin = window.open('', '_blank', 'width=360,height=650');
+          if (printWin) {
+            printWin.document.open();
+            printWin.document.write(fullPrintDoc);
+            printWin.document.close();
+            printWin.focus();
+            setTimeout(() => { printWin.print(); }, 250);
+          } else {
+            window.print();
+          }
+        }
+      }, 250);
+    } catch (err) {
+      console.warn('Thermal print error, calling window.print():', err);
+      window.print();
     }
   },
 
@@ -5661,7 +5844,8 @@ const APP = {
       this.showToast('Bill not found for reprinting');
       return;
     }
-    this.printRecentBill(invNumber);
+    this.openEpsonReceiptModal(true, bill);
+    this.showToast(`🖨️ Loaded Invoice #${bill.invoice_number} for 80mm reprint`);
   },
 
   async loadManagerVoidLogs() {
