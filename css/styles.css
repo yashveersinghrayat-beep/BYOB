@@ -98,10 +98,10 @@ body {
   background: #0f1118;
 }
 
-/* On large desktop screens, give it a clean centered max-width container if in waiter mode without artificial phone frames */
+/* On large desktop screens, give it a clean wide container for comfortable viewing */
 @media (min-width: 1200px) {
   .app-frame {
-    max-width: 580px;
+    max-width: 1360px;
     margin: 12px auto;
     border-radius: 16px;
     border: 1px solid #23293a;

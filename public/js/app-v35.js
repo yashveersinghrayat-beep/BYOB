@@ -13,7 +13,7 @@ const APP = {
     dietFilter: "all", // 'all' | 'veg' | 'nonveg'
     searchQuery: "",
     splitCount: 1, // Default split bill is 1 person (Single Bill)
-    activeFloorFilter: "1st Floor", // '1st Floor' (15) | '2nd Floor' (10) | 'Rooftop' (10) | 'all' (35)
+    activeFloorFilter: "all", // 'all' (42) | 'Ground Floor' (18) | '1st Floor' (7) | '2nd Floor' (17)
     payMode: "upi", // 'upi' | 'card' | 'cash'
     cashTendered: 0,
     activeNoteItemId: null,
@@ -302,12 +302,16 @@ const APP = {
     window.addEventListener('touchstart', unlockAudio, { once: true });
 
     // 4. Native Screen Auto-Adjust: On mobile devices, ensure full edge-to-edge layout
-    if (window.innerWidth < 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      this.state.currentView = 'app';
-      const webBtn = document.getElementById('btn-view-web');
-      if (webBtn && window.innerWidth < 640) {
-        webBtn.classList.add('hidden');
-      }
+    const isMobile = window.innerWidth < 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const savedView = localStorage.getItem('onyx_preferred_view');
+    if (savedView) {
+      this.state.currentView = savedView;
+    } else {
+      this.state.currentView = isMobile ? 'app' : 'web';
+    }
+    const webBtn = document.getElementById('btn-view-web');
+    if (webBtn && window.innerWidth < 640) {
+      webBtn.classList.add('hidden');
     }
   },
 
@@ -471,12 +475,13 @@ const APP = {
     this.checkFreshStartReset();
     this.loadLocalCarts(); // Restore draft carts on reload (Item 9)
     this.initAuth(); // Initialize User Role / Welcome Gateway
-    this.goToTables(false); // Initial launch opens Table View First!
     this.setupHistoryNavigation();
     this.setupDbSubscriptions();
     this.setupAppUpdateListeners();
     this.initSystemHealthMonitor();
     this.setupPhoneFeatures();
+    this.setView(this.state.currentView || 'app');
+    this.setFloorFilter('all');
     this.renderAll();
     this.updateCartUI();
     this.updateTableHeaderBadges();
@@ -852,6 +857,7 @@ const APP = {
     }
 
     this.state.currentView = view;
+    try { localStorage.setItem('onyx_preferred_view', view); } catch (e) {}
     const btnApp = document.getElementById('btn-view-app');
     const btnWeb = document.getElementById('btn-view-web');
     const btnMgr = document.getElementById('btn-view-manager');
@@ -1242,7 +1248,7 @@ const APP = {
         return `
           <button 
             onclick="APP.selectTable('${t.id}')"
-            class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[128px] max-h-[160px] shadow-lg group">
+            class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[120px] shadow-lg group overflow-hidden">
             
             <!-- Top Row: Table Name + Single Clean Badge -->
             <div class="flex items-center justify-between w-full">

@@ -360,12 +360,19 @@
           </div>
         </div>
 
-        <!-- 3-FLOOR TABS (Ground Floor 18 | 1st Floor 7 | 2nd Floor 17 | All 42) -->
+        <!-- 3-FLOOR TABS (All 42 | Ground Floor 18 | 1st Floor 7 | 2nd Floor 17) -->
         <div class="px-3 py-2 bg-[#0e111a] border-b border-[#23293a] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <button 
+            id="mobile-floor-tab-all" 
+            onclick="APP.setFloorFilter('all')" 
+            class="mobile-floor-btn active px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1 flex-shrink-0">
+            <span>🌐</span>
+            <span>All (42)</span>
+          </button>
           <button 
             id="mobile-floor-tab-gf" 
             onclick="APP.setFloorFilter('Ground Floor')" 
-            class="mobile-floor-btn active px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1 flex-shrink-0">
+            class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
             <span>🌿</span>
             <span>Ground Floor (18)</span>
           </button>
@@ -382,13 +389,6 @@
             class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
             <span>🏬</span>
             <span>2nd Floor (17)</span>
-          </button>
-          <button 
-            id="mobile-floor-tab-all" 
-            onclick="APP.setFloorFilter('all')" 
-            class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
-            <span>🌐</span>
-            <span>All (42)</span>
           </button>
         </div>
 
@@ -597,9 +597,16 @@
         <!-- Floor Filter Tabs for Web POS -->
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <button 
+            id="web-floor-tab-all" 
+            onclick="APP.setFloorFilter('all')" 
+            class="web-floor-btn active px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1">
+            <span>🌐</span>
+            <span>All (42)</span>
+          </button>
+          <button 
             id="web-floor-tab-gf" 
             onclick="APP.setFloorFilter('Ground Floor')" 
-            class="web-floor-btn active px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1">
+            class="web-floor-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-[#1c2130] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1">
             <span>🌾</span>
             <span>Ground Floor (18)</span>
           </button>
@@ -616,13 +623,6 @@
             class="web-floor-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-[#1c2130] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1">
             <span>🌆</span>
             <span>2nd Floor (17)</span>
-          </button>
-          <button 
-            id="web-floor-tab-all" 
-            onclick="APP.setFloorFilter('all')" 
-            class="web-floor-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-[#1c2130] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1">
-            <span>🌐</span>
-            <span>All (42)</span>
           </button>
         </div>
       </div>
