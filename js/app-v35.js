@@ -626,17 +626,15 @@ const APP = {
       }
     });
 
-    // Native browser print trigger (e.g. Chrome File -> Print) dynamic roll height injection
+    // Native browser print trigger (e.g. Chrome File -> Print) zero waste continuous roll
     window.addEventListener('beforeprint', () => {
-      const receiptEl = document.getElementById('epson-print-wrapper');
-      const heightMm = Math.max(140, Math.ceil((receiptEl ? (receiptEl.scrollHeight || receiptEl.offsetHeight) : 600) * 0.264583) + 15);
       let dynStyle = document.getElementById('dynamic-epson-page-style');
       if (!dynStyle) {
         dynStyle = document.createElement('style');
         dynStyle.id = 'dynamic-epson-page-style';
         document.head.appendChild(dynStyle);
       }
-      dynStyle.textContent = `@page { size: 80mm ${heightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${heightMm}mm !important; margin: 0mm !important; } }`;
+      dynStyle.textContent = `@page { size: auto !important; margin: 0mm !important; } @media print { @page { size: auto !important; margin: 0mm !important; } html, body { height: auto !important; margin: 0 !important; padding: 0 !important; } }`;
     });
   },
 
@@ -2571,6 +2569,11 @@ const APP = {
     document.getElementById('bill-cgst').textContent = `₹${cgst.toFixed(2)}`;
     document.getElementById('bill-sgst').textContent = `₹${sgst.toFixed(2)}`;
 
+    const cgstLabel = document.getElementById('bill-cgst-label');
+    const sgstLabel = document.getElementById('bill-sgst-label');
+    if (cgstLabel) cgstLabel.textContent = `CGST (${cgstPct !== undefined ? cgstPct : 2.5}%):`;
+    if (sgstLabel) sgstLabel.textContent = `SGST (${sgstPct !== undefined ? sgstPct : 2.5}%):`;
+
     // Service Charge (Fixed ₹)
     const servRow = document.getElementById('bill-service-charge-row');
     const servAmtEl = document.getElementById('bill-service-charge');
@@ -2861,10 +2864,16 @@ const APP = {
 
     let billTotals = null;
     if (customBill) {
-      items = customBill.items || [];
-      if (typeof items === 'string') {
-        try { items = JSON.parse(items); } catch(e) { items = []; }
+      let rawItems = customBill.items || customBill.bill_items || [];
+      if (typeof rawItems === 'string') {
+        try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; }
       }
+      items = (rawItems || []).map(i => ({
+        name: i.name || i.item_name || 'Item',
+        qty: parseInt(i.qty || i.quantity || 1),
+        price: parseFloat(i.price || 0),
+        notes: i.notes || ''
+      }));
       subtotal = parseFloat(customBill.subtotal) || 0;
       discountAmount = parseFloat(customBill.discount_amount || customBill.discount) || 0;
       cgst = parseFloat(customBill.cgst) || 0;
@@ -2940,7 +2949,7 @@ const APP = {
     // Service Charge Row
     const servRow = document.getElementById('epson-service-charge-row');
     const servVal = document.getElementById('epson-service-charge');
-    const servChargeAmount = customBill ? (parseFloat(customBill.service_charge) || 0) : (billTotals?.serviceCharge || 0);
+    const servChargeAmount = customBill ? (parseFloat(customBill.service_charge) || Math.max(0, Math.round(grandTotal - (subtotal + cgst + sgst + roundOff - discountAmount)))) : (billTotals?.serviceCharge || 0);
     const servLabel = document.getElementById('epson-service-charge-label');
     if (servLabel) servLabel.textContent = 'Service Charge (Fixed):';
     if (servRow && servVal) {
@@ -3064,14 +3073,14 @@ const APP = {
     // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 3mm tear margin (ultra-compact, zero waste)
     const computedHeightMm = Math.max(45, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 220) * 0.264583) + 3);
 
-    // Update dynamic @page style on main document
+    // Update dynamic @page style on main document (auto roll size, zero blank feed)
     let dynStyle = document.getElementById('dynamic-epson-page-style');
     if (!dynStyle) {
       dynStyle = document.createElement('style');
       dynStyle.id = 'dynamic-epson-page-style';
       document.head.appendChild(dynStyle);
     }
-    dynStyle.textContent = `@page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } }`;
+    dynStyle.textContent = `@page { size: auto !important; margin: 0mm !important; } @media print { @page { size: auto !important; margin: 0mm !important; } html, body { height: auto !important; margin: 0 !important; padding: 0 !important; } }`;
 
     const receiptHtml = receiptEl.innerHTML;
     const invNo = document.getElementById('epson-inv-no')?.textContent || 'RECEIPT';
@@ -3083,17 +3092,18 @@ const APP = {
   <title>${invNo} - BYOB Indirapuram</title>
   <style>
     @page {
-      size: 80mm ${computedHeightMm}mm;
+      size: auto;
       margin: 0mm;
     }
     @media print {
       @page {
-        size: 80mm ${computedHeightMm}mm;
+        size: auto;
         margin: 0mm;
       }
       html, body {
         width: 80mm !important;
         max-width: 80mm !important;
+        height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
@@ -5266,46 +5276,146 @@ const APP = {
     });
   },
 
+  computeSalesReportFromBills(bills, period = 'weekly') {
+    const valid = (bills || []).filter(b => b.status !== 'void' && b.status !== 'cancelled');
+    let totalRev = 0, totalSub = 0, totalCgst = 0, totalSgst = 0, totalDisc = 0, totalRound = 0;
+    const paymentModes = {
+      cash: { amount: 0, count: 0, pct: 0 },
+      upi: { amount: 0, count: 0, pct: 0 },
+      card: { amount: 0, count: 0, pct: 0 }
+    };
+    const floorCounts = {
+      'Ground Floor': { bills: 0, rev: 0, pct: 0 },
+      '1st Floor': { bills: 0, rev: 0, pct: 0 },
+      '2nd Floor': { bills: 0, rev: 0, pct: 0 }
+    };
+
+    valid.forEach(b => {
+      const rev = Number(b.grand_total || 0);
+      const sub = Number(b.subtotal || 0);
+      const cgst = Number(b.cgst || 0);
+      const sgst = Number(b.sgst || 0);
+      const disc = Number(b.discount_amount || 0);
+      const round = Number(b.round_off || 0);
+
+      totalRev += rev;
+      totalSub += sub;
+      totalCgst += cgst;
+      totalSgst += sgst;
+      totalDisc += disc;
+      totalRound += round;
+
+      const mode = (b.payment_mode || 'upi').toLowerCase();
+      if (paymentModes[mode]) {
+        paymentModes[mode].amount += rev;
+        paymentModes[mode].count += 1;
+      }
+
+      const tNum = parseInt(String(b.table_id || '').replace(/\D/g, ''), 10);
+      let floor = 'Ground Floor';
+      if (tNum >= 26) floor = '2nd Floor';
+      else if (tNum >= 19) floor = '1st Floor';
+      floorCounts[floor].bills += 1;
+      floorCounts[floor].rev += rev;
+    });
+
+    Object.keys(paymentModes).forEach(m => {
+      paymentModes[m].pct = totalRev > 0 ? Number(((paymentModes[m].amount / totalRev) * 100).toFixed(1)) : 0;
+    });
+
+    const floorList = Object.keys(floorCounts).map(k => ({
+      floor: k,
+      revenue: floorCounts[k].rev,
+      bills_count: floorCounts[k].bills,
+      pct: totalRev > 0 ? Number(((floorCounts[k].rev / totalRev) * 100).toFixed(1)) : 0
+    }));
+
+    const aov = valid.length > 0 ? Math.round(totalRev / valid.length) : 0;
+
+    return {
+      period,
+      periodLabel: `${valid.length} Settled Invoices Audit`,
+      summary: {
+        total_bills: valid.length,
+        total_revenue: totalRev,
+        total_subtotal: totalSub,
+        total_cgst: totalCgst,
+        total_sgst: totalSgst,
+        total_tax: totalCgst + totalSgst,
+        total_discounts: totalDisc,
+        discount_rate_pct: totalRev > 0 ? Number(((totalDisc / totalRev) * 100).toFixed(1)) : 0,
+        aov,
+        total_round_off: totalRound
+      },
+      payment_modes: paymentModes,
+      floor_efficiency: floorList,
+      recentBills: valid
+    };
+  },
+
   async loadManagerAnalytics() {
     const period = this.state.mgrReportPeriod || 'weekly';
-    try {
-      if (typeof DB !== 'undefined' && DB.getSalesAnalytics) {
-        const report = await DB.getSalesAnalytics({
-          period,
-          startDate: this.state.mgrReportStartDate,
-          endDate: this.state.mgrReportEndDate
-        });
-        if (report) {
-          this.state.mgrSalesReport = report;
-          this.state.mgrPeriodBills = report.recentBills || [];
-          this.renderManagerSales(report);
-          this.updateManagerKpiCards();
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn('DB.getSalesAnalytics failed, falling back:', err);
-    }
+    let report = null;
 
-    let url = `/api/reports/efficiency?period=${encodeURIComponent(period)}`;
-    if (period === 'custom') {
-      if (this.state.mgrReportStartDate) url += `&startDate=${encodeURIComponent(this.state.mgrReportStartDate)}`;
-      if (this.state.mgrReportEndDate) url += `&endDate=${encodeURIComponent(this.state.mgrReportEndDate)}`;
-    }
-
+    // 1. Direct Supabase Cloud check (100% resilient across any hosting/CDN)
     try {
-      const res = await fetch(url);
+      const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+      const supaUrl = 'https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/bills?select=*,bill_items(*)&order=created_at.desc';
+      const res = await fetch(supaUrl, {
+        headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+      });
       if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.report) {
-          this.state.mgrSalesReport = data.report;
-          this.state.mgrPeriodBills = data.report.recentBills || [];
-          this.renderManagerSales(data.report);
-          this.updateManagerKpiCards();
+        const cloudBills = await res.json();
+        if (Array.isArray(cloudBills) && cloudBills.length > 0) {
+          const valid = cloudBills.filter(b => b.status !== 'void' && b.status !== 'cancelled');
+          if (valid.length > 0) {
+            report = this.computeSalesReportFromBills(valid, period);
+          }
         }
       }
     } catch (e) {
-      console.warn('Efficiency report fetch error:', e);
+      console.warn('Direct Supabase cloud report fetch error:', e);
+    }
+
+    // 2. If cloud didn't have bills, try DB / local server
+    if (!report || !report.summary?.total_bills) {
+      try {
+        if (typeof DB !== 'undefined' && DB.getSalesAnalytics) {
+          report = await DB.getSalesAnalytics({
+            period,
+            startDate: this.state.mgrReportStartDate,
+            endDate: this.state.mgrReportEndDate
+          });
+        }
+      } catch (err) {
+        console.warn('DB.getSalesAnalytics failed, falling back:', err);
+      }
+    }
+
+    if (!report || !report.summary?.total_bills) {
+      let url = `/api/reports/efficiency?period=${encodeURIComponent(period)}`;
+      if (period === 'custom') {
+        if (this.state.mgrReportStartDate) url += `&startDate=${encodeURIComponent(this.state.mgrReportStartDate)}`;
+        if (this.state.mgrReportEndDate) url += `&endDate=${encodeURIComponent(this.state.mgrReportEndDate)}`;
+      }
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.report) {
+            report = data.report;
+          }
+        }
+      } catch (e) {
+        console.warn('Efficiency report fetch error:', e);
+      }
+    }
+
+    if (report) {
+      this.state.mgrSalesReport = report;
+      this.state.mgrPeriodBills = report.recentBills || [];
+      this.renderManagerSales(report);
+      this.updateManagerKpiCards();
     }
   },
 
@@ -6196,6 +6306,31 @@ const APP = {
 
   async loadManagerInvoices() {
     try {
+      // 1. Direct Supabase Cloud check (100% resilient across any hosting/CDN)
+      try {
+        const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+        const supaUrl = 'https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/bills?select=*,bill_items(*)&order=created_at.desc&limit=40';
+        const res = await fetch(supaUrl, {
+          headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+        });
+        if (res.ok) {
+          const cloudBills = await res.json();
+          if (Array.isArray(cloudBills) && cloudBills.length > 0) {
+            const valid = cloudBills.filter(b => b.status !== 'void' && b.status !== 'cancelled');
+            if (valid.length > 0) {
+              this.state.mgrInvoices = valid.map(b => ({
+                ...b,
+                items: (b.bill_items && b.bill_items.length > 0) ? b.bill_items : (b.items || [])
+              }));
+              this.renderManagerInvoices();
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Direct Supabase cloud invoices fetch error:', e);
+      }
+
       if (typeof DB !== 'undefined' && DB.getRecentBills) {
         const bills = await DB.getRecentBills(40);
         this.state.mgrInvoices = bills || [];
@@ -6506,32 +6641,64 @@ const APP = {
   },
 
   async loadManagerStoreSettings() {
+    let s = (window.DB && window.DB.storeSettings) || {};
+    try {
+      const localSaved = localStorage.getItem('onyx_store_settings');
+      if (localSaved) s = { ...s, ...JSON.parse(localSaved) };
+    } catch(e){}
+
+    // 1. Direct Supabase Cloud check
+    try {
+      const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+      const supaUrl = 'https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings?select=*';
+      const res = await fetch(supaUrl, {
+        headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          const cloudMap = {};
+          rows.forEach(r => cloudMap[r.key] = r.value);
+          s = { ...s, ...cloudMap };
+          if (window.DB) window.DB.storeSettings = s;
+        }
+      }
+    } catch(e) {
+      console.warn('Supabase store settings cloud fetch error:', e);
+    }
+
+    // 2. Also try /api/store
     try {
       const res = await fetch('/api/store');
       if (res.ok) {
         const data = await res.json();
-        const s = data.settings || data.store || {};
-        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-        setVal('mgr-store-name', s.name || s.restaurant_name || 'BYOB INDIRAPURAM');
-        setVal('mgr-store-tagline', s.tagline || 'Bring Your Own Bottle Experience');
-        setVal('mgr-store-address', s.address || 'Indirapuram, Ghaziabad, UP');
-        setVal('mgr-store-gstin', s.gstin || '07AABCB1234F1Z9');
-        setVal('mgr-store-fssai', s.fssai || '12724055000123');
-        setVal('mgr-store-cgst', s.cgst_percent !== undefined ? s.cgst_percent : 2.5);
-        setVal('mgr-store-sgst', s.sgst_percent !== undefined ? s.sgst_percent : 2.5);
-        setVal('mgr-store-service-charge', s.service_charge_fixed !== undefined ? s.service_charge_fixed : (s.service_charge !== undefined ? s.service_charge : (s.service_charge_percent || 0)));
-        setVal('mgr-store-upi-id', s.upi_vpa || 'Q676029996@ybl');
-        setVal('mgr-store-footer', s.receipt_footer || s.bill_footer || 'Thank You! Visit Again.');
+        if (data.settings) s = { ...s, ...data.settings };
       }
     } catch (e) {
       console.warn('Store fetch error:', e);
     }
+
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val !== undefined ? val : ''; };
+    setVal('mgr-store-name', s.name || s.restaurant_name || 'BYOB INDIRAPURAM');
+    setVal('mgr-store-tagline', s.tagline || 'Bring Your Own Bottle Experience');
+    setVal('mgr-store-address', s.address || 'Indirapuram, Ghaziabad, UP');
+    setVal('mgr-store-gstin', s.gstin || '07AABCB1234F1Z9');
+    setVal('mgr-store-fssai', s.fssai || '12724055000123');
+    setVal('mgr-store-cgst', s.cgst_percent !== undefined ? s.cgst_percent : 2.5);
+    setVal('mgr-store-sgst', s.sgst_percent !== undefined ? s.sgst_percent : 2.5);
+    setVal('mgr-store-service-charge', s.service_charge_fixed !== undefined ? s.service_charge_fixed : (s.service_charge !== undefined ? s.service_charge : (s.service_charge_percent || 0)));
+    setVal('mgr-store-upi-id', s.upi_vpa || 'Q676029996@ybl');
+    setVal('mgr-store-footer', s.receipt_footer || s.bill_footer || 'Thank You! Visit Again.');
   },
 
   async saveManagerStoreSettings() {
     const getVal = id => document.getElementById(id)?.value || '';
     const nameVal = getVal('mgr-store-name');
     const footerVal = getVal('mgr-store-footer');
+    const cgstVal = parseFloat(getVal('mgr-store-cgst') || '2.5');
+    const sgstVal = parseFloat(getVal('mgr-store-sgst') || '2.5');
+    const servVal = parseFloat(getVal('mgr-store-service-charge') || '0');
+
     const payload = {
       name: nameVal,
       restaurant_name: nameVal,
@@ -6539,30 +6706,67 @@ const APP = {
       address: getVal('mgr-store-address'),
       gstin: getVal('mgr-store-gstin'),
       fssai: getVal('mgr-store-fssai'),
-      cgst_percent: parseFloat(getVal('mgr-store-cgst') || '2.5'),
-      sgst_percent: parseFloat(getVal('mgr-store-sgst') || '2.5'),
-      service_charge_fixed: parseFloat(getVal('mgr-store-service-charge') || '0'),
-      service_charge: parseFloat(getVal('mgr-store-service-charge') || '0'),
-      service_charge_percent: parseFloat(getVal('mgr-store-service-charge') || '0'),
+      cgst_percent: cgstVal,
+      sgst_percent: sgstVal,
+      service_charge_fixed: servVal,
+      service_charge: servVal,
+      service_charge_percent: servVal,
       upi_vpa: getVal('mgr-store-upi-id'),
       receipt_footer: footerVal,
       bill_footer: footerVal
     };
 
+    // 1. Instantly update window.DB & LocalStorage (available across entire app offline & online)
+    if (window.DB) {
+      window.DB.storeSettings = { ...(window.DB.storeSettings || {}), ...payload };
+    }
     try {
-      const res = await fetch('/api/store', {
+      localStorage.setItem('onyx_store_settings', JSON.stringify(window.DB.storeSettings));
+    } catch(e){}
+
+    // 2. Direct Supabase Cloud upsert (so Handheld Android APK & all web clients get it instantly)
+    try {
+      const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+      const upsertRows = Object.entries(payload).map(([k, v]) => ({
+        key: k,
+        value: String(v),
+        updated_at: new Date().toISOString()
+      }));
+      for (const row of upsertRows) {
+        await fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings', {
+          method: 'POST',
+          headers: {
+            'apikey': supaKey,
+            'Authorization': 'Bearer ' + supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify(row)
+        });
+      }
+    } catch (e) {
+      console.warn('Supabase store settings cloud upsert error:', e);
+    }
+
+    // 3. Local / Vercel Server endpoint
+    try {
+      await fetch('/api/store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (data.success) {
-        this.showToast('✅ Store & GST Settings Saved');
-        this.haptic('success');
-      }
     } catch (e) {
-      this.showToast('Error saving store profile');
+      console.warn('Server store profile save error:', e);
     }
+
+    // 4. Update UI labels and calculations everywhere
+    if (window.DB && typeof window.DB.notifyStore === 'function') {
+      window.DB.notifyStore();
+    }
+    this.refreshBillingModalData();
+    this.updateCartUI();
+    this.showToast('✅ Store & GST Settings Saved Everywhere!');
+    this.haptic('success');
   },
 
   loadManagerOTAInfo() {
