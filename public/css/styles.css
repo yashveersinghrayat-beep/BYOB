@@ -660,3 +660,118 @@ body.mgr-sidebar-open #main-app-header {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
+
+
+/* ================= 2D VISUAL FLOOR BLUEPRINT ================= */
+.floor-blueprint-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 560 / 890;
+  background: #101522;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border: 2px solid #242e42;
+  border-radius: 18px;
+  overflow: hidden;
+  user-select: none;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+}
+
+.bp-table {
+  position: absolute;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s ease;
+  z-index: 10;
+}
+
+.bp-table:hover {
+  transform: scale(1.05);
+  z-index: 25;
+}
+
+.bp-table:active {
+  transform: scale(0.96);
+}
+
+.bp-table-free {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(5, 150, 105, 0.32));
+  border: 1.5px solid #10b981;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.18);
+}
+
+.bp-table-occupied {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(185, 28, 28, 0.5));
+  border: 1.5px solid #ef4444;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35);
+}
+
+.bp-table-selected-occupied {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.45), rgba(185, 28, 28, 0.7)) !important;
+  border: 2px solid #fbbf24 !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.8), 0 0 6px rgba(239, 68, 68, 0.9) !important;
+  transform: scale(1.06);
+  z-index: 30;
+}
+
+.bp-table-selected-free {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.6)) !important;
+  border: 2px solid #fbbf24 !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.8), 0 0 6px rgba(16, 185, 129, 0.9) !important;
+  transform: scale(1.06);
+  z-index: 30;
+}
+
+.bp-table-draft {
+  border: 2px solid #f59e0b !important;
+  animation: bpPulseDraft 1.8s infinite ease-in-out;
+}
+
+@keyframes bpPulseDraft {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.8); }
+}
+
+.bp-wall {
+  position: absolute;
+  background: repeating-linear-gradient(-45deg, #1e293b, #1e293b 8px, #0f172a 8px, #0f172a 16px);
+  border: 1.5px solid #475569;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.bp-facility-kitchen {
+  position: absolute;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  background: linear-gradient(to top, rgba(127, 29, 29, 0.3), #131722);
+}
+
+.bp-facility-counter {
+  position: absolute;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  background: linear-gradient(to top, rgba(120, 53, 15, 0.3), #131722);
+}

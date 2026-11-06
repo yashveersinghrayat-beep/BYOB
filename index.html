@@ -392,8 +392,35 @@
           </button>
         </div>
 
+        <!-- VIEW TOGGLE & SUMMARY STRIP -->
+        <div class="px-3 py-1.5 bg-[#121622] border-b border-[#1f2637] flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span id="floor-summary-badge" class="text-xs font-bold text-neutral-300">42 Tables (All Floors)</span>
+          </div>
+          <!-- 2D Floor Map vs Grid Toggle -->
+          <div class="flex items-center gap-1 bg-[#0b0e17] p-0.5 rounded-lg border border-[#232b3e]">
+            <button 
+              id="view-toggle-grid" 
+              onclick="APP.setTableLayoutMode('grid')" 
+              class="px-2 py-0.5 rounded-md text-[10px] font-bold transition-all bg-amber-500 text-black shadow">
+              📋 Grid
+            </button>
+            <button 
+              id="view-toggle-map" 
+              onclick="APP.setTableLayoutMode('map')" 
+              class="px-2 py-0.5 rounded-md text-[10px] font-bold transition-all text-neutral-400 hover:text-white">
+              🗺️ 2D Map
+            </button>
+          </div>
+        </div>
+
         <!-- 42 TABLES TOP-DOWN GRID (Responsive: 2 cols on Mobile, 4-6 cols on Laptop) -->
         <div id="app-floor-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+          <!-- Rendered dynamically via JS -->
+        </div>
+
+        <!-- 2D VISUAL FLOOR BLUEPRINT (Active when 2nd Floor & map mode) -->
+        <div id="app-floor-map-container" class="hidden flex-1 overflow-y-auto p-2 flex flex-col items-center justify-start">
           <!-- Rendered dynamically via JS -->
         </div>
 
@@ -626,7 +653,29 @@
           </button>
         </div>
       </div>
-      <div id="web-tables-strip" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2"></div>
+
+      <!-- DESKTOP 2D MAP VS STRIP TOGGLE -->
+      <div class="flex items-center gap-1 bg-[#121520] p-1 rounded-xl border border-[#202636]">
+        <button 
+          id="web-view-toggle-grid" 
+          onclick="APP.setTableLayoutMode('grid')" 
+          class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black shadow flex items-center gap-1">
+          <span>📋</span>
+          <span>Strip View</span>
+        </button>
+        <button 
+          id="web-view-toggle-map" 
+          onclick="APP.setTableLayoutMode('map')" 
+          class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-neutral-400 hover:text-white flex items-center gap-1">
+          <span>🗺️</span>
+          <span>2D Floor Map</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- DESKTOP TABLES CONTAINERS -->
+    <div id="web-tables-strip" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2"></div>
+    <div id="web-floor-map-container" class="hidden my-2 flex justify-center"></div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">

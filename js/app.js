@@ -14,6 +14,7 @@ const APP = {
     searchQuery: "",
     splitCount: 1, // Default split bill is 1 person (Single Bill)
     activeFloorFilter: "all", // 'all' (42) | 'Ground Floor' (18) | '1st Floor' (7) | '2nd Floor' (17)
+    tableLayoutMode: localStorage.getItem('onyx_table_layout_mode') || 'map', // 'map' (2D Floor Blueprint) | 'grid' (Fast Card Grid)
     payMode: "upi", // 'upi' | 'card' | 'cash'
     cashTendered: 0,
     activeNoteItemId: null,
@@ -998,7 +999,203 @@ const APP = {
       }
     });
 
+    this.updateLayoutToggleButtons();
     this.renderFloorTables();
+  },
+
+  setTableLayoutMode(mode) {
+    this.state.tableLayoutMode = mode;
+    try { localStorage.setItem('onyx_table_layout_mode', mode); } catch (e) {}
+
+    // If switching to 2D Map mode and not currently on 2nd Floor, automatically switch to 2nd Floor
+    if (mode === 'map' && this.state.activeFloorFilter !== '2nd Floor') {
+      this.setFloorFilter('2nd Floor');
+      return;
+    }
+
+    this.updateLayoutToggleButtons();
+    this.renderFloorTables();
+  },
+
+  updateLayoutToggleButtons() {
+    const mode = this.state.tableLayoutMode || 'map';
+    const mobGridBtn = document.getElementById('view-toggle-grid');
+    const mobMapBtn = document.getElementById('view-toggle-map');
+    if (mobGridBtn && mobMapBtn) {
+      if (mode === 'map') {
+        mobMapBtn.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold transition-all bg-amber-500 text-black shadow';
+        mobGridBtn.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold transition-all text-neutral-400 hover:text-white';
+      } else {
+        mobGridBtn.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold transition-all bg-amber-500 text-black shadow';
+        mobMapBtn.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold transition-all text-neutral-400 hover:text-white';
+      }
+    }
+
+    const webGridBtn = document.getElementById('web-view-toggle-grid');
+    const webMapBtn = document.getElementById('web-view-toggle-map');
+    if (webGridBtn && webMapBtn) {
+      if (mode === 'map') {
+        webMapBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black shadow flex items-center gap-1';
+        webGridBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-neutral-400 hover:text-white flex items-center gap-1';
+      } else {
+        webGridBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black shadow flex items-center gap-1';
+        webMapBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-neutral-400 hover:text-white flex items-center gap-1';
+      }
+    }
+  },
+
+  // Exact 2D Blueprint Config replicating the user's hand-drawn sketch (17 tables)
+  FLOOR_2_BLUEPRINT: {
+    tables: [
+      // Top Row (4 tables across far wall)
+      { id: 'T-26', left: '3%', top: '3.5%', width: '21%', height: '8%', posLabel: 'Top-Left' },
+      { id: 'T-27', left: '27%', top: '3.5%', width: '21%', height: '8%', posLabel: 'Top-Mid' },
+      { id: 'T-28', left: '51%', top: '3.5%', width: '21%', height: '8%', posLabel: 'Top-Mid' },
+      { id: 'T-29', left: '76%', top: '3.5%', width: '21%', height: '8%', posLabel: 'Top-Right' },
+
+      // Left Column Upper & Inner
+      { id: 'T-30', left: '3%', top: '13%', width: '21%', height: '8%', posLabel: 'Left-2' },
+      { id: 'T-31', left: '3%', top: '22.5%', width: '21%', height: '8%', posLabel: 'Left-3' },
+      { id: 'T-32', left: '27%', top: '22.5%', width: '21%', height: '8%', posLabel: 'Inner-1' },
+
+      // Beside Wall
+      { id: 'T-36', left: '27%', top: '34.5%', width: '21%', height: '8%', posLabel: 'Beside Wall' },
+
+      // Left Lower 4-Seater Booths (below Entrance)
+      { id: 'T-39', left: '3%', top: '52%', width: '22%', height: '8%', posLabel: '👥 4-Seat #1' },
+      { id: 'T-41', left: '3%', top: '65%', width: '22%', height: '8%', posLabel: '👥 4-Seat #2' },
+
+      // Right Column (8 tables: T-29 at top, then T-33 to T-42 leading down to Counter)
+      { id: 'T-33', left: '76%', top: '12.5%', width: '21%', height: '7%', posLabel: 'Right-2' },
+      { id: 'T-34', left: '76%', top: '21%', width: '21%', height: '7%', posLabel: 'Right-3' },
+      { id: 'T-35', left: '76%', top: '29.5%', width: '21%', height: '7%', posLabel: 'Right-4' },
+      { id: 'T-37', left: '76%', top: '38%', width: '21%', height: '7%', posLabel: 'Right-5' },
+      { id: 'T-38', left: '76%', top: '46.5%', width: '21%', height: '7%', posLabel: 'Right-6' },
+      { id: 'T-40', left: '76%', top: '55%', width: '21%', height: '7%', posLabel: 'Right-7' },
+      { id: 'T-42', left: '76%', top: '63.5%', width: '21%', height: '7%', posLabel: 'Right-8 (Counter)' }
+    ]
+  },
+
+  render2ndFloorBlueprint(container) {
+    if (!container) return;
+
+    const tablesHtml = this.FLOOR_2_BLUEPRINT.tables.map(cfg => {
+      const isSelected = cfg.id === this.state.selectedTableId;
+      const liveTable = this.getLiveTable(cfg.id);
+      const placedOrders = liveTable.placedOrders || [];
+      const subtotal = liveTable.currentSubtotal || placedOrders.reduce((s, i) => s + (i.price * i.qty), 0);
+      const isOccupied = subtotal > 0 || liveTable.status === 'occupied';
+      const draftItems = this.getLocalCart(cfg.id);
+      const draftCount = draftItems.reduce((s, i) => s + i.qty, 0);
+
+      let cardClass = "";
+      let amountOrStatus = "";
+      let kotBadge = "";
+
+      if (isOccupied) {
+        if (isSelected) {
+          cardClass = "bp-table-selected-occupied";
+        } else if (draftCount > 0) {
+          cardClass = "bp-table-occupied bp-table-draft";
+        } else {
+          cardClass = "bp-table-occupied";
+        }
+        amountOrStatus = `<span class="text-[11px] font-black font-mono text-amber-300 leading-none mt-0.5">₹${subtotal.toLocaleString('en-IN')}</span>`;
+        kotBadge = liveTable.activeKotCount ? `<span class="text-[8px] font-bold text-red-300">K${liveTable.activeKotCount}</span>` : `<span class="text-[8px] font-bold text-red-300">🔴</span>`;
+      } else {
+        if (isSelected) {
+          cardClass = "bp-table-selected-free";
+        } else if (draftCount > 0) {
+          cardClass = "bp-table-free bp-table-draft";
+        } else {
+          cardClass = "bp-table-free";
+        }
+        amountOrStatus = draftCount > 0 
+          ? `<span class="text-[10px] font-black text-amber-300 leading-none mt-0.5">+DRAFT</span>` 
+          : `<span class="text-[9px] font-black text-emerald-400 leading-none mt-0.5">FREE</span>`;
+        kotBadge = `<span class="text-[8px] font-bold text-emerald-400">🟢</span>`;
+      }
+
+      const cleanNum = cfg.id.replace('T-', '');
+      const tMeta = RESTAURANT_TABLES.find(t => t.id === cfg.id) || {};
+      const tooltip = isOccupied 
+        ? `${tMeta.name || cfg.id} • ₹${subtotal.toLocaleString('en-IN')} • ${placedOrders.map(i => i.qty + 'x ' + i.name).join(', ')}` 
+        : `${tMeta.name || cfg.id} • Vacant • Ready`;
+
+      return `
+        <button 
+          onclick="APP.selectTable('${cfg.id}')"
+          class="bp-table ${cardClass}"
+          style="left: ${cfg.left}; top: ${cfg.top}; width: ${cfg.width}; height: ${cfg.height};"
+          title="${tooltip}">
+          <div class="flex items-center justify-between w-full px-0.5 leading-none">
+            <span class="text-[11px] font-black text-white">${tMeta.name || 'T-' + cleanNum}</span>
+            ${kotBadge}
+          </div>
+          ${amountOrStatus}
+          <span class="text-[8px] text-neutral-300 leading-none mt-0.5 truncate w-full">${cfg.posLabel}</span>
+        </button>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="floor-blueprint-wrap">
+        <!-- TOP WALL BOUNDARY -->
+        <div class="absolute top-1 inset-x-0 text-center text-[9px] font-black uppercase tracking-widest text-neutral-500/70 pointer-events-none">
+          ▲ Terrace Deck Front Wall ▲
+        </div>
+
+        <!-- 17 TABLES -->
+        ${tablesHtml}
+
+        <!-- ARCHITECTURAL WALL BLOCK -->
+        <div class="bp-wall" style="left: 2%; top: 32%; width: 23%; height: 13%;">
+          <span class="text-[10px] font-black text-neutral-300 uppercase tracking-wider bg-black/70 px-1.5 py-0.5 rounded border border-neutral-700">
+            🧱 WALL
+          </span>
+        </div>
+
+        <!-- ENTRANCE -->
+        <div class="absolute flex items-center justify-center gap-1" style="left: 2%; top: 46.5%; width: 23%; height: 4%;">
+          <span class="text-[9px] font-black text-amber-400 uppercase tracking-wider bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/50 shadow">
+            🚪 ENTRANCE
+          </span>
+        </div>
+
+        <!-- BOTTOM FACILITIES -->
+        <!-- Kitchen -->
+        <div class="bp-facility-kitchen" style="left: 2%; bottom: 2%; width: 38%; height: 18%;">
+          <div class="flex items-center gap-1">
+            <span class="text-sm">👨‍🍳</span>
+            <span class="text-xs font-black tracking-wider text-red-300 uppercase">KITCHEN</span>
+          </div>
+          <span class="text-[8px] text-neutral-400 mt-0.5">KOT Pickup Window</span>
+        </div>
+
+        <!-- Central Aisle || -->
+        <div class="absolute flex flex-col items-center justify-center pointer-events-none" style="left: 43%; bottom: 3%; width: 12%; height: 16%;">
+          <div class="flex items-center gap-2">
+            <div class="w-1 h-9 bg-amber-400/70 rounded"></div>
+            <div class="w-1 h-9 bg-amber-400/70 rounded"></div>
+          </div>
+          <span class="text-[8px] font-black text-amber-300 mt-0.5 tracking-tighter">|| AISLE</span>
+        </div>
+
+        <!-- Billing Counter -->
+        <div class="bp-facility-counter" style="right: 2%; bottom: 2%; width: 40%; height: 18%;">
+          <div class="flex items-center gap-1">
+            <span class="text-sm">💼</span>
+            <span class="text-xs font-black tracking-wider text-amber-300 uppercase">COUNTER</span>
+          </div>
+          <span class="text-[8px] text-neutral-400 mt-0.5">Cashier Desk</span>
+        </div>
+
+        <!-- Central Walkway Watermark -->
+        <div class="absolute inset-x-28 top-28 bottom-28 flex items-center justify-center pointer-events-none opacity-20">
+          <span class="text-xs font-black tracking-widest text-neutral-400 uppercase">CENTRAL WALKWAY</span>
+        </div>
+      </div>
+    `;
   },
 
   // ================= 3B. SMART ORDER FOOTPRINT & VISUAL IDENTIFICATION =================
@@ -1144,9 +1341,39 @@ const APP = {
 
   renderFloorTables() {
     const mobileGrid = document.getElementById('app-floor-grid');
+    const mobileMap = document.getElementById('app-floor-map-container');
     const webStrip = document.getElementById('web-tables-strip');
+    const webMap = document.getElementById('web-floor-map-container');
 
-    const currentFloor = this.state.activeFloorFilter || 'Ground Floor';
+    const currentFloor = this.state.activeFloorFilter || 'all';
+    const isFloor2Map = (currentFloor === '2nd Floor') && (this.state.tableLayoutMode === 'map');
+
+    this.updateLayoutToggleButtons();
+
+    // 1. Mobile Blueprint vs Grid View
+    if (mobileMap && mobileGrid) {
+      if (isFloor2Map) {
+        mobileGrid.classList.add('hidden');
+        mobileMap.classList.remove('hidden');
+        this.render2ndFloorBlueprint(mobileMap);
+      } else {
+        mobileMap.classList.add('hidden');
+        mobileGrid.classList.remove('hidden');
+      }
+    }
+
+    // 2. Web Desktop Blueprint vs Strip View
+    if (webMap && webStrip) {
+      if (isFloor2Map) {
+        webStrip.classList.add('hidden');
+        webMap.classList.remove('hidden');
+        this.render2ndFloorBlueprint(webMap);
+      } else {
+        webMap.classList.add('hidden');
+        webStrip.classList.remove('hidden');
+      }
+    }
+
     const filteredTables = (currentFloor === 'all') 
       ? RESTAURANT_TABLES 
       : RESTAURANT_TABLES.filter(t => t.floor === currentFloor);
