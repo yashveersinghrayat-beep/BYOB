@@ -738,16 +738,22 @@ const APP = {
     const live = this.getLiveTable();
     const isOccupied = (live.currentSubtotal || 0) > 0 || live.status === 'occupied';
 
-    // If on Mobile Handheld View:
-    // If the table was already selected, tapping it again immediately opens the menu!
+    // SINGLE-CLICK WORKFLOW:
+    // 1. On Mobile Waiter View: Tapping any table immediately opens its menu!
     if (this.state.currentView === 'app') {
-      if (isAlreadySelected && this.state.appScreen === 'tables') {
-        this.openMenuForSelectedTable();
-        return;
-      }
+      this.openMenuForSelectedTable();
+      return;
     }
 
-    this.showToast(`Selected ${table.name} (${table.position}) • ${isOccupied ? `🔴 ₹${live.currentSubtotal}` : '🟢 Free'}`);
+    // 2. On Desktop Web POS: If clicked from 2D Blueprint,
+    // select table and switch directly to the Menu workspace so cashier can immediately punch items!
+    if (this.state.tableLayoutMode === 'map') {
+      this.setTableLayoutMode('grid'); // switches back to fast cashier strip + menu view!
+      this.showToast(`⚡ Opened ${table.name} • ${isOccupied ? `🔴 ₹${live.currentSubtotal.toLocaleString('en-IN')}` : '🟢 Free'}`);
+      return;
+    }
+
+    this.showToast(`Selected ${table.name} (${table.position}) • ${isOccupied ? `🔴 ₹${live.currentSubtotal.toLocaleString('en-IN')}` : '🟢 Free'}`);
   },
 
   // Open Menu for currently selected table
@@ -1362,14 +1368,17 @@ const APP = {
       }
     }
 
-    // 2. Web Desktop Blueprint vs Strip View
+    // 2. Web Desktop Blueprint vs Strip View (Zero-Scroll Side-by-Side Corporate Workspace)
+    const webMenuWorkspace = document.getElementById('web-menu-workspace');
     if (webMap && webStrip) {
       if (isFloor2Map) {
         webStrip.classList.add('hidden');
+        if (webMenuWorkspace) webMenuWorkspace.classList.add('hidden');
         webMap.classList.remove('hidden');
         this.render2ndFloorBlueprint(webMap);
       } else {
         webMap.classList.add('hidden');
+        if (webMenuWorkspace) webMenuWorkspace.classList.remove('hidden');
         webStrip.classList.remove('hidden');
       }
     }
@@ -2572,6 +2581,13 @@ const APP = {
     this.updateFloorBottomDock();
     this.updateTableHeaderBadges();
     this.showToast(`🔥 ${count} item(s) punched to ${tableName}! Saved to Database.`);
+
+    // Automated Step-by-Step Flow: Return to Floor Screen ready for next table!
+    if (this.state.currentView === 'app') {
+      setTimeout(() => {
+        this.goToTables();
+      }, 350);
+    }
   },
 
   calculateTotalBill() {
