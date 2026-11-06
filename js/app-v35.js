@@ -2503,7 +2503,7 @@ const APP = {
   refreshBillingModalData() {
     const liveTable = this.getLiveTable();
     const placedOrders = liveTable.placedOrders || [];
-    const { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson } = this.calculateTotalBill();
+    const { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct } = this.calculateTotalBill();
     const payUpiLiveAmt = document.getElementById('pay-upi-live-amount');
     if (payUpiLiveAmt) payUpiLiveAmt.textContent = '₹' + grandTotal.toLocaleString('en-IN');
 
@@ -2571,8 +2571,10 @@ const APP = {
 
     const cgstLabel = document.getElementById('bill-cgst-label');
     const sgstLabel = document.getElementById('bill-sgst-label');
-    if (cgstLabel) cgstLabel.textContent = `CGST (${cgstPct !== undefined ? cgstPct : 2.5}%):`;
-    if (sgstLabel) sgstLabel.textContent = `SGST (${sgstPct !== undefined ? sgstPct : 2.5}%):`;
+    const dispCgstPct = (typeof cgstPct !== 'undefined' && !isNaN(cgstPct)) ? cgstPct : 2.5;
+    const dispSgstPct = (typeof sgstPct !== 'undefined' && !isNaN(sgstPct)) ? sgstPct : 2.5;
+    if (cgstLabel) cgstLabel.textContent = `CGST (${dispCgstPct}%):`;
+    if (sgstLabel) sgstLabel.textContent = `SGST (${dispSgstPct}%):`;
 
     // Service Charge (Fixed ₹)
     const servRow = document.getElementById('bill-service-charge-row');
@@ -3400,9 +3402,13 @@ const APP = {
 
         this.closeVoidModal();
 
-        // Reload data and sync UI
-        if (window.DB && window.DB.loadInitialData) {
-          await window.DB.loadInitialData();
+        // Reload data and sync UI via active mode (NEVER downgrade to stale local data in cloud mode)
+        if (window.DB) {
+          if (window.DB.mode === 'supabase_cloud' && window.DB.loadSupabaseData) {
+            await window.DB.loadSupabaseData();
+          } else if (window.DB.loadInitialData) {
+            await window.DB.loadInitialData();
+          }
         }
 
         // Re-render table orders and billing screen if open
@@ -3412,7 +3418,7 @@ const APP = {
 
         const billingModal = document.getElementById('billing-modal');
         if (billingModal && !billingModal.classList.contains('hidden')) {
-          this.openBillingPage(tableId, false);
+          this.refreshBillingModalData();
         }
 
         this.updateVoidAuditBadgeCount();

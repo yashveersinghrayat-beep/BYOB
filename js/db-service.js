@@ -778,7 +778,8 @@ const DB_SERVICE = {
       if (typeof APP !== 'undefined' && APP.showToast) {
         APP.showToast(`🔄 Synced ${syncedCount} offline order(s) with Server!`);
       }
-      this.loadInitialData();
+      if (this.mode === 'supabase_cloud') this.loadSupabaseData();
+      else this.loadInitialData();
     }
   },
 
@@ -843,7 +844,8 @@ const DB_SERVICE = {
 
       this.sse.addEventListener('BILL_UPDATED', (e) => {
         try {
-          this.loadInitialData();
+          if (this.mode === 'supabase_cloud') this.loadSupabaseData();
+      else this.loadInitialData();
         } catch (err) {}
       });
 
@@ -1333,7 +1335,7 @@ const DB_SERVICE = {
     let t = this.tables.find(x => x.id === tableId);
     if (t && Array.isArray(t.placedOrders)) {
       if (kotItemId) {
-        t.placedOrders = t.placedOrders.filter(p => p.id !== kotItemId);
+        t.placedOrders = t.placedOrders.filter(p => String(p.id) !== String(kotItemId));
       } else if (itemName) {
         const idx = t.placedOrders.findIndex(p => p.name === itemName);
         if (idx !== -1) t.placedOrders.splice(idx, 1);
@@ -1357,14 +1359,59 @@ const DB_SERVICE = {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
-          await client.from('kot_items').update({
-            is_void: true,
-            void_reason: reason || 'Customer request',
-            voided_at: new Date().toISOString()
-          }).eq('id', kotItemId);
+          if (kotItemId) {
+            await client.from('kot_items').update({
+              is_void: true,
+              void_reason: reason || 'Customer request',
+              voided_at: new Date().toISOString()
+            }).eq('id', kotItemId);
+          } else if (itemName) {
+            const { data: openKots } = await client.from('kots')
+              .select('id, kot_items(*)')
+              .eq('table_id', tableId)
+              .not('status', 'in', '("billed","cancelled")');
+            if (openKots) {
+              for (const k of openKots) {
+                const target = (k.kot_items || []).find(ki => ki.name === itemName && !ki.is_void);
+                if (target) {
+                  await client.from('kot_items').update({
+                    is_void: true,
+                    void_reason: reason || 'Customer request',
+                    voided_at: new Date().toISOString()
+                  }).eq('id', target.id);
+                  break;
+                }
+              }
+            }
+          }
+
+          // Recalculate remaining active items on table in Supabase
+          const { data: remainingKots } = await client.from('kots')
+            .select('id, status, kot_items(*)')
+            .eq('table_id', tableId)
+            .not('status', 'in', '("billed","cancelled")');
+
+          let newSubtotal = 0;
+          let hasRemainingItems = false;
+          if (remainingKots) {
+            for (const k of remainingKots) {
+              const activeItems = (k.kot_items || []).filter(ki => !ki.is_void);
+              if (activeItems.length > 0) {
+                hasRemainingItems = true;
+                activeItems.forEach(ki => newSubtotal += Number(ki.price || 0) * Number(ki.qty || 1));
+              } else {
+                await client.from('kots').update({ status: 'cancelled' }).eq('id', k.id);
+              }
+            }
+          }
+
+          await client.from('tables').update({
+            status: hasRemainingItems ? 'occupied' : 'vacant',
+            current_subtotal: newSubtotal
+          }).eq('id', tableId);
 
           await client.from('void_logs').insert([{
-            kot_item_id: kotItemId,
+            kot_item_id: kotItemId ? String(kotItemId) : null,
             table_id: tableId || null,
             table_name: tableName || null,
             floor: floor || '1st Floor',
@@ -1378,6 +1425,7 @@ const DB_SERVICE = {
             authorized_by: managerPin === '1234' ? 'Manager (PIN: 1234)' : `Admin/Manager (PIN: ${managerPin})`
           }]);
 
+          await this.loadSupabaseData();
           return { success: true };
         } catch (e) {
           console.warn('Supabase cloud voidKotItem notice:', e);

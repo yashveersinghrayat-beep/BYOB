@@ -729,15 +729,33 @@ const MENU_ITEMS = [
   },
   {
     "id": "v_potato_veggies",
-    "name": "Potato Veggies / Peri Peri Fries",
+    "name": "Potato Veggies",
     "category": "chakna",
     "price": 199,
     "isVeg": true,
-    "desc": "Crispy skin-on potato wedges seasoned with herbs & paprika.",
+    "desc": "Crispy skin-on seasoned potato wedges tossed with herbs & paprika.",
     "image": "images/dishes/v_potato_veggies.jpg"
   },
   {
     "id": "v_peri_peri_fries",
+    "name": "Peri Peri Fries",
+    "category": "chakna",
+    "price": 229,
+    "isVeg": true,
+    "desc": "Crisp seasoned fries tossed in spicy peri peri herbs.",
+    "image": "images/dishes/v_peri_peri_fries.jpg"
+  },
+  {
+    "id": "v_french_fries",
+    "name": "French Fries (Salted)",
+    "category": "chakna",
+    "price": 199,
+    "isVeg": true,
+    "desc": "Crispy golden salted classic french fries.",
+    "image": "images/dishes/v_french_fries.jpg"
+  },
+  {
+    "id": "v_peri_peri_french_fries",
     "name": "Peri Peri French Fries",
     "category": "chakna",
     "price": 245,
@@ -827,12 +845,21 @@ const MENU_ITEMS = [
     "image": "images/dishes/v_paneer_tikka.jpg"
   },
   {
-    "id": "nv_egg_bhurji",
-    "name": "Masala Omelette / Egg Bhurji",
+    "id": "nv_masala_omelette",
+    "name": "Masala Omelette",
     "category": "nonveg_starters",
     "price": 239,
     "isVeg": false,
-    "desc": "Three farm eggs scrambled or folded with onions, tomatoes, coriander & chillies.",
+    "desc": "Fluffy folded farm eggs with onion, tomato, green chillies & fresh coriander.",
+    "image": "images/dishes/nv_egg_bhurji.jpg"
+  },
+  {
+    "id": "nv_egg_bhurji",
+    "name": "Egg Bhurji",
+    "category": "nonveg_starters",
+    "price": 239,
+    "isVeg": false,
+    "desc": "Spiced scrambled farm eggs cooked with onions, tomatoes & desi spices.",
     "image": "images/dishes/nv_egg_bhurji.jpg"
   },
   {
@@ -1116,11 +1143,20 @@ const MENU_ITEMS = [
   },
   {
     "id": "mc_paneer_butter",
-    "name": "Paneer Butter Masala / Kadai Paneer",
+    "name": "Paneer Butter Masala",
     "category": "mains",
     "price": 399,
     "isVeg": true,
-    "desc": "Paneer in velvety tomato butter makhani or wok-cooked kadai gravy.",
+    "desc": "Fresh cottage cheese cubes in rich velvety tomato-butter makhani gravy.",
+    "image": "images/dishes/mc_paneer_butter.jpg"
+  },
+  {
+    "id": "mc_kadai_paneer",
+    "name": "Kadai Paneer",
+    "category": "mains",
+    "price": 399,
+    "isVeg": true,
+    "desc": "Cottage cheese tossed with bell peppers and freshly ground kadai spices.",
     "image": "images/dishes/mc_paneer_butter.jpg"
   },
   {
@@ -1134,20 +1170,47 @@ const MENU_ITEMS = [
   },
   {
     "id": "mc_chicken_curry",
-    "name": "Chicken Curry / Rara / Jalfrezi",
+    "name": "Chicken Curry",
     "category": "mains",
     "price": 489,
     "isVeg": false,
-    "desc": "Choice of Dhaba Chicken Curry, Chicken Rara with keema, or Jalfrezi.",
+    "desc": "Homestyle dhaba chicken cooked in rich onion-tomato gravy.",
+    "image": "images/dishes/mc_chicken_curry.jpg"
+  },
+  {
+    "id": "mc_chicken_rara",
+    "name": "Chicken Rara",
+    "category": "mains",
+    "price": 489,
+    "isVeg": false,
+    "desc": "Succulent chicken pieces simmered in spicy minced keema gravy.",
+    "image": "images/dishes/mc_chicken_curry.jpg"
+  },
+  {
+    "id": "mc_chicken_jalfrezi",
+    "name": "Chicken Jalfrezi",
+    "category": "mains",
+    "price": 489,
+    "isVeg": false,
+    "desc": "Tender chicken stir-fried with capsicum, onions & tangy spiced gravy.",
     "image": "images/dishes/mc_chicken_curry.jpg"
   },
   {
     "id": "mc_butter_chicken",
-    "name": "Butter Chicken / Kadhai Chicken",
+    "name": "Butter Chicken",
     "category": "mains",
     "price": 489,
     "isVeg": false,
-    "desc": "Tandoori chicken in smooth tomato makhani sauce or spiced kadhai.",
+    "desc": "Classic tandoori chicken simmered in rich creamy butter-tomato gravy.",
+    "image": "images/dishes/mc_butter_chicken.jpg"
+  },
+  {
+    "id": "mc_kadhai_chicken",
+    "name": "Kadhai Chicken",
+    "category": "mains",
+    "price": 489,
+    "isVeg": false,
+    "desc": "Spicy chicken cooked in iron wok with bell peppers and roasted coriander.",
     "image": "images/dishes/mc_butter_chicken.jpg"
   },
   {
@@ -1251,20 +1314,29 @@ const MENU_ITEMS = [
   },
   {
     "id": "s_green_salad",
-    "name": "Garden / Green Salad",
+    "name": "Green Salad",
     "category": "desserts_salads",
     "price": 189,
     "isVeg": true,
-    "desc": "Fresh garden cucumber, carrots, tomatoes and beetroot slices.",
+    "desc": "Fresh cucumber, carrots, tomatoes and beetroot slices with lemon.",
     "image": "images/dishes/s_green_salad.jpg"
   },
   {
     "id": "d_brownie",
-    "name": "Brownie with Ice Cream / Lava Cake",
+    "name": "Brownie with Ice Cream",
     "category": "desserts_salads",
     "price": 249,
     "isVeg": true,
-    "desc": "Warm gooey chocolate brownie or lava cake served with vanilla scoop.",
+    "desc": "Warm gooey chocolate brownie served with a scoop of vanilla ice cream.",
+    "image": "images/dishes/d_brownie.jpg"
+  },
+  {
+    "id": "d_lava_cake",
+    "name": "Choco Lava Cake",
+    "category": "desserts_salads",
+    "price": 249,
+    "isVeg": true,
+    "desc": "Molten chocolate cake with rich oozing center.",
     "image": "images/dishes/d_brownie.jpg"
   },
   {
