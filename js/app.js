@@ -628,13 +628,15 @@ const APP = {
 
     // Native browser print trigger (e.g. Chrome File -> Print) zero waste continuous roll
     window.addEventListener('beforeprint', () => {
+      const receiptEl = document.getElementById('epson-print-wrapper');
+      const hMm = receiptEl ? Math.max(50, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 280) * 0.264583) + 4) : 120;
       let dynStyle = document.getElementById('dynamic-epson-page-style');
       if (!dynStyle) {
         dynStyle = document.createElement('style');
         dynStyle.id = 'dynamic-epson-page-style';
         document.head.appendChild(dynStyle);
       }
-      dynStyle.textContent = `@page { size: auto !important; margin: 0mm !important; } @media print { @page { size: auto !important; margin: 0mm !important; } html, body { height: auto !important; margin: 0 !important; padding: 0 !important; } }`;
+      dynStyle.textContent = `@page { size: 80mm ${hMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${hMm}mm !important; margin: 0mm !important; } html, body { width: 80mm !important; max-width: 80mm !important; height: ${hMm}mm !important; max-height: ${hMm}mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; } }`;
     });
   },
 
@@ -672,6 +674,14 @@ const APP = {
     if (typeof window.DB.onAppUpdate === 'function') {
       window.DB.onAppUpdate((update) => {
         this.handleIncomingAppUpdate(update);
+      });
+    }
+
+    // Live Store & Tax Settings Listener
+    if (typeof window.DB.onStoreUpdate === 'function') {
+      window.DB.onStoreUpdate(() => {
+        this.refreshBillingModalData();
+        this.updateCartUI();
       });
     }
   },
@@ -789,13 +799,22 @@ const APP = {
     if (dockInfo) dockInfo.textContent = `${table.position.split('•')[0].trim()} • 👥 ${table.seats} Seats`;
 
     if (isOccupied) {
+      const fp = this.buildTableFootprint(placedOrders, 6);
       if (dockBadge) {
         dockBadge.className = "text-[10px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white font-mono shadow";
-        dockBadge.textContent = `🔴 OCCUPIED • ₹${subtotal}`;
+        dockBadge.textContent = `🔴 OCCUPIED • ₹${subtotal.toLocaleString('en-IN')}`;
       }
       if (dockIcon) {
         dockIcon.className = "w-7 h-7 rounded-lg bg-red-500/20 border border-red-500 flex items-center justify-center text-xs font-black text-red-400 shadow";
         dockIcon.textContent = "🔴";
+      }
+      if (dockInfo) {
+        dockInfo.innerHTML = `
+          <div class="text-right">
+            <div class="font-bold text-neutral-200 text-[11px] truncate max-w-[280px]">${table.position.split('•')[0].trim()} • 👥 ${table.seats} Seats</div>
+            ${fp.tooltip ? `<div class="text-[10px] font-medium text-amber-300 truncate max-w-[280px] font-mono mt-0.5" title="${fp.tooltip}">🏷️ ${fp.tooltip}</div>` : ''}
+          </div>
+        `;
       }
       if (dockBillBtn) dockBillBtn.classList.remove('hidden');
       if (dockUpiBtn) dockUpiBtn.classList.remove('hidden');
@@ -976,6 +995,147 @@ const APP = {
     this.renderFloorTables();
   },
 
+  // ================= 3B. SMART ORDER FOOTPRINT & VISUAL IDENTIFICATION =================
+  getItemFootprintMeta(name) {
+    const n = (name || '').toLowerCase();
+    
+    // Mixers & Glassware (BYOB Special Recognition)
+    if (n.includes('glass')) return { icon: '🥛', type: 'drink', short: 'Glass', priority: 1 };
+    if (n.includes('ice') || n.includes('cube')) return { icon: '🧊', type: 'drink', short: 'Ice Bucket', priority: 2 };
+    if (n.includes('soda')) return { icon: '🍾', type: 'drink', short: 'Soda', priority: 3 };
+    if (n.includes('water')) return { icon: '💧', type: 'drink', short: 'Water', priority: 4 };
+    if (n.includes('red bull') || n.includes('campa') || n.includes('energy')) return { icon: '⚡', type: 'drink', short: 'Energy', priority: 5 };
+    if (n.includes('coke') || n.includes('soft drink') || n.includes('cold drink') || n.includes('pepsi') || n.includes('thums')) return { icon: '🥤', type: 'drink', short: 'Cold Drink', priority: 6 };
+    if (n.includes('lime') || n.includes('mojito') || n.includes('lemon')) return { icon: '🍋', type: 'drink', short: 'Lime / Mojito', priority: 7 };
+    if (n.includes('tonic')) return { icon: '🍸', type: 'drink', short: 'Tonic', priority: 8 };
+    if (n.includes('juice')) return { icon: '🧃', type: 'drink', short: 'Juice', priority: 9 };
+
+    // Starters & Chakna & Finger Food
+    if (n.includes('peanut')) return { icon: '🥜', type: 'starter', short: 'Peanut Masala', priority: 10 };
+    if (n.includes('papad')) return { icon: '🫓', type: 'starter', short: 'Papad', priority: 11 };
+    if (n.includes('chana')) return { icon: '🍲', type: 'starter', short: 'Kala Chana', priority: 12 };
+    if (n.includes('hara bhara')) return { icon: '🍢', type: 'starter', short: 'Hara Bhara', priority: 13 };
+    if (n.includes('tikka')) return { icon: '🍢', type: 'starter', short: n.includes('chicken') ? 'Chicken Tikka' : 'Paneer Tikka', priority: 14 };
+    if (n.includes('kabab') || n.includes('kebab')) return { icon: '🍢', type: 'starter', short: 'Kabab', priority: 15 };
+    if (n.includes('fries') || n.includes('veggies')) return { icon: '🍟', type: 'starter', short: n.includes('peri') ? 'Peri Peri Fries' : 'Fries', priority: 16 };
+    if (n.includes('spring roll') || n.includes('roll')) return { icon: '🌯', type: 'starter', short: 'Spring Roll', priority: 17 };
+    if (n.includes('corn')) return { icon: '🌽', type: 'starter', short: 'Crispy Corn', priority: 18 };
+    if (n.includes('manchurian')) return { icon: '🧆', type: 'starter', short: 'Manchurian', priority: 19 };
+    if (n.includes('chicken') && (n.includes('popcorn') || n.includes('wings') || n.includes('lollipop') || n.includes('fries'))) {
+      return { icon: '🍗', type: 'starter', short: name, priority: 20 };
+    }
+
+    // Mains & Curries & Breads
+    if (n.includes('butter chicken')) return { icon: '🍗', type: 'main', short: 'Butter Chicken', priority: 25 };
+    if (n.includes('paneer')) return { icon: '🍛', type: 'main', short: 'Paneer Gravy', priority: 26 };
+    if (n.includes('curry') || n.includes('rara') || n.includes('kadai') || n.includes('makhani') || n.includes('dal')) {
+      return { icon: '🍛', type: 'main', short: name, priority: 27 };
+    }
+    if (n.includes('biryani') || n.includes('rice')) return { icon: '🍚', type: 'main', short: 'Biryani / Rice', priority: 28 };
+    if (n.includes('roti') || n.includes('naan')) return { icon: '🫓', type: 'main', short: 'Roti / Naan', priority: 29 };
+    if (n.includes('pasta')) return { icon: '🍝', type: 'main', short: 'Pasta', priority: 30 };
+
+    // Extras
+    if (n.includes('salad') || n.includes('onion')) return { icon: '🥗', type: 'salad', short: 'Salad / Onion', priority: 35 };
+    if (n.includes('smoke')) return { icon: '🚬', type: 'smoke', short: 'Smoke', priority: 36 };
+    if (n.includes('brownie') || n.includes('cake') || n.includes('jamun') || n.includes('ice cream')) {
+      return { icon: '🍨', type: 'dessert', short: 'Dessert', priority: 37 };
+    }
+
+    return { icon: '🍽️', type: 'food', short: name, priority: 50 };
+  },
+
+  buildTableFootprint(placedOrders, maxPills = 3) {
+    if (!Array.isArray(placedOrders) || placedOrders.length === 0) {
+      return { pillsHtml: '', microSummary: '', tooltip: '', itemsCount: 0 };
+    }
+
+    // 1. Consolidate identical items by clean name
+    const map = {};
+    placedOrders.forEach(it => {
+      if (!it || !it.name) return;
+      const cleanName = it.name.trim();
+      if (!map[cleanName]) {
+        map[cleanName] = { name: cleanName, qty: Number(it.qty || 1), price: Number(it.price || 0) };
+      } else {
+        map[cleanName].qty += Number(it.qty || 1);
+      }
+    });
+
+    const items = Object.values(map);
+    if (items.length === 0) {
+      return { pillsHtml: '', microSummary: '', tooltip: '', itemsCount: 0 };
+    }
+
+    // 2. Attach priority & metadata
+    items.forEach(it => {
+      it.meta = this.getItemFootprintMeta(it.name);
+    });
+
+    // 3. Balanced Pick: Combine up to 2 drinks/mixers + up to 2 food items for maximum instant recognition
+    const drinks = items.filter(i => i.meta.type === 'drink').sort((a, b) => (a.meta.priority || 99) - (b.meta.priority || 99));
+    const food = items.filter(i => i.meta.type !== 'drink').sort((a, b) => (a.meta.priority || 99) - (b.meta.priority || 99));
+
+    const picked = [];
+    if (drinks.length > 0 && food.length > 0) {
+      if (drinks.length >= 2 && maxPills >= 3) {
+        picked.push(drinks[0], drinks[1], food[0]);
+      } else {
+        picked.push(drinks[0], food[0]);
+        if (maxPills >= 3) {
+          if (food.length >= 2) picked.push(food[1]);
+          else if (drinks.length >= 2) picked.push(drinks[1]);
+        }
+      }
+    } else if (drinks.length > 0) {
+      picked.push(...drinks.slice(0, maxPills));
+    } else {
+      picked.push(...food.slice(0, maxPills));
+    }
+
+    // Full tooltip for hover
+    const fullTooltip = items.map(it => `${it.qty}x ${it.name}`).join(' • ');
+    const remainingCount = items.length - picked.length;
+
+    // Build Micro-Pills HTML
+    const pillsHtml = picked.map(it => {
+      const type = it.meta.type;
+      let badgeClasses = 'bg-neutral-800/90 text-neutral-200 border-neutral-700';
+      if (type === 'drink') {
+        badgeClasses = 'bg-sky-500/20 text-sky-200 border-sky-500/40';
+      } else if (type === 'starter') {
+        badgeClasses = 'bg-amber-500/20 text-amber-200 border-amber-500/40';
+      } else if (type === 'main') {
+        badgeClasses = 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40';
+      } else if (type === 'dessert' || type === 'salad' || type === 'smoke') {
+        badgeClasses = 'bg-purple-500/20 text-purple-200 border-purple-500/40';
+      }
+
+      const shortTitle = it.meta.short || it.name;
+      return `
+        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${badgeClasses} shrink-0 max-w-[125px] shadow-sm select-none" title="${it.qty}x ${it.name}">
+          <span>${it.meta.icon}</span>
+          <span class="font-mono text-white text-[10px]">${it.qty > 1 ? `${it.qty}x` : ''}</span>
+          <span class="truncate">${shortTitle}</span>
+        </span>
+      `;
+    }).join('') + (remainingCount > 0 ? `
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold font-mono bg-neutral-900 text-neutral-300 border border-neutral-700 shrink-0 select-none" title="${fullTooltip}">
+        +${remainingCount} more
+      </span>
+    ` : '');
+
+    // 1-line micro icons for top web strip
+    const microSummary = picked.map(it => `${it.meta.icon}${it.qty > 1 ? `x${it.qty}` : ''}`).join(' ') + (remainingCount > 0 ? ` +${remainingCount}` : '');
+
+    return {
+      pillsHtml,
+      microSummary,
+      tooltip: fullTooltip,
+      itemsCount: items.length
+    };
+  },
+
   renderFloorTables() {
     const mobileGrid = document.getElementById('app-floor-grid');
     const webStrip = document.getElementById('web-tables-strip');
@@ -1011,31 +1171,41 @@ const APP = {
         let footerHtml = "";
 
         if (isOccupied) {
+          const footprint = this.buildTableFootprint(placedOrders, 3);
+          const waiterName = liveTable.waiterName || t.waiterName || '';
+          const waiterBadge = waiterName ? `<span class="text-[9px] font-bold text-amber-300/80 truncate max-w-[90px]" title="Waiter: ${waiterName}">👤 ${waiterName.split(' ')[0]}</span>` : '';
+
           if (isCurrent) {
             // Selected & Occupied
             cardClass = "table-card-selected-occupied";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow ring-2 ring-amber-400">🔴 ₹${subtotal} OCCUPIED</span>`;
+            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow ring-2 ring-amber-400">🔴 ₹${subtotal.toLocaleString('en-IN')}</span>`;
           } else if (draftCount > 0) {
             // Unselected & Occupied with Draft Items
             cardClass = "table-card-occupied border-2 border-amber-400";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow">🔴 ₹${subtotal}</span><span class="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-black shadow animate-pulse">DRAFT(${draftCount})</span>`;
+            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow">🔴 ₹${subtotal.toLocaleString('en-IN')}</span><span class="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-black shadow animate-pulse">+DRAFT</span>`;
           } else {
             // Unselected & Occupied
             cardClass = "table-card-occupied";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow">🔴 ₹${subtotal} OCCUPIED</span>`;
+            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow">🔴 ₹${subtotal.toLocaleString('en-IN')}</span>`;
           }
 
           middleHtml = `
-            <div class="my-1">
-              <div class="text-xl font-black font-mono text-white tracking-tight leading-none">₹${subtotal}</div>
-              <div class="text-[10px] font-bold text-red-200 mt-1 truncate">${placedOrders.length} item(s) running</div>
+            <div class="my-1 w-full overflow-hidden">
+              <div class="flex items-baseline justify-between gap-1">
+                <span class="text-xl font-black font-mono text-white tracking-tight leading-none">₹${subtotal.toLocaleString('en-IN')}</span>
+                ${waiterBadge}
+              </div>
+              <!-- Order Footprint Pills Strip (Fixed 2-Line Container, Zero Layout Spill) -->
+              <div class="flex flex-wrap items-center gap-1 mt-1.5 min-h-[24px] max-h-[48px] overflow-hidden" title="${footprint.tooltip}">
+                ${footprint.pillsHtml}
+              </div>
             </div>
           `;
 
           footerHtml = `
             <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-red-500/30 text-neutral-300 font-medium w-full">
               <span>👥 ${t.seats} Seats</span>
-              <span class="truncate font-bold text-neutral-200">${cleanPosition}</span>
+              <span class="truncate font-bold text-neutral-200" title="${t.landmark || cleanPosition}">${cleanPosition}</span>
             </div>
           `;
         } else {
@@ -1043,7 +1213,7 @@ const APP = {
           if (isCurrent) {
             // Selected & Free
             cardClass = "table-card-selected-free";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-black shadow ring-2 ring-amber-400">🟢 FREE (SELECTED)</span>`;
+            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-black shadow ring-2 ring-amber-400">🟢 FREE</span>`;
           } else if (draftCount > 0) {
             // Unselected & Free with Draft Items
             cardClass = "table-card-free border-2 border-amber-400/80";
@@ -1072,7 +1242,7 @@ const APP = {
         return `
           <button 
             onclick="APP.selectTable('${t.id}')"
-            class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[120px] shadow-lg group">
+            class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[128px] max-h-[160px] shadow-lg group">
             
             <!-- Top Row: Table Name + Single Clean Badge -->
             <div class="flex items-center justify-between w-full">
@@ -1080,7 +1250,7 @@ const APP = {
               ${headerBadge}
             </div>
 
-            <!-- Middle: Large Rupee Amount or Status -->
+            <!-- Middle: Large Rupee Amount or Status + Smart Footprint -->
             ${middleHtml}
 
             <!-- Bottom: Capacity & Position -->
@@ -1106,14 +1276,14 @@ const APP = {
         if (isCurrent) {
           if (isOccupied) {
             btnClasses = "bg-red-600 text-white border-2 border-yellow-300 font-black shadow-[0_0_16px_rgba(239,68,68,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
-            statusBadge = `🔴 ₹${subtotal}`;
+            statusBadge = `🔴 ₹${subtotal.toLocaleString('en-IN')}`;
           } else {
             btnClasses = "bg-emerald-600 text-white border-2 border-yellow-300 font-black shadow-[0_0_16px_rgba(16,185,129,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
             statusBadge = "🟢 Free";
           }
         } else if (isOccupied) {
           btnClasses = "bg-[#450e17] text-white border-2 border-red-500 hover:border-red-400 font-bold shadow-[0_3px_10px_rgba(239,68,68,0.35)]";
-          statusBadge = `🔴 ₹${subtotal}`;
+          statusBadge = `🔴 ₹${subtotal.toLocaleString('en-IN')}`;
         } else {
           btnClasses = draftCount > 0 
             ? "bg-[#251e08] text-amber-200 border-2 border-amber-400 font-bold shadow-[0_3px_10px_rgba(245,158,11,0.3)]"
@@ -1125,12 +1295,22 @@ const APP = {
           statusBadge += ` (+${draftCount})`;
         }
 
+        let footprintMicro = '';
+        if (isOccupied) {
+          const fp = this.buildTableFootprint(liveTable.placedOrders || [], 3);
+          if (fp.microSummary) {
+            footprintMicro = `<div class="text-[9px] font-mono text-amber-200/90 truncate max-w-full mt-0.5 select-none" title="${fp.tooltip}">${fp.microSummary}</div>`;
+          }
+        }
+
         return `
           <button 
             onclick="APP.selectTable('${t.id}')"
-            class="p-2 rounded-xl text-center transition-all ${btnClasses} flex flex-col justify-center items-center">
+            class="p-2 rounded-xl text-center transition-all ${btnClasses} flex flex-col justify-center items-center min-h-[58px]"
+            title="${t.name}: ${isOccupied ? (liveTable.placedOrders || []).map(i => i.qty + 'x ' + i.name).join(', ') : 'Free Table'}">
             <div class="text-xs font-black truncate w-full">${t.name}</div>
             <div class="text-[10px] font-mono font-bold mt-0.5">${statusBadge}</div>
+            ${footprintMicro}
           </button>
         `;
       }).join('');
@@ -3072,8 +3252,8 @@ const APP = {
       return;
     }
 
-    // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 3mm tear margin (ultra-compact, zero waste)
-    const computedHeightMm = Math.max(45, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 220) * 0.264583) + 3);
+    // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 4mm tear margin (ultra-compact, zero waste)
+    const computedHeightMm = Math.max(50, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 280) * 0.264583) + 4);
 
     // Update dynamic @page style on main document (auto roll size, zero blank feed)
     let dynStyle = document.getElementById('dynamic-epson-page-style');
@@ -3082,7 +3262,7 @@ const APP = {
       dynStyle.id = 'dynamic-epson-page-style';
       document.head.appendChild(dynStyle);
     }
-    dynStyle.textContent = `@page { size: auto !important; margin: 0mm !important; } @media print { @page { size: auto !important; margin: 0mm !important; } html, body { height: auto !important; margin: 0 !important; padding: 0 !important; } }`;
+    dynStyle.textContent = `@page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } html, body { width: 80mm !important; max-width: 80mm !important; height: ${computedHeightMm}mm !important; max-height: ${computedHeightMm}mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; } }`;
 
     const receiptHtml = receiptEl.innerHTML;
     const invNo = document.getElementById('epson-inv-no')?.textContent || 'RECEIPT';
@@ -3094,23 +3274,24 @@ const APP = {
   <title>${invNo} - BYOB Indirapuram</title>
   <style>
     @page {
-      size: auto;
-      margin: 0mm;
+      size: 80mm ${computedHeightMm}mm !important;
+      margin: 0mm !important;
     }
     @media print {
       @page {
-        size: auto;
-        margin: 0mm;
+        size: 80mm ${computedHeightMm}mm !important;
+        margin: 0mm !important;
       }
       html, body {
         width: 80mm !important;
         max-width: 80mm !important;
-        height: auto !important;
+        height: ${computedHeightMm}mm !important;
+        max-height: ${computedHeightMm}mm !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
         color: #000000 !important;
-        overflow: visible !important;
+        overflow: hidden !important;
       }
     }
     * {

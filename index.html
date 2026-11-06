@@ -69,12 +69,12 @@
 
     /* Continuous 80mm Roll Epson Thermal Print Standards (Valid Chromium Syntax - Zero Paper Waste) */
     @page {
-      size: auto;
+      size: 80mm auto;
       margin: 0mm;
     }
     @media print {
       @page {
-        size: auto;
+        size: 80mm auto;
         margin: 0mm;
       }
       html, body {
@@ -392,8 +392,8 @@
           </button>
         </div>
 
-        <!-- 42 TABLES TOP-DOWN GRID -->
-        <div id="app-floor-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2.5">
+        <!-- 42 TABLES TOP-DOWN GRID (Responsive: 2 cols on Mobile, 4-6 cols on Laptop) -->
+        <div id="app-floor-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
           <!-- Rendered dynamically via JS -->
         </div>
 

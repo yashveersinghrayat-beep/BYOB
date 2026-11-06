@@ -346,7 +346,9 @@ const DB_SERVICE = {
       if (setRes.data && setRes.data.length > 0) {
         const s = {};
         setRes.data.forEach(r => s[r.key] = r.value);
-        this.storeSettings = s;
+        this.storeSettings = { ...(this.storeSettings || {}), ...s };
+        try { localStorage.setItem('onyx_store_settings', JSON.stringify(this.storeSettings)); } catch(e){}
+        this.notifyStore();
       }
 
       if (catRes.data && catRes.data.length > 0) this.categories = catRes.data;
@@ -380,6 +382,17 @@ const DB_SERVICE = {
             }
           });
           const calculatedSubtotal = placedOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+          
+          let waiterName = '';
+          let firstSeatedTime = null;
+          tableKots.forEach(k => {
+            if (!waiterName && k.waiter_name && k.waiter_name !== 'Floor Staff') waiterName = k.waiter_name;
+            if (k.created_at && (!firstSeatedTime || k.created_at < firstSeatedTime)) {
+              firstSeatedTime = k.created_at;
+            }
+          });
+          if (!waiterName && tableKots.length > 0) waiterName = tableKots[0].waiter_name || '';
+
           return {
             id: t.id,
             name: t.name,
@@ -389,7 +402,10 @@ const DB_SERVICE = {
             sort_order: t.sort_order,
             status: (!isTableVacant && (t.status === 'occupied' || calculatedSubtotal > 0)) ? 'occupied' : 'vacant',
             placedOrders,
-            currentSubtotal: isTableVacant ? 0 : (calculatedSubtotal || parseFloat(t.current_subtotal) || 0)
+            currentSubtotal: isTableVacant ? 0 : (calculatedSubtotal || parseFloat(t.current_subtotal) || 0),
+            waiterName: waiterName || '',
+            firstSeatedTime: firstSeatedTime || null,
+            kotCount: tableKots.length
           };
         });
       }
@@ -476,6 +492,7 @@ const DB_SERVICE = {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'kot_items' }, () => this.scheduleDebouncedLoadSupabaseData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, () => this.scheduleDebouncedLoadSupabaseData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => this.scheduleDebouncedLoadSupabaseData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => this.scheduleDebouncedLoadSupabaseData())
         .subscribe((status) => {
           console.log('📡 [Supabase Realtime] Multi-Device Hub Connected:', status);
         });
@@ -1488,13 +1505,20 @@ const DB_SERVICE = {
 
   // Update Store Settings (White-Label)
   async updateStoreSettings(settings, managerEmail = 'admin@google.in', reason = 'Store profile updated') {
-    // 1. Supabase Cloud Sync Branch
-    if (this.mode === 'supabase_cloud') {
+    // 1. Immediately update in-memory and local storage
+    this.storeSettings = { ...(this.storeSettings || {}), ...settings };
+    try {
+      localStorage.setItem('onyx_store_settings', JSON.stringify(this.storeSettings));
+    } catch(e) {}
+    this.notifyStore();
+
+    // 2. Supabase Cloud Sync Branch
+    if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
           for (const [k, v] of Object.entries(settings)) {
-            await client.from('store_settings').upsert({ key: k, value: String(v) });
+            await client.from('store_settings').upsert({ key: k, value: String(v), updated_at: new Date().toISOString() });
           }
           await client.from('bill_edit_logs').insert([{
             id: 'BEDT-STORE-' + Date.now().toString(36),
@@ -1513,18 +1537,25 @@ const DB_SERVICE = {
       }
     }
 
-    const res = await fetch(`${getApiBase()}/api/store`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings, managerEmail, reason })
-    });
-    const data = await res.json();
-    if (data.success) {
-      this.storeSettings = data.settings;
-      this.notifyStore();
-      return data.settings;
+    // 3. Local SQLite server fallback
+    try {
+      const res = await fetch(`${getApiBase()}/api/store`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings, managerEmail, reason })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.settings) {
+          this.storeSettings = { ...this.storeSettings, ...data.settings };
+          this.notifyStore();
+        }
+      }
+    } catch (e) {
+      // Local server offline or Vercel hosting, non-fatal
     }
-    throw new Error(data.error || 'Failed to update store settings');
+
+    return this.storeSettings;
   },
 
   // Toggle Item In-Stock (86ing)
