@@ -454,7 +454,21 @@ const APP = {
     } catch (e) {}
   },
 
+  checkFreshStartReset() {
+    const FRESH_KEY = 'onyx_fresh_start_production_day1';
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(FRESH_KEY) !== '1') {
+      try {
+        localStorage.removeItem('onyx_pending_carts');
+        localStorage.removeItem('onyx_local_tables');
+        localStorage.removeItem('byob_card_failures');
+        localStorage.removeItem('onyx_sync_queue');
+        localStorage.setItem(FRESH_KEY, '1');
+      } catch (e) {}
+    }
+  },
+
   init() {
+    this.checkFreshStartReset();
     this.loadLocalCarts(); // Restore draft carts on reload (Item 9)
     this.initAuth(); // Initialize User Role / Welcome Gateway
     this.goToTables(false); // Initial launch opens Table View First!
