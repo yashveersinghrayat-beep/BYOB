@@ -3061,8 +3061,8 @@ const APP = {
       return;
     }
 
-    // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 15mm tear margin
-    const computedHeightMm = Math.max(120, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 600) * 0.264583) + 15);
+    // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 3mm tear margin (ultra-compact, zero waste)
+    const computedHeightMm = Math.max(45, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 220) * 0.264583) + 3);
 
     // Update dynamic @page style on main document
     let dynStyle = document.getElementById('dynamic-epson-page-style');
@@ -3112,29 +3112,29 @@ const APP = {
       width: 80mm;
       max-width: 80mm;
       margin: 0 auto;
-      padding: 0mm 0mm 5mm 0mm;
+      padding: 0mm 0mm 1mm 0mm;
       background: #ffffff;
       color: #000000;
       font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
-      font-size: 10px;
-      line-height: 1.3;
+      font-size: 9.5px;
+      line-height: 1.2;
       font-weight: 600;
     }
     .epson-receipt {
-      width: 70mm;
-      max-width: 70mm;
+      width: 72mm;
+      max-width: 72mm;
       margin: 0 auto;
       background: #ffffff;
       color: #000000;
-      padding: 2mm 1mm;
+      padding: 1mm 1mm;
       box-shadow: none;
     }
     .epson-receipt * {
       color: #000000 !important;
     }
     .qr-img {
-      width: 76px !important;
-      height: 76px !important;
+      width: 50px !important;
+      height: 50px !important;
       display: block !important;
       margin: 0 auto !important;
       image-rendering: pixelated !important;
@@ -3163,12 +3163,12 @@ const APP = {
     hr {
       border: none;
       border-top: 1px dashed #000000 !important;
-      margin: 4px 0;
+      margin: 2px 0;
     }
     .double-hr {
       border: none;
-      border-top: 2px solid #000000 !important;
-      margin: 5px 0;
+      border-top: 1.5px solid #000000 !important;
+      margin: 2px 0;
     }
     .hidden { display: none !important; }
     svg { display: block; margin: 0 auto; }

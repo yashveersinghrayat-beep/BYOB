@@ -118,30 +118,40 @@
         width: 80mm !important;
         max-width: 80mm !important;
         margin: 0 auto !important;
-        padding: 0mm 0mm 4mm 0mm !important;
+        padding: 0mm 0mm 1mm 0mm !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-sizing: border-box !important;
       }
       .epson-receipt {
-        width: 70mm !important;
-        max-width: 70mm !important;
+        width: 72mm !important;
+        max-width: 72mm !important;
         margin: 0 auto !important;
-        padding: 2mm 1mm !important;
+        padding: 1mm 1mm !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-shadow: none !important;
         border-radius: 0 !important;
         border: none !important;
-        font-size: 10px !important;
-        line-height: 1.3 !important;
+        font-size: 9.5px !important;
+        line-height: 1.2 !important;
       }
       .epson-receipt * {
         color: #000000 !important;
       }
+      .epson-receipt hr {
+        border: none !important;
+        border-top: 1px dashed #000000 !important;
+        margin: 2px 0 !important;
+      }
+      .epson-receipt .double-hr {
+        border: none !important;
+        border-top: 1.5px solid #000000 !important;
+        margin: 2px 0 !important;
+      }
       .qr-img {
-        width: 76px !important;
-        height: 76px !important;
+        width: 50px !important;
+        height: 50px !important;
         display: block !important;
         margin: 0 auto !important;
         image-rendering: pixelated !important;
@@ -2807,37 +2817,29 @@
   <div id="epson-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 hidden">
     <div class="max-w-sm w-full">
       
-      <!-- Printable 80mm Receipt Container -->
+      <!-- Printable 80mm Receipt Container (Ultra-Compact Zero Paper Wastage) -->
       <div id="epson-print-wrapper">
         <div class="epson-receipt">
           
-          <!-- Header -->
-          <div class="text-center">
-            <div id="epson-restaurant-name" class="text-sm font-black tracking-widest uppercase">BYOB INDIRAPURAM</div>
-            <div id="epson-restaurant-tagline" class="text-[9px] uppercase tracking-wider text-neutral-800">Bring Your Own Bottle Experience</div>
-            <div id="epson-restaurant-address" class="text-[9px] text-neutral-700">Plot 14, Dr. Sushila Naiyyar Marg, Indirapuram, Ghaziabad</div>
-            <div id="epson-restaurant-tax" class="text-[9px] font-bold text-neutral-800 mt-1">GSTIN: 07AABCB1234F1Z9 | FSSAI: 12724055000123</div>
+          <!-- Compact Header -->
+          <div class="text-center pb-0.5">
+            <div id="epson-restaurant-name" class="text-xs font-black tracking-wider uppercase leading-tight">BYOB INDIRAPURAM</div>
+            <div id="epson-restaurant-tagline" class="hidden"></div>
+            <div id="epson-restaurant-address" class="text-[8px] text-neutral-800 leading-tight">Indirapuram, Ghaziabad</div>
+            <div id="epson-restaurant-tax" class="text-[8px] font-bold text-neutral-800 leading-tight">GSTIN: 07AABCB1234F1Z9 | FSSAI: 12724055000123</div>
           </div>
 
           <hr>
 
-          <!-- Metadata -->
-          <div class="text-[10px] space-y-0.5">
+          <!-- Compact Metadata -->
+          <div class="text-[9px] space-y-0.5 leading-tight">
             <div class="flex justify-between font-bold">
-              <span id="epson-inv-no">INV #: BYOB-8492</span>
-              <span>POS: Terminal 01</span>
+              <span id="epson-inv-no">INV: #BYOB-8492</span>
+              <span id="epson-date-time" class="font-mono">06-Nov-2026 05:45 PM</span>
             </div>
-            <div class="flex justify-between font-bold text-black border-y border-dashed border-neutral-400 py-0.5 my-0.5">
-              <span>DATE &amp; TIME:</span>
-              <span id="epson-date-time" class="font-mono font-black">05-Nov-2026 09:30 PM</span>
-            </div>
-            <div class="flex justify-between">
-              <span id="epson-table-info" class="font-bold">TABLE: 04 (Middle • Left)</span>
-              <span>COVERS: 4</span>
-            </div>
-            <div class="flex justify-between text-neutral-700">
+            <div class="flex justify-between font-medium">
+              <span id="epson-table-info" class="font-bold">TABLE: 04</span>
               <span id="epson-waiter-info">CAPTAIN: Rahul</span>
-              <span>TYPE: Dine In</span>
             </div>
             <div id="epson-guest-row" class="flex justify-between text-neutral-800 font-bold hidden">
               <span id="epson-guest-name">GUEST: Guest</span>
@@ -2848,7 +2850,7 @@
           <hr>
 
           <!-- 4-Column Table Header -->
-          <div class="flex justify-between font-bold text-[10px] pb-1">
+          <div class="flex justify-between font-bold text-[9px] pb-0.5 leading-tight">
             <span class="w-36">ITEM</span>
             <span class="w-8 text-center">QTY</span>
             <span class="w-12 text-right">RATE</span>
@@ -2858,18 +2860,18 @@
           <hr>
 
           <!-- Line Items List -->
-          <div id="epson-items-list" class="space-y-1 text-[10px] py-1"></div>
+          <div id="epson-items-list" class="space-y-0.5 text-[9px] py-0.5 leading-tight"></div>
 
           <hr>
 
           <!-- Financial Breakdown -->
-          <div class="space-y-1 text-[10px]">
+          <div class="space-y-0.5 text-[9px] leading-tight">
             <div class="flex justify-between">
               <span>Subtotal:</span>
               <span id="epson-subtotal" class="font-mono">₹0.00</span>
             </div>
             <div id="epson-discount-row" class="flex justify-between hidden">
-              <span>Discount Applied:</span>
+              <span>Discount:</span>
               <span id="epson-discount" class="font-mono">-₹0.00</span>
             </div>
             <div class="flex justify-between">
@@ -2891,21 +2893,21 @@
             
             <div class="double-hr"></div>
 
-            <div class="flex justify-between text-xs font-black">
+            <div class="flex justify-between text-[11px] font-black leading-tight">
               <span>NET PAYABLE:</span>
-              <span id="epson-net-total" class="font-mono text-sm">₹0.00</span>
+              <span id="epson-net-total" class="font-mono text-xs font-black">₹0.00</span>
             </div>
 
             <div class="double-hr"></div>
 
             <!-- Payment & Split Notes -->
-            <div class="flex justify-between text-[9px] font-bold text-neutral-800 pt-0.5">
-              <span id="epson-pay-mode">MODE: UPI (VERIFIED)</span>
-              <span id="epson-split-share">SPLIT (2): ₹0/HEAD</span>
+            <div class="flex justify-between text-[8px] font-bold text-neutral-800">
+              <span id="epson-pay-mode">MODE: UPI (PAID)</span>
+              <span id="epson-split-share">SPLIT (1): ₹0/HEAD</span>
             </div>
 
             <!-- Cash Tendered & Change Row on Thermal Bill if Cash -->
-            <div id="epson-cash-row" class="flex justify-between text-[9px] font-bold text-neutral-800 pt-0.5 border-t border-dashed border-neutral-400 mt-0.5 hidden">
+            <div id="epson-cash-row" class="flex justify-between text-[8px] font-bold text-neutral-800 border-t border-dashed border-neutral-400 mt-0.5 pt-0.5 hidden">
               <span id="epson-cash-tendered">CASH RECVD: ₹0.00</span>
               <span id="epson-cash-change">CHANGE: ₹0.00</span>
             </div>
@@ -2913,21 +2915,19 @@
 
           <hr>
 
-          <!-- Embedded Thermal UPI QR Code -->
-          <div class="text-center py-1.5 my-0.5">
-            <div class="text-[8px] font-black uppercase tracking-wider text-black mb-1">SCAN &amp; PAY VIA ANY UPI APP</div>
-            <div class="inline-block p-1 bg-white border border-black rounded">
-              <img src="/icons/payment-qr.png" alt="PhonePe UPI QR" class="w-[76px] h-[76px] mx-auto block qr-img" style="image-rendering: pixelated; -webkit-print-color-adjust: exact;">
+          <!-- Embedded Thermal UPI QR Code (Ultra Compact 50px) -->
+          <div class="text-center py-0.5">
+            <div class="text-[7.5px] font-black uppercase tracking-wider text-black mb-0.5">SCAN &amp; PAY VIA ANY UPI APP</div>
+            <div class="inline-block p-0.5 bg-white border border-black rounded">
+              <img src="/icons/payment-qr.png" alt="PhonePe UPI QR" class="w-[50px] h-[50px] mx-auto block qr-img" style="image-rendering: pixelated; -webkit-print-color-adjust: exact;">
             </div>
-            <div id="epson-upi-id" class="text-[8.5px] font-mono font-bold mt-1 text-black">UPI ID: Q676029996@ybl</div>
-            
+            <div id="epson-upi-id" class="text-[7.5px] font-mono font-bold mt-0.5 text-black">UPI ID: Q676029996@ybl</div>
           </div>
 
-          <!-- Barcode Simulation -->
-          <div class="text-center pt-1 font-mono tracking-widest text-[9px] text-neutral-700">
-            ||||| | |||| |||| ||| ||||| |||| || |||
-            <div class="text-[8px] tracking-normal mt-0.5 font-bold">*** THANK YOU! VISIT AGAIN ***</div>
-            <div id="epson-bill-footer" class="text-[7px] text-neutral-600">Guests are welcome to Bring Their Own Bottle.</div>
+          <!-- Compact Footer (No Fake Barcode, No Empty Trailing Margins) -->
+          <div class="text-center pt-0.5 font-bold text-[8px] text-neutral-800 leading-tight">
+            <div>*** THANK YOU! VISIT AGAIN ***</div>
+            <div id="epson-bill-footer" class="text-[7px] text-neutral-600 font-normal">Guests are welcome to Bring Their Own Bottle.</div>
           </div>
 
         </div>

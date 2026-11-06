@@ -1242,10 +1242,11 @@ const DB_SERVICE = {
             .order('created_at', { ascending: false })
             .limit(limit);
           if (!error && Array.isArray(bills)) {
-            bills.forEach(b => {
+            const activeBills = bills.filter(b => b.status !== 'void' && b.status !== 'cancelled');
+            activeBills.forEach(b => {
               b.items = (b.bill_items || []).filter(bi => !bi.is_archived);
             });
-            return bills;
+            return activeBills;
           }
         } catch (e) {
           console.warn('Supabase getRecentBills failed, falling back to local server:', e);
@@ -1699,6 +1700,7 @@ const DB_SERVICE = {
       }
 
       const filtered = bills.filter(b => {
+        if (b.status === 'void' || b.status === 'cancelled') return false;
         const d = (b.created_at || '').slice(0, 10);
         if (empty.startDate && d < empty.startDate) return false;
         if (empty.endDate && d > empty.endDate) return false;
