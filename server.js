@@ -163,6 +163,21 @@ async function handleRequest(req, res) {
       const body = await parseBody(req);
       const settingsData = body.settings || body;
       const updated = DB.updateSettings(settingsData, body.managerEmail, body.reason);
+      try {
+        const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+        for (const [k, v] of Object.entries(settingsData)) {
+          await fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings', {
+            method: 'POST',
+            headers: {
+              'apikey': supaKey,
+              'Authorization': 'Bearer ' + supaKey,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify({ key: k, value: String(v), updated_at: new Date().toISOString() })
+          });
+        }
+      } catch(e) {}
       broadcastEvent('STORE_UPDATED', updated);
       return sendJSON(res, 200, { success: true, settings: updated });
     }
@@ -427,8 +442,27 @@ async function handleRequest(req, res) {
     // --- Recent Bills (For Bill Reprint & Audit) ---
     if (pathname === '/api/bills/recent' && method === 'GET') {
       const limit = parseInt(parsedUrl.searchParams.get('limit') || '30');
-      const bills = DB.getRecentBills(limit);
-      return sendJSON(res, 200, { success: true, bills });
+      let bills = DB.getRecentBills(limit);
+      if (!bills || bills.length === 0) {
+        try {
+          const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+          const cloudRes = await fetch(`https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/bills?select=*,bill_items(*)&order=created_at.desc&limit=${limit}`, {
+            headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+          });
+          if (cloudRes.ok) {
+            const cloudBills = await cloudRes.json();
+            if (Array.isArray(cloudBills)) {
+              bills = cloudBills.filter(b => b.status !== 'void' && b.status !== 'cancelled').map(b => ({
+                ...b,
+                final_total: b.grand_total,
+                tax: Number(((b.cgst || 0) + (b.sgst || 0)).toFixed(2)),
+                items: b.bill_items || []
+              }));
+            }
+          }
+        } catch(e) {}
+      }
+      return sendJSON(res, 200, { success: true, bills: bills || [] });
     }
 
     // --- Void Audit Logs (Anti-Theft Dashboard) ---
@@ -446,7 +480,93 @@ async function handleRequest(req, res) {
       const startDate = parsedUrl.searchParams.get('startDate') || parsedUrl.searchParams.get('start') || null;
       const endDate = parsedUrl.searchParams.get('endDate') || parsedUrl.searchParams.get('end') || null;
 
-      const report = DB.getBusinessEfficiencyReport({ period, date, startDate, endDate });
+      let report = DB.getBusinessEfficiencyReport({ period, date, startDate, endDate });
+      if (!report || !report.summary?.total_bills) {
+        try {
+          const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+          const cloudRes = await fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/bills?select=*,bill_items(*)&order=created_at.desc', {
+            headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+          });
+          if (cloudRes.ok) {
+            const cloudBills = await cloudRes.json();
+            const valid = (cloudBills || []).filter(b => b.status !== 'void' && b.status !== 'cancelled');
+            if (valid.length > 0) {
+              let totalRev = 0, totalSub = 0, totalCgst = 0, totalSgst = 0, totalDisc = 0, totalRound = 0;
+              const paymentModes = {
+                cash: { amount: 0, count: 0, pct: 0 },
+                upi: { amount: 0, count: 0, pct: 0 },
+                card: { amount: 0, count: 0, pct: 0 }
+              };
+              const floorCounts = {
+                'Ground Floor': { bills: 0, rev: 0, pct: 0 },
+                '1st Floor': { bills: 0, rev: 0, pct: 0 },
+                '2nd Floor': { bills: 0, rev: 0, pct: 0 }
+              };
+
+              valid.forEach(b => {
+                const rev = Number(b.grand_total || 0);
+                const sub = Number(b.subtotal || 0);
+                const cgst = Number(b.cgst || 0);
+                const sgst = Number(b.sgst || 0);
+                const disc = Number(b.discount_amount || 0);
+                const round = Number(b.round_off || 0);
+                totalRev += rev;
+                totalSub += sub;
+                totalCgst += cgst;
+                totalSgst += sgst;
+                totalDisc += disc;
+                totalRound += round;
+
+                const mode = (b.payment_mode || 'upi').toLowerCase();
+                if (paymentModes[mode]) {
+                  paymentModes[mode].amount += rev;
+                  paymentModes[mode].count += 1;
+                }
+
+                const tNum = parseInt(String(b.table_id || '').replace(/\D/g, ''), 10);
+                let floor = 'Ground Floor';
+                if (tNum >= 26) floor = '2nd Floor';
+                else if (tNum >= 19) floor = '1st Floor';
+                floorCounts[floor].bills += 1;
+                floorCounts[floor].rev += rev;
+              });
+
+              Object.keys(paymentModes).forEach(m => {
+                paymentModes[m].pct = totalRev > 0 ? Number(((paymentModes[m].amount / totalRev) * 100).toFixed(1)) : 0;
+              });
+
+              const floorList = Object.keys(floorCounts).map(k => ({
+                floor: k,
+                revenue: floorCounts[k].rev,
+                bills_count: floorCounts[k].bills,
+                pct: totalRev > 0 ? Number(((floorCounts[k].rev / totalRev) * 100).toFixed(1)) : 0
+              }));
+
+              const aov = valid.length > 0 ? Math.round(totalRev / valid.length) : 0;
+
+              report = {
+                period,
+                periodLabel: `${valid.length} Settled Invoices Audit`,
+                summary: {
+                  total_bills: valid.length,
+                  total_revenue: totalRev,
+                  total_subtotal: totalSub,
+                  total_cgst: totalCgst,
+                  total_sgst: totalSgst,
+                  total_tax: totalCgst + totalSgst,
+                  total_discounts: totalDisc,
+                  discount_rate_pct: totalRev > 0 ? Number(((totalDisc / totalRev) * 100).toFixed(1)) : 0,
+                  aov,
+                  total_round_off: totalRound
+                },
+                payment_modes: paymentModes,
+                floor_efficiency: floorList,
+                recentBills: valid
+              };
+            }
+          }
+        } catch(e) {}
+      }
       return sendJSON(res, 200, { success: true, report });
     }
 

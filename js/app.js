@@ -626,17 +626,15 @@ const APP = {
       }
     });
 
-    // Native browser print trigger (e.g. Chrome File -> Print) dynamic roll height injection
+    // Native browser print trigger (e.g. Chrome File -> Print) zero waste continuous roll
     window.addEventListener('beforeprint', () => {
-      const receiptEl = document.getElementById('epson-print-wrapper');
-      const heightMm = Math.max(140, Math.ceil((receiptEl ? (receiptEl.scrollHeight || receiptEl.offsetHeight) : 600) * 0.264583) + 15);
       let dynStyle = document.getElementById('dynamic-epson-page-style');
       if (!dynStyle) {
         dynStyle = document.createElement('style');
         dynStyle.id = 'dynamic-epson-page-style';
         document.head.appendChild(dynStyle);
       }
-      dynStyle.textContent = `@page { size: 80mm ${heightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${heightMm}mm !important; margin: 0mm !important; } }`;
+      dynStyle.textContent = `@page { size: auto !important; margin: 0mm !important; } @media print { @page { size: auto !important; margin: 0mm !important; } html, body { height: auto !important; margin: 0 !important; padding: 0 !important; } }`;
     });
   },
 
@@ -2571,6 +2569,11 @@ const APP = {
     document.getElementById('bill-cgst').textContent = `₹${cgst.toFixed(2)}`;
     document.getElementById('bill-sgst').textContent = `₹${sgst.toFixed(2)}`;
 
+    const cgstLabel = document.getElementById('bill-cgst-label');
+    const sgstLabel = document.getElementById('bill-sgst-label');
+    if (cgstLabel) cgstLabel.textContent = `CGST (${cgstPct !== undefined ? cgstPct : 2.5}%):`;
+    if (sgstLabel) sgstLabel.textContent = `SGST (${sgstPct !== undefined ? sgstPct : 2.5}%):`;
+
     // Service Charge (Fixed ₹)
     const servRow = document.getElementById('bill-service-charge-row');
     const servAmtEl = document.getElementById('bill-service-charge');
@@ -3070,14 +3073,14 @@ const APP = {
     // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 3mm tear margin (ultra-compact, zero waste)
     const computedHeightMm = Math.max(45, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 220) * 0.264583) + 3);
 
-    // Update dynamic @page style on main document
+    // Update dynamic @page style on main document (auto roll size, zero blank feed)
     let dynStyle = document.getElementById('dynamic-epson-page-style');
     if (!dynStyle) {
       dynStyle = document.createElement('style');
       dynStyle.id = 'dynamic-epson-page-style';
       document.head.appendChild(dynStyle);
     }
-    dynStyle.textContent = `@page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } }`;
+    dynStyle.textContent = `@page { size: auto !important; margin: 0mm !important; } @media print { @page { size: auto !important; margin: 0mm !important; } html, body { height: auto !important; margin: 0 !important; padding: 0 !important; } }`;
 
     const receiptHtml = receiptEl.innerHTML;
     const invNo = document.getElementById('epson-inv-no')?.textContent || 'RECEIPT';
@@ -3089,17 +3092,18 @@ const APP = {
   <title>${invNo} - BYOB Indirapuram</title>
   <style>
     @page {
-      size: 80mm ${computedHeightMm}mm;
+      size: auto;
       margin: 0mm;
     }
     @media print {
       @page {
-        size: 80mm ${computedHeightMm}mm;
+        size: auto;
         margin: 0mm;
       }
       html, body {
         width: 80mm !important;
         max-width: 80mm !important;
+        height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
@@ -6637,32 +6641,64 @@ const APP = {
   },
 
   async loadManagerStoreSettings() {
+    let s = (window.DB && window.DB.storeSettings) || {};
+    try {
+      const localSaved = localStorage.getItem('onyx_store_settings');
+      if (localSaved) s = { ...s, ...JSON.parse(localSaved) };
+    } catch(e){}
+
+    // 1. Direct Supabase Cloud check
+    try {
+      const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+      const supaUrl = 'https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings?select=*';
+      const res = await fetch(supaUrl, {
+        headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          const cloudMap = {};
+          rows.forEach(r => cloudMap[r.key] = r.value);
+          s = { ...s, ...cloudMap };
+          if (window.DB) window.DB.storeSettings = s;
+        }
+      }
+    } catch(e) {
+      console.warn('Supabase store settings cloud fetch error:', e);
+    }
+
+    // 2. Also try /api/store
     try {
       const res = await fetch('/api/store');
       if (res.ok) {
         const data = await res.json();
-        const s = data.settings || data.store || {};
-        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-        setVal('mgr-store-name', s.name || s.restaurant_name || 'BYOB INDIRAPURAM');
-        setVal('mgr-store-tagline', s.tagline || 'Bring Your Own Bottle Experience');
-        setVal('mgr-store-address', s.address || 'Indirapuram, Ghaziabad, UP');
-        setVal('mgr-store-gstin', s.gstin || '07AABCB1234F1Z9');
-        setVal('mgr-store-fssai', s.fssai || '12724055000123');
-        setVal('mgr-store-cgst', s.cgst_percent !== undefined ? s.cgst_percent : 2.5);
-        setVal('mgr-store-sgst', s.sgst_percent !== undefined ? s.sgst_percent : 2.5);
-        setVal('mgr-store-service-charge', s.service_charge_fixed !== undefined ? s.service_charge_fixed : (s.service_charge !== undefined ? s.service_charge : (s.service_charge_percent || 0)));
-        setVal('mgr-store-upi-id', s.upi_vpa || 'Q676029996@ybl');
-        setVal('mgr-store-footer', s.receipt_footer || s.bill_footer || 'Thank You! Visit Again.');
+        if (data.settings) s = { ...s, ...data.settings };
       }
     } catch (e) {
       console.warn('Store fetch error:', e);
     }
+
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val !== undefined ? val : ''; };
+    setVal('mgr-store-name', s.name || s.restaurant_name || 'BYOB INDIRAPURAM');
+    setVal('mgr-store-tagline', s.tagline || 'Bring Your Own Bottle Experience');
+    setVal('mgr-store-address', s.address || 'Indirapuram, Ghaziabad, UP');
+    setVal('mgr-store-gstin', s.gstin || '07AABCB1234F1Z9');
+    setVal('mgr-store-fssai', s.fssai || '12724055000123');
+    setVal('mgr-store-cgst', s.cgst_percent !== undefined ? s.cgst_percent : 2.5);
+    setVal('mgr-store-sgst', s.sgst_percent !== undefined ? s.sgst_percent : 2.5);
+    setVal('mgr-store-service-charge', s.service_charge_fixed !== undefined ? s.service_charge_fixed : (s.service_charge !== undefined ? s.service_charge : (s.service_charge_percent || 0)));
+    setVal('mgr-store-upi-id', s.upi_vpa || 'Q676029996@ybl');
+    setVal('mgr-store-footer', s.receipt_footer || s.bill_footer || 'Thank You! Visit Again.');
   },
 
   async saveManagerStoreSettings() {
     const getVal = id => document.getElementById(id)?.value || '';
     const nameVal = getVal('mgr-store-name');
     const footerVal = getVal('mgr-store-footer');
+    const cgstVal = parseFloat(getVal('mgr-store-cgst') || '2.5');
+    const sgstVal = parseFloat(getVal('mgr-store-sgst') || '2.5');
+    const servVal = parseFloat(getVal('mgr-store-service-charge') || '0');
+
     const payload = {
       name: nameVal,
       restaurant_name: nameVal,
@@ -6670,30 +6706,67 @@ const APP = {
       address: getVal('mgr-store-address'),
       gstin: getVal('mgr-store-gstin'),
       fssai: getVal('mgr-store-fssai'),
-      cgst_percent: parseFloat(getVal('mgr-store-cgst') || '2.5'),
-      sgst_percent: parseFloat(getVal('mgr-store-sgst') || '2.5'),
-      service_charge_fixed: parseFloat(getVal('mgr-store-service-charge') || '0'),
-      service_charge: parseFloat(getVal('mgr-store-service-charge') || '0'),
-      service_charge_percent: parseFloat(getVal('mgr-store-service-charge') || '0'),
+      cgst_percent: cgstVal,
+      sgst_percent: sgstVal,
+      service_charge_fixed: servVal,
+      service_charge: servVal,
+      service_charge_percent: servVal,
       upi_vpa: getVal('mgr-store-upi-id'),
       receipt_footer: footerVal,
       bill_footer: footerVal
     };
 
+    // 1. Instantly update window.DB & LocalStorage (available across entire app offline & online)
+    if (window.DB) {
+      window.DB.storeSettings = { ...(window.DB.storeSettings || {}), ...payload };
+    }
     try {
-      const res = await fetch('/api/store', {
+      localStorage.setItem('onyx_store_settings', JSON.stringify(window.DB.storeSettings));
+    } catch(e){}
+
+    // 2. Direct Supabase Cloud upsert (so Handheld Android APK & all web clients get it instantly)
+    try {
+      const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+      const upsertRows = Object.entries(payload).map(([k, v]) => ({
+        key: k,
+        value: String(v),
+        updated_at: new Date().toISOString()
+      }));
+      for (const row of upsertRows) {
+        await fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings', {
+          method: 'POST',
+          headers: {
+            'apikey': supaKey,
+            'Authorization': 'Bearer ' + supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify(row)
+        });
+      }
+    } catch (e) {
+      console.warn('Supabase store settings cloud upsert error:', e);
+    }
+
+    // 3. Local / Vercel Server endpoint
+    try {
+      await fetch('/api/store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (data.success) {
-        this.showToast('✅ Store & GST Settings Saved');
-        this.haptic('success');
-      }
     } catch (e) {
-      this.showToast('Error saving store profile');
+      console.warn('Server store profile save error:', e);
     }
+
+    // 4. Update UI labels and calculations everywhere
+    if (window.DB && typeof window.DB.notifyStore === 'function') {
+      window.DB.notifyStore();
+    }
+    this.refreshBillingModalData();
+    this.updateCartUI();
+    this.showToast('✅ Store & GST Settings Saved Everywhere!');
+    this.haptic('success');
   },
 
   loadManagerOTAInfo() {

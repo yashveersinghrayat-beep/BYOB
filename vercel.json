@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
+  "functions": {
+    "api/*.js": {
+      "includeFiles": "onyx_restaurant.db"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",

@@ -67,19 +67,21 @@
       visibility: hidden !important;
     }
 
-    /* Continuous 80mm Roll Epson Thermal Print Standards (Valid Chromium Syntax) */
+    /* Continuous 80mm Roll Epson Thermal Print Standards (Valid Chromium Syntax - Zero Paper Waste) */
     @page {
-      size: 80mm 297mm;
+      size: auto;
       margin: 0mm;
     }
     @media print {
       @page {
-        size: 80mm 297mm;
+        size: auto;
         margin: 0mm;
       }
       html, body {
         width: 80mm !important;
         max-width: 80mm !important;
+        height: auto !important;
+        max-height: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
@@ -2364,11 +2366,11 @@
               <span id="bill-discount-amount" class="font-mono">-₹0</span>
             </div>
             <div class="flex justify-between text-neutral-400">
-              <span>CGST (2.5%):</span>
+              <span id="bill-cgst-label">CGST (2.5%):</span>
               <span id="bill-cgst" class="font-mono text-white">₹0</span>
             </div>
             <div class="flex justify-between text-neutral-400">
-              <span>SGST (2.5%):</span>
+              <span id="bill-sgst-label">SGST (2.5%):</span>
               <span id="bill-sgst" class="font-mono text-white">₹0</span>
             </div>
             <div id="bill-service-charge-row" class="flex justify-between text-neutral-400 hidden">

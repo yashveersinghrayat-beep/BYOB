@@ -25,7 +25,12 @@ const DB_SERVICE = {
     pin: '1234'
   },
   
-  storeSettings: {},
+  storeSettings: (() => {
+    try {
+      const s = typeof localStorage !== 'undefined' ? localStorage.getItem('onyx_store_settings') : null;
+      return s ? JSON.parse(s) : {};
+    } catch(e) { return {}; }
+  })(),
   tables: [],
   categories: [],
   menuItems: [],
