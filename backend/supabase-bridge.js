@@ -348,8 +348,12 @@ class SupabaseBridge {
         grandTotal: bill.grand_total
       });
 
-      // 1. Mirror Bill to Supabase bills table
+      // 1. Mirror Bill to Supabase bills table (Sanitized for Supabase Schema)
       try {
+        const sc = bill.service_charge || 0;
+        const baseRef = bill.payment_ref || '';
+        const combinedRef = sc > 0 ? (baseRef ? `${baseRef} | Service Charge: ₹${sc}` : `Fixed Service Charge: ₹${sc}`) : baseRef;
+
         await fetch(`${SUPABASE_URL}/rest/v1/bills`, {
           method: 'POST',
           headers: { ...HEADERS, 'Prefer': 'resolution=merge-duplicates' },
@@ -362,36 +366,31 @@ class SupabaseBridge {
             cashier_name: bill.cashier_name || 'Cashier',
             customer_name: bill.customer_name || 'Guest',
             customer_phone: bill.customer_phone || '',
-            subtotal: bill.subtotal || 0,
+            subtotal: Number(bill.subtotal || 0),
             discount_type: bill.discount_type || 'none',
-            discount_value: bill.discount_value || 0,
-            discount_amount: bill.discount_amount || 0,
-            cgst: bill.cgst || 0,
-            sgst: bill.sgst || 0,
-            service_charge: bill.service_charge || 0,
-            round_off: bill.round_off || 0,
-            grand_total: bill.grand_total || 0,
+            discount_value: Number(bill.discount_value || 0),
+            discount_amount: Number(bill.discount_amount || 0),
+            cgst: Number(bill.cgst || 0),
+            sgst: Number(bill.sgst || 0),
+            round_off: Number(bill.round_off || 0),
+            grand_total: Number(bill.grand_total || 0),
             payment_mode: bill.payment_mode || 'cash',
-            payment_ref: bill.payment_ref || '',
-            split_count: bill.split_count || 1,
-            status: 'paid',
-            restaurant_name: bill.restaurant_name || 'BYOB INDIRAPURAM',
-            gstin: bill.gstin || '',
-            fssai: bill.fssai || ''
+            payment_ref: combinedRef,
+            split_count: Number(bill.split_count || 1),
+            status: 'paid'
           }]),
           signal: AbortSignal.timeout(5000)
         });
 
-        // 2. Snapshot bill line items in cloud
+        // 2. Snapshot bill line items in cloud (Sanitized for Supabase Schema)
         if (Array.isArray(bill.items) && bill.items.length > 0) {
           const bItems = bill.items.map(it => ({
             bill_id: bill.id,
             item_id: it.id || it.item_id || 'item',
             name: it.name,
-            price: it.price,
-            qty: it.qty,
-            amount: (it.price * it.qty),
-            notes: it.notes || ''
+            price: Number(it.price || 0),
+            qty: Number(it.qty || 1),
+            amount: Number(it.price || 0) * Number(it.qty || 1)
           }));
           await fetch(`${SUPABASE_URL}/rest/v1/bill_items`, {
             method: 'POST',
@@ -400,7 +399,9 @@ class SupabaseBridge {
             signal: AbortSignal.timeout(5000)
           });
         }
-      } catch (be) {}
+      } catch (be) {
+        console.warn('Supabase bridge bill push notice:', be.message);
+      }
 
       // 3. Mark all active KOTs as billed in cloud
       await fetch(`${SUPABASE_URL}/rest/v1/kots?table_id=eq.${encodeURIComponent(bill.table_id)}&status=neq.cancelled`, {

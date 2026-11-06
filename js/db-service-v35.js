@@ -269,37 +269,38 @@ const DB_SERVICE = {
     const client = ONYX_CLOUD_CONFIG.getClient();
     if (!client) return;
     try {
+      const sc = Number(bill.service_charge || bill.serviceCharge || 0);
+      const baseRef = bill.payment_ref || bill.paymentRef || '';
+      const paymentRef = sc > 0 ? (baseRef ? `${baseRef} | Service Charge: ₹${sc}` : `Fixed Service Charge: ₹${sc}`) : baseRef;
+
       await client.from('bills').upsert([{
         id: bill.id,
-        invoice_number: bill.invoice_number,
-        table_id: bill.table_id,
-        table_name: bill.table_name,
-        waiter_name: bill.waiter_name,
-        cashier_name: bill.cashier_name,
-        customer_name: bill.customer_name,
-        customer_phone: bill.customer_phone,
-        subtotal: Number(bill.subtotal),
-        discount_type: bill.discount_type,
-        discount_value: Number(bill.discount_value || 0),
-        discount_amount: Number(bill.discount_amount || 0),
+        invoice_number: bill.invoice_number || bill.invoiceNumber,
+        table_id: bill.table_id || bill.tableId,
+        table_name: bill.table_name || bill.tableName,
+        waiter_name: bill.waiter_name || bill.waiterName || 'Floor Staff',
+        cashier_name: bill.cashier_name || bill.cashierName || 'Cashier',
+        customer_name: bill.customer_name || bill.customerName || 'Guest',
+        customer_phone: bill.customer_phone || bill.customerPhone || '',
+        subtotal: Number(bill.subtotal || 0),
+        discount_type: bill.discount_type || bill.discountType || 'none',
+        discount_value: Number(bill.discount_value || bill.discountValue || 0),
+        discount_amount: Number(bill.discount_amount || bill.discountAmount || 0),
         cgst: Number(bill.cgst || 0),
         sgst: Number(bill.sgst || 0),
-        service_charge: Number(bill.service_charge || 0),
-        round_off: Number(bill.round_off || 0),
-        grand_total: Number(bill.grand_total),
-        payment_mode: bill.payment_mode,
-        split_count: bill.split_count || 1,
-        status: 'paid',
-        restaurant_name: bill.restaurant_name,
-        gstin: bill.gstin,
-        fssai: bill.fssai
+        round_off: Number(bill.round_off || bill.roundOff || 0),
+        grand_total: Number(bill.grand_total || bill.grandTotal || 0),
+        payment_mode: bill.payment_mode || bill.paymentMode || 'cash',
+        payment_ref: paymentRef,
+        split_count: Number(bill.split_count || bill.splitCount || 1),
+        status: 'paid'
       }]);
 
-      await client.from('kots').update({ status: 'billed' }).eq('table_id', bill.table_id).neq('status', 'cancelled');
+      await client.from('kots').update({ status: 'billed' }).eq('table_id', bill.table_id || bill.tableId).neq('status', 'cancelled');
       await client.from('tables').update({
         status: 'vacant',
         current_subtotal: 0
-      }).eq('id', bill.table_id);
+      }).eq('id', bill.table_id || bill.tableId);
     } catch (e) {
       console.warn('Supabase mirror bill notice:', e);
     }
@@ -1073,12 +1074,16 @@ const DB_SERVICE = {
       tableName: billData.tableName
     });
 
-    // 2. Supabase Cloud Sync Branch
+    // 2. Supabase Cloud Sync Branch (Sanitized for Schema)
     if (this.mode === 'supabase_cloud') {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
-          await client.from('bills').insert([{
+          const sc = Number(billData.serviceCharge || 0);
+          const baseRef = billData.paymentRef || '';
+          const paymentRef = sc > 0 ? (baseRef ? `${baseRef} | Service Charge: ₹${sc}` : `Fixed Service Charge: ₹${sc}`) : baseRef;
+
+          const { error: billErr } = await client.from('bills').insert([{
             id: billId,
             invoice_number: invNo,
             table_id: billData.tableId,
@@ -1087,32 +1092,34 @@ const DB_SERVICE = {
             cashier_name: this.currentUser.name || 'Cashier',
             customer_name: billData.customerName || 'Guest',
             customer_phone: billData.customerPhone || '',
-            subtotal: Number(billData.subtotal),
+            subtotal: Number(billData.subtotal || 0),
             discount_type: billData.discountType || 'none',
             discount_value: Number(billData.discountValue || 0),
             discount_amount: Number(billData.discountAmount || 0),
             cgst: Number(billData.cgst || 0),
             sgst: Number(billData.sgst || 0),
-            service_charge: Number(billData.serviceCharge || 0),
             round_off: Number(billData.roundOff || 0),
-            grand_total: Number(billData.grandTotal),
+            grand_total: Number(billData.grandTotal || 0),
             payment_mode: billData.paymentMode || 'upi',
-            split_count: billData.splitCount || 1,
-            status: 'paid',
-            restaurant_name: billData.restaurantName || (this.storeSettings && this.storeSettings.restaurant_name) || 'BYOB INDIRAPURAM',
-            gstin: billData.gstin || (this.storeSettings && this.storeSettings.gstin) || '',
-            fssai: billData.fssai || (this.storeSettings && this.storeSettings.fssai) || ''
+            payment_ref: paymentRef,
+            split_count: Number(billData.splitCount || 1),
+            status: 'paid'
           }]);
+
+          if (billErr) {
+            console.error('Supabase bill insert failed:', billErr);
+          } else {
+            console.log('✅ Supabase bill saved:', invNo, 'Grand Total:', billData.grandTotal);
+          }
 
           if (Array.isArray(billData.items) && billData.items.length > 0) {
             const billItems = billData.items.map(it => ({
               bill_id: billId,
               item_id: it.id || it.item_id || 'item',
               name: it.name,
-              price: Number(it.price),
-              qty: Number(it.qty),
-              amount: Number(it.price) * Number(it.qty),
-              is_archived: false
+              price: Number(it.price || 0),
+              qty: Number(it.qty || 1),
+              amount: Number(it.price || 0) * Number(it.qty || 1)
             }));
             await client.from('bill_items').insert(billItems);
           }
@@ -1131,6 +1138,13 @@ const DB_SERVICE = {
             status: 'vacant',
             current_subtotal: 0
           }).eq('id', altTableId);
+
+          // Asynchronously notify local server bridge if reachable
+          fetch(`${getApiBase()}/api/bills/settle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...billData, cashierName: this.currentUser.name || 'Cashier' })
+          }).catch(() => {});
 
           await this.loadSupabaseData();
           return { id: billId, invoice_number: invNo, ...billData };
