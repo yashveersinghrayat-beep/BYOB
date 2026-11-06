@@ -5120,13 +5120,11 @@ const APP = {
   },
 
   async renderManagerDashboard() {
-    // Ensure analytics and voids are loaded
-    if (!this.state.mgrSalesReport) {
-      await this.loadManagerAnalytics();
-    }
-    if (!this.state.mgrVoidLogs || this.state.mgrVoidLogs.length === 0) {
-      await this.loadManagerVoidLogs();
-    }
+    await Promise.all([
+      this.loadManagerAnalytics(),
+      this.loadManagerVoidLogs(),
+      this.loadManagerInvoices()
+    ]);
 
     this.updateManagerKpiCards();
 
@@ -5270,6 +5268,25 @@ const APP = {
 
   async loadManagerAnalytics() {
     const period = this.state.mgrReportPeriod || 'weekly';
+    try {
+      if (typeof DB !== 'undefined' && DB.getSalesAnalytics) {
+        const report = await DB.getSalesAnalytics({
+          period,
+          startDate: this.state.mgrReportStartDate,
+          endDate: this.state.mgrReportEndDate
+        });
+        if (report) {
+          this.state.mgrSalesReport = report;
+          this.state.mgrPeriodBills = report.recentBills || [];
+          this.renderManagerSales(report);
+          this.updateManagerKpiCards();
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('DB.getSalesAnalytics failed, falling back:', err);
+    }
+
     let url = `/api/reports/efficiency?period=${encodeURIComponent(period)}`;
     if (period === 'custom') {
       if (this.state.mgrReportStartDate) url += `&startDate=${encodeURIComponent(this.state.mgrReportStartDate)}`;
@@ -6179,6 +6196,12 @@ const APP = {
 
   async loadManagerInvoices() {
     try {
+      if (typeof DB !== 'undefined' && DB.getRecentBills) {
+        const bills = await DB.getRecentBills(40);
+        this.state.mgrInvoices = bills || [];
+        this.renderManagerInvoices();
+        return;
+      }
       const res = await fetch('/api/bills/recent?limit=40');
       if (res.ok) {
         const data = await res.json();
@@ -6268,6 +6291,13 @@ const APP = {
   async loadManagerVoidLogs() {
     this.loadManagerPaymentFailures();
     try {
+      if (typeof DB !== 'undefined' && DB.getVoidLogs) {
+        const logs = await DB.getVoidLogs(50);
+        this.state.mgrVoidLogs = logs || [];
+        this.renderManagerVoids();
+        this.updateManagerKpiCards();
+        return;
+      }
       const res = await fetch('/api/kots/voids?limit=50');
       if (res.ok) {
         const data = await res.json();

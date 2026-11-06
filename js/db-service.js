@@ -1615,25 +1615,236 @@ const DB_SERVICE = {
   },
 
   // Get Live Sales Analytics & Business Efficiency Report
+  buildEmptySalesReport(period = 'daily', startDate = null, endDate = null) {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    let start = startDate;
+    let end = endDate || today;
+    let periodLabel = `Daily Report (${today})`;
+
+    if (!start) {
+      if (period === 'weekly') {
+        const d = new Date(now.getTime() - 6 * 86400000);
+        start = d.toISOString().slice(0, 10);
+        periodLabel = `Weekly Report (Last 7 Days: ${start} to ${end})`;
+      } else if (period === 'monthly') {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1);
+        start = d.toISOString().slice(0, 10);
+        periodLabel = `Monthly Report (Current Month: ${start} to ${end})`;
+      } else {
+        start = today;
+        periodLabel = `Daily Report (${today})`;
+      }
+    }
+
+    return {
+      date: today,
+      period: period || 'daily',
+      periodLabel,
+      startDate: start,
+      endDate: end,
+      activeDays: 1,
+      summary: {
+        total_bills: 0,
+        total_revenue: 0,
+        total_subtotal: 0,
+        total_cgst: 0,
+        total_sgst: 0,
+        total_tax: 0,
+        total_discounts: 0,
+        discount_rate_pct: 0,
+        aov: 0,
+        revenue_per_day: 0,
+        total_round_off: 0
+      },
+      paymentBreakdown: [],
+      payment_modes: {
+        cash: { amount: 0, count: 0, pct: 0 },
+        upi: { amount: 0, count: 0, pct: 0 },
+        card: { amount: 0, count: 0, pct: 0 }
+      },
+      timeline_trend: [],
+      dayparts: {
+        lunch: { label: 'Lunch (12 PM - 4 PM)', count: 0, revenue: 0, pct: 0 },
+        snacks: { label: 'Evening Snacks (4 PM - 7 PM)', count: 0, revenue: 0, pct: 0 },
+        dinner: { label: 'Dinner Peak (7 PM - 11 PM)', count: 0, revenue: 0, pct: 0 },
+        late_night: { label: 'Late Night (11 PM - 4 AM)', count: 0, revenue: 0, pct: 0 },
+        busiest_hour: 'N/A'
+      },
+      floor_efficiency: [
+        { floor: 'Ground Floor', tables_count: 18, bills_count: 0, revenue: 0, pct: 0, rev_per_table: 0, turn_rate: 0 },
+        { floor: '1st Floor', tables_count: 7, bills_count: 0, revenue: 0, pct: 0, rev_per_table: 0, turn_rate: 0 },
+        { floor: '2nd Floor', tables_count: 17, bills_count: 0, revenue: 0, pct: 0, rev_per_table: 0, turn_rate: 0 }
+      ],
+      topItems: [],
+      top_items: [],
+      category_breakdown: [],
+      dietary: { veg: { revenue: 0, pct: 50 }, non_veg: { revenue: 0, pct: 50 } },
+      staff_leaderboard: [],
+      void_audit: { total_voids: 0, total_amount: 0, loss_pct: 0, staff_involved: 0, recent_voids: [] },
+      recentBills: []
+    };
+  },
+
+  async computeSupabaseSalesReport(client, { period = 'daily', date = null, startDate = null, endDate = null } = {}) {
+    const empty = this.buildEmptySalesReport(period, startDate, endDate);
+    try {
+      const { data: bills, error } = await client
+        .from('bills')
+        .select('*, bill_items(*)')
+        .order('created_at', { ascending: false });
+
+      if (error || !Array.isArray(bills) || bills.length === 0) {
+        return empty;
+      }
+
+      const filtered = bills.filter(b => {
+        const d = (b.created_at || '').slice(0, 10);
+        if (empty.startDate && d < empty.startDate) return false;
+        if (empty.endDate && d > empty.endDate) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) return empty;
+
+      let totalRev = 0, totalSub = 0, totalCgst = 0, totalSgst = 0, totalDisc = 0, totalRound = 0;
+      const paymentModes = {
+        cash: { amount: 0, count: 0, pct: 0 },
+        upi: { amount: 0, count: 0, pct: 0 },
+        card: { amount: 0, count: 0, pct: 0 }
+      };
+      const floorCounts = {
+        'Ground Floor': { bills: 0, rev: 0 },
+        '1st Floor': { bills: 0, rev: 0 },
+        '2nd Floor': { bills: 0, rev: 0 }
+      };
+
+      filtered.forEach(b => {
+        const rev = Number(b.grand_total || 0);
+        const sub = Number(b.subtotal || 0);
+        const cgst = Number(b.cgst || 0);
+        const sgst = Number(b.sgst || 0);
+        const disc = Number(b.discount_amount || 0);
+        const round = Number(b.round_off || 0);
+
+        totalRev += rev;
+        totalSub += sub;
+        totalCgst += cgst;
+        totalSgst += sgst;
+        totalDisc += disc;
+        totalRound += round;
+
+        const mode = (b.payment_mode || 'upi').toLowerCase();
+        if (paymentModes[mode]) {
+          paymentModes[mode].amount += rev;
+          paymentModes[mode].count += 1;
+        }
+
+        const tNum = parseInt(String(b.table_id || '').replace(/\D/g, ''), 10);
+        let floor = 'Ground Floor';
+        if (tNum >= 26) floor = '2nd Floor';
+        else if (tNum >= 19) floor = '1st Floor';
+        floorCounts[floor].bills += 1;
+        floorCounts[floor].rev += rev;
+      });
+
+      Object.keys(paymentModes).forEach(m => {
+        paymentModes[m].pct = totalRev > 0 ? Number(((paymentModes[m].amount / totalRev) * 100).toFixed(1)) : 0;
+      });
+
+      const aov = filtered.length > 0 ? Math.round(totalRev / filtered.length) : 0;
+      const discRate = totalRev > 0 ? Number(((totalDisc / totalRev) * 100).toFixed(1)) : 0;
+
+      let voidAudit = { total_voids: 0, total_amount: 0, loss_pct: 0, staff_involved: 0, recent_voids: [] };
+      try {
+        const { data: voids } = await client.from('void_logs').select('*').order('created_at', { ascending: false });
+        if (Array.isArray(voids)) {
+          const vSum = voids.reduce((acc, v) => acc + Number(v.amount || 0), 0);
+          voidAudit = {
+            total_voids: voids.length,
+            total_amount: vSum,
+            loss_pct: totalRev > 0 ? Number(((vSum / totalRev) * 100).toFixed(1)) : 0,
+            staff_involved: new Set(voids.map(v => v.staff_name)).size,
+            recent_voids: voids.slice(0, 20)
+          };
+        }
+      } catch (e) {}
+
+      return {
+        ...empty,
+        summary: {
+          total_bills: filtered.length,
+          total_revenue: totalRev,
+          total_subtotal: totalSub,
+          total_cgst: totalCgst,
+          total_sgst: totalSgst,
+          total_tax: totalCgst + totalSgst,
+          total_discounts: totalDisc,
+          discount_rate_pct: discRate,
+          aov,
+          revenue_per_day: totalRev,
+          total_round_off: totalRound
+        },
+        payment_modes: paymentModes,
+        floor_efficiency: [
+          { floor: 'Ground Floor', tables_count: 18, bills_count: floorCounts['Ground Floor'].bills, revenue: floorCounts['Ground Floor'].rev, pct: totalRev > 0 ? Math.round((floorCounts['Ground Floor'].rev / totalRev) * 100) : 0, rev_per_table: Math.round(floorCounts['Ground Floor'].rev / 18), turn_rate: Number((floorCounts['Ground Floor'].bills / 18).toFixed(1)) },
+          { floor: '1st Floor', tables_count: 7, bills_count: floorCounts['1st Floor'].bills, revenue: floorCounts['1st Floor'].rev, pct: totalRev > 0 ? Math.round((floorCounts['1st Floor'].rev / totalRev) * 100) : 0, rev_per_table: Math.round(floorCounts['1st Floor'].rev / 7), turn_rate: Number((floorCounts['1st Floor'].bills / 7).toFixed(1)) },
+          { floor: '2nd Floor', tables_count: 17, bills_count: floorCounts['2nd Floor'].bills, revenue: floorCounts['2nd Floor'].rev, pct: totalRev > 0 ? Math.round((floorCounts['2nd Floor'].rev / totalRev) * 100) : 0, rev_per_table: Math.round(floorCounts['2nd Floor'].rev / 17), turn_rate: Number((floorCounts['2nd Floor'].bills / 17).toFixed(1)) }
+        ],
+        void_audit: voidAudit,
+        recentBills: filtered.slice(0, 30).map(b => ({
+          ...b,
+          items: (b.bill_items || []).filter(bi => !bi.is_archived)
+        }))
+      };
+    } catch (e) {
+      console.warn('computeSupabaseSalesReport exception:', e);
+      return empty;
+    }
+  },
+
   async getSalesAnalytics(params = null) {
-    let url = `${getApiBase()}/api/reports/sales`;
-    if (typeof params === 'string') {
-      url += `?date=${encodeURIComponent(params)}`;
-    } else if (params && typeof params === 'object') {
-      const q = new URLSearchParams();
-      if (params.period) q.set('period', params.period);
-      if (params.date) q.set('date', params.date);
-      if (params.startDate) q.set('startDate', params.startDate);
-      if (params.endDate) q.set('endDate', params.endDate);
-      url += `?${q.toString()}`;
+    const period = (params && typeof params === 'object' && params.period) || (typeof params === 'string' ? 'daily' : 'weekly');
+    let startDate = params && typeof params === 'object' ? params.startDate : null;
+    let endDate = params && typeof params === 'object' ? params.endDate : null;
+    let date = typeof params === 'string' ? params : (params && typeof params === 'object' ? params.date : null);
+
+    if (this.mode === 'supabase_cloud') {
+      const client = ONYX_CLOUD_CONFIG.getClient();
+      if (client) {
+        try {
+          const report = await this.computeSupabaseSalesReport(client, { period, date, startDate, endDate });
+          if (report) {
+            this.recentReport = report;
+            return report;
+          }
+        } catch (e) {
+          console.warn('Supabase computeSalesReport error, falling back:', e);
+        }
+      }
     }
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.success) {
-      this.recentReport = data.report;
-      return data.report;
+
+    let url = `${getApiBase()}/api/reports/efficiency`;
+    const q = new URLSearchParams();
+    if (period) q.set('period', period);
+    if (date) q.set('date', date);
+    if (startDate) q.set('startDate', startDate);
+    if (endDate) q.set('endDate', endDate);
+    url += `?${q.toString()}`;
+
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.report) {
+          this.recentReport = data.report;
+          return data.report;
+        }
+      }
+    } catch (e) {
+      console.warn('Fallback server sales report error:', e);
     }
-    throw new Error(data.error || 'Failed to load sales report');
+    return this.buildEmptySalesReport(period, startDate, endDate);
   },
 
   // Get Staff List
