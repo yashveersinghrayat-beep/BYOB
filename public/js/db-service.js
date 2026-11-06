@@ -121,9 +121,15 @@ const DB_SERVICE = {
       if (data && (data.success || data.ok)) {
         const latency = Math.round(performance.now() - t0);
         this.setServerUrl(clean);
-        this.mode = 'sqlite_server';
-        await this.loadInitialData();
-        this.connectRealtimeSSE();
+        // CRITICAL FOR LIVE TRIAL: NEVER disconnect from Supabase Cloud!
+        if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
+          this.mode = 'supabase_cloud';
+          await this.initSupabaseCloud();
+        } else {
+          this.mode = 'sqlite_server';
+          await this.loadInitialData();
+          this.connectRealtimeSSE();
+        }
         this.emitStatus();
         return { success: true, latency, url: clean };
       }
@@ -172,6 +178,11 @@ const DB_SERVICE = {
 
   // Proactive multi-candidate server probing (Only for localhost dev machine)
   async autoDiscoverServer() {
+    // In live restaurant trial, ALWAYS keep Supabase Cloud as primary single-source-of-truth
+    if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
+      return false;
+    }
+
     const isLocalhost = typeof window !== 'undefined' && (
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1'

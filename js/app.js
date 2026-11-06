@@ -3727,8 +3727,8 @@ const APP = {
       feedback.classList.remove('hidden');
       if (res.success) {
         feedback.className = 'text-xs font-bold p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-left';
-        feedback.innerHTML = `✅ Successfully connected to Server!<br><span class="font-mono text-[10px] text-emerald-200">Latency: ${res.latency}ms • Realtime SSE Active</span>`;
-        this.showToast('✅ Connected to POS Server!');
+        feedback.innerHTML = `✅ Connected to Server (${res.latency}ms)!<br><span class="font-mono text-[10px] text-emerald-200">☁️ Supabase Cloud 24/7 Active (All Waiter Phones & Tables Synced)</span>`;
+        this.showToast('✅ Connected! Supabase Cloud Active & Synced');
         this.haptic('success');
         this.renderFloorTables();
         this.renderMenuItems();
