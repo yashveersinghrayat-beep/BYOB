@@ -2861,10 +2861,16 @@ const APP = {
 
     let billTotals = null;
     if (customBill) {
-      items = customBill.items || [];
-      if (typeof items === 'string') {
-        try { items = JSON.parse(items); } catch(e) { items = []; }
+      let rawItems = customBill.items || customBill.bill_items || [];
+      if (typeof rawItems === 'string') {
+        try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; }
       }
+      items = (rawItems || []).map(i => ({
+        name: i.name || i.item_name || 'Item',
+        qty: parseInt(i.qty || i.quantity || 1),
+        price: parseFloat(i.price || 0),
+        notes: i.notes || ''
+      }));
       subtotal = parseFloat(customBill.subtotal) || 0;
       discountAmount = parseFloat(customBill.discount_amount || customBill.discount) || 0;
       cgst = parseFloat(customBill.cgst) || 0;
@@ -2940,7 +2946,7 @@ const APP = {
     // Service Charge Row
     const servRow = document.getElementById('epson-service-charge-row');
     const servVal = document.getElementById('epson-service-charge');
-    const servChargeAmount = customBill ? (parseFloat(customBill.service_charge) || 0) : (billTotals?.serviceCharge || 0);
+    const servChargeAmount = customBill ? (parseFloat(customBill.service_charge) || Math.max(0, Math.round(grandTotal - (subtotal + cgst + sgst + roundOff - discountAmount)))) : (billTotals?.serviceCharge || 0);
     const servLabel = document.getElementById('epson-service-charge-label');
     if (servLabel) servLabel.textContent = 'Service Charge (Fixed):';
     if (servRow && servVal) {
@@ -5266,46 +5272,146 @@ const APP = {
     });
   },
 
+  computeSalesReportFromBills(bills, period = 'weekly') {
+    const valid = (bills || []).filter(b => b.status !== 'void' && b.status !== 'cancelled');
+    let totalRev = 0, totalSub = 0, totalCgst = 0, totalSgst = 0, totalDisc = 0, totalRound = 0;
+    const paymentModes = {
+      cash: { amount: 0, count: 0, pct: 0 },
+      upi: { amount: 0, count: 0, pct: 0 },
+      card: { amount: 0, count: 0, pct: 0 }
+    };
+    const floorCounts = {
+      'Ground Floor': { bills: 0, rev: 0, pct: 0 },
+      '1st Floor': { bills: 0, rev: 0, pct: 0 },
+      '2nd Floor': { bills: 0, rev: 0, pct: 0 }
+    };
+
+    valid.forEach(b => {
+      const rev = Number(b.grand_total || 0);
+      const sub = Number(b.subtotal || 0);
+      const cgst = Number(b.cgst || 0);
+      const sgst = Number(b.sgst || 0);
+      const disc = Number(b.discount_amount || 0);
+      const round = Number(b.round_off || 0);
+
+      totalRev += rev;
+      totalSub += sub;
+      totalCgst += cgst;
+      totalSgst += sgst;
+      totalDisc += disc;
+      totalRound += round;
+
+      const mode = (b.payment_mode || 'upi').toLowerCase();
+      if (paymentModes[mode]) {
+        paymentModes[mode].amount += rev;
+        paymentModes[mode].count += 1;
+      }
+
+      const tNum = parseInt(String(b.table_id || '').replace(/\D/g, ''), 10);
+      let floor = 'Ground Floor';
+      if (tNum >= 26) floor = '2nd Floor';
+      else if (tNum >= 19) floor = '1st Floor';
+      floorCounts[floor].bills += 1;
+      floorCounts[floor].rev += rev;
+    });
+
+    Object.keys(paymentModes).forEach(m => {
+      paymentModes[m].pct = totalRev > 0 ? Number(((paymentModes[m].amount / totalRev) * 100).toFixed(1)) : 0;
+    });
+
+    const floorList = Object.keys(floorCounts).map(k => ({
+      floor: k,
+      revenue: floorCounts[k].rev,
+      bills_count: floorCounts[k].bills,
+      pct: totalRev > 0 ? Number(((floorCounts[k].rev / totalRev) * 100).toFixed(1)) : 0
+    }));
+
+    const aov = valid.length > 0 ? Math.round(totalRev / valid.length) : 0;
+
+    return {
+      period,
+      periodLabel: `${valid.length} Settled Invoices Audit`,
+      summary: {
+        total_bills: valid.length,
+        total_revenue: totalRev,
+        total_subtotal: totalSub,
+        total_cgst: totalCgst,
+        total_sgst: totalSgst,
+        total_tax: totalCgst + totalSgst,
+        total_discounts: totalDisc,
+        discount_rate_pct: totalRev > 0 ? Number(((totalDisc / totalRev) * 100).toFixed(1)) : 0,
+        aov,
+        total_round_off: totalRound
+      },
+      payment_modes: paymentModes,
+      floor_efficiency: floorList,
+      recentBills: valid
+    };
+  },
+
   async loadManagerAnalytics() {
     const period = this.state.mgrReportPeriod || 'weekly';
-    try {
-      if (typeof DB !== 'undefined' && DB.getSalesAnalytics) {
-        const report = await DB.getSalesAnalytics({
-          period,
-          startDate: this.state.mgrReportStartDate,
-          endDate: this.state.mgrReportEndDate
-        });
-        if (report) {
-          this.state.mgrSalesReport = report;
-          this.state.mgrPeriodBills = report.recentBills || [];
-          this.renderManagerSales(report);
-          this.updateManagerKpiCards();
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn('DB.getSalesAnalytics failed, falling back:', err);
-    }
+    let report = null;
 
-    let url = `/api/reports/efficiency?period=${encodeURIComponent(period)}`;
-    if (period === 'custom') {
-      if (this.state.mgrReportStartDate) url += `&startDate=${encodeURIComponent(this.state.mgrReportStartDate)}`;
-      if (this.state.mgrReportEndDate) url += `&endDate=${encodeURIComponent(this.state.mgrReportEndDate)}`;
-    }
-
+    // 1. Direct Supabase Cloud check (100% resilient across any hosting/CDN)
     try {
-      const res = await fetch(url);
+      const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+      const supaUrl = 'https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/bills?select=*,bill_items(*)&order=created_at.desc';
+      const res = await fetch(supaUrl, {
+        headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+      });
       if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.report) {
-          this.state.mgrSalesReport = data.report;
-          this.state.mgrPeriodBills = data.report.recentBills || [];
-          this.renderManagerSales(data.report);
-          this.updateManagerKpiCards();
+        const cloudBills = await res.json();
+        if (Array.isArray(cloudBills) && cloudBills.length > 0) {
+          const valid = cloudBills.filter(b => b.status !== 'void' && b.status !== 'cancelled');
+          if (valid.length > 0) {
+            report = this.computeSalesReportFromBills(valid, period);
+          }
         }
       }
     } catch (e) {
-      console.warn('Efficiency report fetch error:', e);
+      console.warn('Direct Supabase cloud report fetch error:', e);
+    }
+
+    // 2. If cloud didn't have bills, try DB / local server
+    if (!report || !report.summary?.total_bills) {
+      try {
+        if (typeof DB !== 'undefined' && DB.getSalesAnalytics) {
+          report = await DB.getSalesAnalytics({
+            period,
+            startDate: this.state.mgrReportStartDate,
+            endDate: this.state.mgrReportEndDate
+          });
+        }
+      } catch (err) {
+        console.warn('DB.getSalesAnalytics failed, falling back:', err);
+      }
+    }
+
+    if (!report || !report.summary?.total_bills) {
+      let url = `/api/reports/efficiency?period=${encodeURIComponent(period)}`;
+      if (period === 'custom') {
+        if (this.state.mgrReportStartDate) url += `&startDate=${encodeURIComponent(this.state.mgrReportStartDate)}`;
+        if (this.state.mgrReportEndDate) url += `&endDate=${encodeURIComponent(this.state.mgrReportEndDate)}`;
+      }
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.report) {
+            report = data.report;
+          }
+        }
+      } catch (e) {
+        console.warn('Efficiency report fetch error:', e);
+      }
+    }
+
+    if (report) {
+      this.state.mgrSalesReport = report;
+      this.state.mgrPeriodBills = report.recentBills || [];
+      this.renderManagerSales(report);
+      this.updateManagerKpiCards();
     }
   },
 
@@ -6196,6 +6302,31 @@ const APP = {
 
   async loadManagerInvoices() {
     try {
+      // 1. Direct Supabase Cloud check (100% resilient across any hosting/CDN)
+      try {
+        const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+        const supaUrl = 'https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/bills?select=*,bill_items(*)&order=created_at.desc&limit=40';
+        const res = await fetch(supaUrl, {
+          headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+        });
+        if (res.ok) {
+          const cloudBills = await res.json();
+          if (Array.isArray(cloudBills) && cloudBills.length > 0) {
+            const valid = cloudBills.filter(b => b.status !== 'void' && b.status !== 'cancelled');
+            if (valid.length > 0) {
+              this.state.mgrInvoices = valid.map(b => ({
+                ...b,
+                items: (b.bill_items && b.bill_items.length > 0) ? b.bill_items : (b.items || [])
+              }));
+              this.renderManagerInvoices();
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Direct Supabase cloud invoices fetch error:', e);
+      }
+
       if (typeof DB !== 'undefined' && DB.getRecentBills) {
         const bills = await DB.getRecentBills(40);
         this.state.mgrInvoices = bills || [];

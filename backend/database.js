@@ -10,12 +10,16 @@ let DB_FILE = path.join(__dirname, '..', 'onyx_restaurant.db');
 // Vercel Serverless environment compatibility: filesystem is read-only outside /tmp
 if (process.env.VERCEL) {
   const tmpDb = path.join('/tmp', 'onyx_restaurant.db');
-  if (!fs.existsSync(tmpDb) && fs.existsSync(DB_FILE)) {
-    try {
-      fs.copyFileSync(DB_FILE, tmpDb);
-    } catch (e) {
-      console.warn('Vercel DB copy warning:', e.message);
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const srcStat = fs.statSync(DB_FILE);
+      const dstStat = fs.existsSync(tmpDb) ? fs.statSync(tmpDb) : null;
+      if (!dstStat || dstStat.mtimeMs < srcStat.mtimeMs || dstStat.size !== srcStat.size) {
+        fs.copyFileSync(DB_FILE, tmpDb);
+      }
     }
+  } catch (e) {
+    console.warn('Vercel DB copy warning:', e.message);
   }
   DB_FILE = tmpDb;
 }
