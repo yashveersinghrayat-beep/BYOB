@@ -19,15 +19,26 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 body {
   font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Mangal', sans-serif;
   background-color: var(--bg-main);
   color: var(--text-main);
-  margin: 0;
-  padding: 0;
   font-size: 15px;
   line-height: 1.5;
-  overflow-x: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#main-app-header {
+  flex-shrink: 0 !important;
 }
 
 /* Custom Scrollbars */
@@ -82,11 +93,12 @@ body {
   border-radius: 50%;
 }
 
-/* Native Full-Screen Layout (Auto-adjusts to any phone / tablet / desktop screen) */
+/* Native Phone App Simulator Layout (Auto-adjusts: Native Fullscreen on Mobile, Sleek Smartphone Frame on Desktop) */
 .app-frame {
   width: 100%;
   max-width: 100%;
-  min-height: calc(100vh - 58px);
+  height: 100%;
+  max-height: 100%;
   margin: 0;
   border: none;
   border-radius: 0;
@@ -95,18 +107,39 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #0f1118;
+  background: #0c0e15;
 }
 
-/* On large desktop screens, give it a clean wide container for comfortable viewing */
-@media (min-width: 1200px) {
+/* On desktop / laptop browsers: Render authentic mobile phone app simulator */
+@media (min-width: 641px) {
+  #view-app-container:not(.hidden) {
+    min-height: calc(100vh - 60px) !important;
+    height: calc(100vh - 60px) !important;
+    max-height: calc(100vh - 60px) !important;
+    padding: 8px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: radial-gradient(circle at 50% 25%, #181d2a 0%, #07080d 100%) !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
   .app-frame {
-    max-width: 1360px;
-    margin: 12px auto;
-    border-radius: 16px;
-    border: 1px solid #23293a;
-    min-height: calc(100vh - 84px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    width: 420px !important;
+    max-width: 420px !important;
+    min-width: 360px !important;
+    height: 750px !important;
+    max-height: calc(100vh - 110px) !important;
+    margin: 0 auto !important;
+    border-radius: 32px !important;
+    border: 3px solid #283044 !important;
+    box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 50px rgba(0, 0, 0, 0.6) !important;
+    background: #0c0e15 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
   }
 }
 
@@ -285,15 +318,15 @@ body {
   margin: 5px 0;
 }
 
-/* Thermal printer continuous 80mm roll zero-margin sheet rules (Valid Chromium Syntax) */
+/* Thermal printer continuous 80mm roll zero-margin sheet rules (Valid Chromium Syntax - Zero Paper Waste) */
 @page {
-  size: 80mm 297mm;
+  size: 80mm auto;
   margin: 0mm;
 }
 
 @media print {
   @page {
-    size: 80mm 297mm;
+    size: 80mm auto;
     margin: 0mm;
   }
 
@@ -342,7 +375,7 @@ body {
     position: static !important;
     width: 80mm !important;
     max-width: 80mm !important;
-    padding: 0mm 0mm 4mm 0mm !important;
+    padding: 0mm !important;
     margin: 0 auto !important;
     background: #ffffff !important;
     color: #000000 !important;
@@ -350,17 +383,17 @@ body {
   }
 
   .epson-receipt {
-    width: 70mm !important;
-    max-width: 70mm !important;
+    width: 72mm !important;
+    max-width: 72mm !important;
     margin: 0 auto !important;
     box-shadow: none !important;
-    padding: 2mm 1mm !important;
+    padding: 1mm 1mm 0mm 1mm !important;
     border-radius: 0 !important;
     border: none !important;
     background: #ffffff !important;
     color: #000000 !important;
     font-size: 10px !important;
-    line-height: 1.3 !important;
+    line-height: 1.25 !important;
   }
 
   .qr-img {
@@ -608,24 +641,32 @@ body.mgr-sidebar-open #main-app-header {
 
 #app-container:not(.hidden),
 #view-app-container:not(.hidden) {
-  height: 100vh !important;
-  max-height: 100vh !important;
+  min-height: calc(100vh - 60px) !important;
+  height: calc(100vh - 60px) !important;
+  max-height: calc(100vh - 60px) !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
 }
 
 #app-screen-tables:not(.hidden),
-#app-screen-menu:not(.hidden) {
+#app-screen-menu:not(.hidden),
+#app-screen-review:not(.hidden),
+#app-screen-bill:not(.hidden) {
   flex: 1 1 0% !important;
+  height: 100% !important;
   min-height: 0 !important;
+  max-height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+  position: relative !important;
 }
 
 #app-screen-tables.hidden,
 #app-screen-menu.hidden,
+#app-screen-review.hidden,
+#app-screen-bill.hidden,
 #app-container.hidden,
 #view-app-container.hidden,
 #view-web-container.hidden,
@@ -680,8 +721,25 @@ body.mgr-sidebar-open #main-app-header {
   transition: opacity 0.2s ease;
 }
 
+#app-items-container {
+  flex: 1 1 0% !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-bottom: 12px !important;
+}
+
 #app-menu-bottom-bar {
-  animation: slideUpBottomBar 0.25s ease-out;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  z-index: 40 !important;
+  box-sizing: border-box !important;
+  animation: slideUpBottomBar 0.2s ease-out;
+}
+
+#app-menu-bottom-bar:not(.hidden) {
+  display: flex !important;
 }
 
 @keyframes slideUpBottomBar {

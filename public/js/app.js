@@ -226,20 +226,23 @@ const APP = {
   // Helper to get Table definition
   getTable(tid = null) {
     const targetId = tid || this.state.selectedTableId;
-    return RESTAURANT_TABLES.find(t => t.id === targetId) || RESTAURANT_TABLES[0];
+    const all = (typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : []);
+    return all.find(t => String(t.id) === String(targetId)) || all[0] || { id: targetId, name: `Table ${targetId}`, position: 'Floor' };
   },
 
   // Helper to get Live Table State (from SQLite backend / DB Service)
   getLiveTable(tid = null) {
     const targetId = tid || this.state.selectedTableId;
     if (window.DB && window.DB.tables && window.DB.tables.length > 0) {
-      const found = window.DB.tables.find(t => t.id === targetId);
+      const found = window.DB.tables.find(t => String(t.id) === String(targetId));
       if (found) return found;
     }
-    const def = (typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : []).find(t => t.id === targetId);
+    const def = (typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : []).find(t => String(t.id) === String(targetId));
+    const strId = String(targetId || '1');
+    const cleanNum = strId.replace(/^T-?/i, '');
     return {
       id: targetId,
-      name: def ? def.name : `Table ${parseInt(targetId.replace('T-', ''))}`,
+      name: def ? def.name : `Table ${cleanNum || strId}`,
       position: def ? def.position : 'Main Hall',
       floor: def ? def.floor : '1st Floor',
       landmark: def ? def.landmark : '',
@@ -460,7 +463,7 @@ const APP = {
   },
 
   checkFreshStartReset() {
-    const FRESH_KEY = 'onyx_fresh_start_production_day1';
+    const FRESH_KEY = 'onyx_fresh_start_today_v2';
     if (typeof localStorage !== 'undefined' && localStorage.getItem(FRESH_KEY) !== '1') {
       try {
         localStorage.removeItem('onyx_pending_carts');
@@ -1066,6 +1069,22 @@ const APP = {
 
     await this.sendOrder();
     this.goToTables();
+  },
+
+  // Smart Header Bill Trigger: Jumps to Review if cart has pending items, else Running Bill
+  handleMenuHeaderBillClick() {
+    this.haptic('selection');
+    const liveTable = this.getLiveTable();
+    const placedOrders = liveTable.placedOrders || [];
+    const cart = this.getLocalCart();
+
+    if (placedOrders.length > 0) {
+      this.openRunningBillScreen();
+    } else if (cart.length > 0) {
+      this.openReviewOrderScreen();
+    } else {
+      this.openRunningBillScreen();
+    }
   },
 
   // Step 4: Open Running Bill Screen for Table
@@ -2684,9 +2703,29 @@ const APP = {
       }
     }
 
-    // 2. Mobile Header Tab Amount
+    // 2. Mobile Header Tab Amount & Dynamic Status Label
     const appTabAmount = document.getElementById('app-header-tab-amount');
-    if (appTabAmount) appTabAmount.textContent = `₹${grandTotal}`;
+    const menuBillLabel = document.getElementById('menu-header-bill-label');
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const activeTotal = (grandTotal > 0 ? grandTotal : 0) + (roundTotal > 0 ? roundTotal : 0);
+
+    if (menuBillLabel) {
+      if (placedOrders.length > 0) {
+        menuBillLabel.textContent = isHi ? "🧾 कुल:" : "🧾 Running:";
+      } else if (roundTotal > 0) {
+        menuBillLabel.textContent = isHi ? "🛒 ऑर्डर:" : "🛒 Order:";
+      } else {
+        menuBillLabel.textContent = isHi ? "🧾 रनिंग:" : "🧾 Running:";
+      }
+    }
+
+    if (appTabAmount) {
+      if (grandTotal > 0 && roundTotal > 0) {
+        appTabAmount.textContent = `₹${grandTotal.toLocaleString('en-IN')} (+₹${roundTotal.toLocaleString('en-IN')})`;
+      } else {
+        appTabAmount.textContent = `₹${activeTotal.toLocaleString('en-IN')}`;
+      }
+    }
 
     // 3. Web POS Sidebar Updates
     const posPendingCount = document.getElementById('pos-pending-count');
