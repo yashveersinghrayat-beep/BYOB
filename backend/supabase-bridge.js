@@ -28,11 +28,16 @@ class SupabaseBridge {
     // Initial sync of tables to cloud
     this.syncAllTablesToCloud().catch(() => {});
     
-    // Seed already known KOT IDs from SQLite
+    // Seed already known KOT IDs from SQLite (avoids duplicate reprints on server restart)
     try {
       const activeKots = this.db.getAllActiveKOTs();
       if (Array.isArray(activeKots)) {
-        activeKots.forEach(k => this.syncedKotIds.add(k.id));
+        activeKots.forEach(k => {
+          this.syncedKotIds.add(k.id);
+          if (this.printer && this.printer.printedKotIds) {
+            this.printer.printedKotIds.add(k.id);
+          }
+        });
       }
     } catch (e) {}
 
@@ -100,6 +105,10 @@ class SupabaseBridge {
             const payload = msg.payload.payload;
             if (ev === 'KOT_PUNCHED') {
               this.handleRemoteKotBroadcast(payload);
+            } else if (ev === 'ITEM_VOIDED') {
+              if (this.printer && payload) {
+                this.printer.printVoidSlip(payload).catch(() => {});
+              }
             } else if (ev === 'BILL_SETTLED') {
               this.handleRemoteBillSettledBroadcast(payload);
             } else if (ev === 'TABLE_STATUS_CHANGED') {
@@ -465,9 +474,13 @@ class SupabaseBridge {
       
       this.broadcastToWebSocket('ITEM_VOIDED', {
         tableId,
+        tableName: tableName || tableId,
         kotItemId: voidedItem?.id,
         itemName: voidedItem?.name,
-        reason
+        qty: voidedItem?.qty || 1,
+        reason: reason || 'Customer request',
+        staffName: staffName || 'Floor Waiter',
+        authorizedBy: authorizedBy || 'Manager'
       });
 
       await fetch(`${SUPABASE_URL}/rest/v1/void_logs`, {

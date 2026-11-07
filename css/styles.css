@@ -66,6 +66,67 @@ body {
 
 #main-app-header {
   flex-shrink: 0 !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+#hdr-viewport-toggle {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-x !important;
+}
+
+#hdr-viewport-toggle::-webkit-scrollbar {
+  display: none !important;
+}
+
+.view-tab-btn {
+  flex: 1 1 0% !important;
+  min-width: 95px !important;
+  white-space: nowrap !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+@media (min-width: 768px) {
+  .view-tab-btn {
+    flex: 0 1 auto !important;
+    min-width: auto !important;
+  }
+}
+
+/* On mobile screens, when manager console is active, hide brand text block to give room to Section breadcrumbs */
+@media (max-width: 639px) {
+  body.mgr-view-active #main-app-header .brand-title-block {
+    display: none !important;
+  }
+  #hdr-manager-section-pill {
+    max-width: 140px !important;
+  }
+}
+
+/* Mobile Viewport Width & Overflow Hard Limits */
+@media (max-width: 767px) {
+  html, body {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  #main-app-header {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  #view-app-container,
+  #view-web-container,
+  #view-manager-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
 }
 
 /* Custom Scrollbars */

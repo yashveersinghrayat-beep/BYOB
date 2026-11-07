@@ -199,77 +199,57 @@
 </head>
 <body class="bg-[#090a0e] text-white min-h-screen">
 
-  <!-- ================= TOP HEADER BAR ================= -->
-  <header id="main-app-header" class="w-full bg-[#11141c] border-b border-[#222838] sticky top-0 z-50 px-3 sm:px-4 py-2 shadow-md transition-all duration-300">
-    <div class="w-full flex items-center justify-between gap-2">
+  <!-- ================= TOP HEADER BAR (SMART AUTO-ADJUSTING & MOBILE OPTIMIZED) ================= -->
+  <header id="main-app-header" class="w-full bg-[#11141c] border-b border-[#222838] sticky top-0 z-50 px-2.5 sm:px-4 py-1.5 sm:py-2 shadow-md transition-all duration-300">
+    <div class="w-full max-w-7xl mx-auto flex flex-wrap md:flex-nowrap items-center justify-between gap-1.5 sm:gap-2">
       
-      <!-- Brand & Title + Animated Manager Sidebar Toggle -->
-      <div class="flex items-center gap-2.5">
+      <!-- 1. LEFT BRAND & MANAGER TOGGLE (Order 1 on mobile & desktop) -->
+      <div class="flex items-center gap-2 min-w-0 flex-shrink order-1">
         <!-- Interactive Morphing Hamburger Toggle Button (Shown in Manager Console) -->
         <button 
           id="hdr-sidebar-toggle-btn" 
           onclick="APP.toggleManagerSidebar()" 
-          class="hidden flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#141824] hover:bg-[#1f2638] border border-amber-500/40 text-amber-300 transition-all duration-300 shadow group active:scale-95 cursor-pointer"
+          class="hidden flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-[#141824] hover:bg-[#1f2638] border border-amber-500/40 text-amber-300 transition-all duration-300 shadow group active:scale-95 cursor-pointer flex-shrink-0"
           title="Toggle Navigation Sidebar">
-          <div class="w-4 h-3.5 flex flex-col justify-between">
-            <span class="hdr-bar bar-top block w-4 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
-            <span class="hdr-bar bar-mid block w-4 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
-            <span class="hdr-bar bar-bot block w-4 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
+          <div class="w-3.5 h-3 flex flex-col justify-between">
+            <span class="hdr-bar bar-top block w-3.5 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
+            <span class="hdr-bar bar-mid block w-3.5 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
+            <span class="hdr-bar bar-bot block w-3.5 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
           </div>
-          <span class="text-xs font-black tracking-wider text-amber-300 group-hover:text-amber-200" id="hdr-sidebar-btn-label">MENU</span>
+          <span class="text-[11px] sm:text-xs font-black tracking-wider text-amber-300 group-hover:text-amber-200" id="hdr-sidebar-btn-label">MENU</span>
         </button>
 
         <!-- Live Active Section Breadcrumb in Header (Manager View) -->
-        <div id="hdr-manager-section-pill" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#141824] border border-amber-500/30 text-xs font-bold text-neutral-300 shadow-inner">
-          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-          <span class="text-neutral-400 hidden lg:inline">Section:</span>
-          <span id="hdr-active-section-name" class="text-amber-300 font-black uppercase text-[11px] sm:text-xs">Sales & Z-Report</span>
+        <div id="hdr-manager-section-pill" class="hidden items-center gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl bg-[#141824] border border-amber-500/30 text-xs font-bold text-neutral-300 shadow-inner flex-shrink truncate max-w-[130px] sm:max-w-[180px]">
+          <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0"></span>
+          <span id="hdr-active-section-name" class="text-amber-300 font-black uppercase text-[10px] sm:text-xs truncate">Sales & Z-Report</span>
         </div>
 
         <!-- Brand Logo & Title -->
-        <div class="flex items-center gap-2.5 cursor-pointer" onclick="APP.goToTables(true)">
-          <div class="w-9 h-9 rounded-xl shadow-lg border border-amber-500/40 bg-[#141824] flex items-center justify-center p-1 overflow-hidden flex-shrink-0">
+        <div class="flex items-center gap-2 cursor-pointer min-w-0" onclick="APP.goToTables(true)">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-lg border border-amber-500/40 bg-[#141824] flex items-center justify-center p-1 overflow-hidden flex-shrink-0">
             <svg viewBox="0 0 512 512" class="w-full h-full">
               <polygon points="256,76 396,156 396,316 256,396 116,316 116,156" fill="#141824" stroke="#f59e0b" stroke-width="24" stroke-linejoin="round"/>
               <text x="256" y="295" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="900" font-size="160" fill="#ffd257" text-anchor="middle">B</text>
             </svg>
           </div>
-          <div>
-            <div class="text-xs sm:text-sm font-black text-white tracking-wide flex items-center gap-1.5">
-              <span>BYOB INDIRAPURAM</span>
-              <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">PRO</span>
+          <div class="min-w-0 brand-title-block">
+            <div class="text-xs sm:text-sm font-black text-white tracking-wide flex items-center gap-1.5 truncate">
+              <span class="truncate">BYOB INDIRAPURAM</span>
+              <span class="text-[8px] sm:text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex-shrink-0">PRO</span>
             </div>
-            <div class="text-[10px] text-neutral-400">Commercial Restaurant Suite</div>
+            <div class="text-[9px] sm:text-[10px] text-neutral-400 hidden sm:block">Commercial Restaurant Suite</div>
           </div>
         </div>
       </div>
 
-      <!-- VIEWPORT TOGGLE: APP (WAITER TERMINAL) vs WEB (CASHIER COUNTER) vs OPERATIONS CONSOLE -->
-      <div class="flex items-center gap-1 bg-[#181c28] p-1 rounded-xl border border-[#2b3347]">
-        <button 
-          id="btn-view-app"
-          onclick="APP.setView('app')" 
-          class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center gap-1 shadow">
-          <span>📱 Waiter Terminal</span>
-        </button>
-        <button 
-          id="btn-view-web"
-          onclick="APP.setView('web')" 
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center gap-1">
-          <span>🖥️ Cashier Counter</span>
-        </button>
-        <button 
-          id="btn-view-manager"
-          onclick="APP.setView('manager')" 
-          class="px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center gap-1">
-          <span>👑 Operations Console</span>
-        </button>
-      </div>
+      <!-- 2. RIGHT CONTROLS: LANGUAGE SWITCHER & BADGES (Order 2 on mobile - pinned top right, Order 3 on desktop) -->
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 order-2 md:order-3">
+        <!-- Live Cloud Sync Dot for Mobile -->
+        <div id="hdr-live-dot" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.9)] animate-pulse flex-shrink-0 lg:hidden" title="Live & Synchronized"></div>
 
-      <!-- Right Controls: Table Selector & DB Status Badge -->
-      <div class="flex items-center gap-2">
-        <!-- BILINGUAL LANGUAGE SWITCHER: ENGLISH / हिंदी (TOP RIGHT CORNER) -->
-        <div id="header-lang-toggle" class="flex items-center bg-[#181c28] p-0.5 sm:p-1 rounded-xl border border-[#2b3347] shadow flex-shrink-0" title="Switch App Language / ऐप की भाषा बदलें">
+        <!-- BILINGUAL LANGUAGE SWITCHER: ENGLISH / हिंदी (TOP RIGHT CORNER - ALWAYS 100% VISIBLE) -->
+        <div id="header-lang-toggle" class="flex items-center bg-[#181c28] p-0.5 rounded-xl border border-[#2b3347] shadow flex-shrink-0" title="Switch App Language / ऐप की भाषा बदलें">
           <button 
             id="btn-lang-en"
             type="button"
@@ -286,8 +266,8 @@
           </button>
         </div>
 
-        <!-- Dual Health Status Badge: Server & Database (Live Green / Slow Yellow / Down Red) -->
-        <div id="system-health-badge" onclick="APP.openServerConfigModal()" class="cursor-pointer hover:border-amber-400/60 transition-all flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#11141d] border-emerald-500/30" title="Click to view or change Server IP & Connection Mode">
+        <!-- Dual Health Status Badge: Server & Database (Desktop / Tablet Only) -->
+        <div id="system-health-badge" onclick="APP.openServerConfigModal()" class="hidden lg:flex cursor-pointer hover:border-amber-400/60 transition-all items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#11141d] border-emerald-500/30" title="Click to view or change Server IP & Connection Mode">
           <!-- Server Status -->
           <div class="flex items-center gap-1" title="Server Latency Status">
             <span id="server-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 sync-pulse"></span>
@@ -306,9 +286,9 @@
           id="btn-fullscreen"
           onclick="APP.toggleFullscreen()" 
           title="Fullscreen POS Kiosk Mode"
-          class="px-2.5 py-1.5 rounded-xl bg-[#141824] hover:bg-[#1f2638] border border-[#2b3347] text-neutral-300 hover:text-white text-xs font-bold flex items-center gap-1 transition-all shadow">
+          class="hidden xl:flex px-2.5 py-1.5 rounded-xl bg-[#141824] hover:bg-[#1f2638] border border-[#2b3347] text-neutral-300 hover:text-white text-xs font-bold items-center gap-1 transition-all shadow">
           <span id="fullscreen-icon">⛶</span>
-          <span class="hidden xl:inline text-[11px]">Kiosk</span>
+          <span class="text-[11px]">Kiosk</span>
         </button>
 
         <!-- Install PWA App Button -->
@@ -316,7 +296,7 @@
           id="btn-install-pwa"
           onclick="APP.installPwaApp()" 
           title="Install ONYX POS as phone app"
-          class="hidden px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all">
+          class="hidden px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-extrabold text-xs items-center gap-1.5 shadow-lg active:scale-95 transition-all">
           <span>📲</span>
           <span class="hidden sm:inline">Install App</span>
         </button>
@@ -326,13 +306,13 @@
           id="btn-phone-connect"
           onclick="APP.openPhoneConnectModal()" 
           title="Scan QR Code to open on Waiter Phones"
-          class="px-2.5 py-1.5 rounded-xl bg-[#141824] hover:bg-[#1f2638] border border-blue-500/40 text-blue-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow">
+          class="hidden md:flex px-2.5 py-1.5 rounded-xl bg-[#141824] hover:bg-[#1f2638] border border-blue-500/40 text-blue-300 hover:text-white text-xs font-bold items-center gap-1.5 transition-all shadow">
           <span>📱</span>
-          <span class="hidden md:inline text-[11px]">Phone QR</span>
+          <span class="text-[11px]">Phone QR</span>
         </button>
 
         <!-- User Role & Manager Auth Badge / Switcher -->
-        <div id="header-auth-badge" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#141824] border border-[#2b3347] text-xs">
+        <div id="header-auth-badge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#141824] border border-[#2b3347] text-xs">
           <!-- Populated by APP.renderAuthBadge() -->
         </div>
 
@@ -341,7 +321,7 @@
           id="btn-past-bills"
           onclick="APP.openPastBillsModal()" 
           title="View recent settled bills and reprint invoices (Manager Protected)"
-          class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 hover:border-amber-400 text-xs font-bold text-amber-300 hover:text-white transition-all shadow-md">
+          class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 hover:border-amber-400 text-xs font-bold text-amber-300 hover:text-white transition-all shadow-md">
           <span>📜</span>
           <span class="hidden sm:inline">Last Orders</span>
           <span class="text-[9px] bg-amber-500/30 text-amber-200 px-1 py-0.2 rounded font-mono hidden md:inline">Manager</span>
@@ -352,10 +332,36 @@
           id="btn-void-audit-badge"
           onclick="APP.openVoidAuditModal()" 
           title="Anti-Theft Detection: View removed / deleted dishes"
-          class="hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-500/15 border border-red-500/40 hover:border-red-400 text-xs font-bold text-red-300 hover:text-white transition-all shadow-md">
+          class="hidden items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-500/15 border border-red-500/40 hover:border-red-400 text-xs font-bold text-red-300 hover:text-white transition-all shadow-md">
           <span>🚨</span>
           <span id="header-void-count" class="text-[11px] font-mono">0 Voids</span>
         </button>
+      </div>
+
+      <!-- 3. VIEWPORT TOGGLE: APP (WAITER TERMINAL) vs WEB (CASHIER COUNTER) vs OPERATIONS CONSOLE (Order 3 on mobile - full width strip with smooth touch-scroll, Order 2 on desktop) -->
+      <div id="hdr-viewport-toggle" class="w-full md:w-auto flex items-center gap-1 bg-[#181c28] p-1 rounded-xl border border-[#2b3347] order-3 md:order-2 overflow-x-auto no-scrollbar scroll-smooth" style="scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-x;">
+        <button 
+          id="btn-view-app"
+          onclick="APP.setView('app')" 
+          class="view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center justify-center gap-1 shadow whitespace-nowrap min-w-[95px]">
+          <span>📱 Waiter Terminal</span>
+        </button>
+        <button 
+          id="btn-view-web"
+          onclick="APP.setView('web')" 
+          class="view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]">
+          <span>🖥️ Cashier Counter</span>
+        </button>
+        <button 
+          id="btn-view-manager"
+          onclick="APP.setView('manager')" 
+          class="view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]">
+          <span>👑 Operations Console</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
 
         <!-- Active Table Badge with Floor Map trigger -->
         <button 
@@ -398,7 +404,7 @@
         </div>
 
         <!-- 3-FLOOR CORPORATE SEGMENTED TABS -->
-        <div class="px-3 py-2 bg-[#0e111a] border-b border-[#23293a] flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div class="px-3 py-2 bg-[#0e111a] border-b border-[#23293a] flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth" style="scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-x;">
           <button 
             id="mobile-floor-tab-gf" 
             onclick="APP.setFloorFilter('Ground Floor')" 
@@ -993,27 +999,27 @@
   </aside>
 
   <!-- ================= VIEW 3: OPERATIONS CONSOLE (EXECUTIVE MANAGEMENT SUITE) ================= -->
-  <div id="view-manager-container" class="max-w-7xl mx-auto px-3 sm:px-6 py-4 hidden">
+  <div id="view-manager-container" class="w-full max-w-7xl mx-auto px-2.5 sm:px-6 py-4 hidden overflow-x-hidden">
     
     <!-- MANAGER TOP BAR -->
-    <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-4 sm:p-5 mb-5 shadow-xl flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <div class="flex items-center gap-3">
-          <button onclick="APP.toggleManagerSidebar()" id="mgr-nav-sidebar-btn" class="px-3 py-2 rounded-xl bg-[#181f30] hover:bg-[#20293f] border border-[#2e3a54] text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow active:scale-95" title="Manager Navigation">
+    <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-3 sm:p-5 mb-5 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 overflow-hidden">
+      <div class="min-w-0 max-w-full">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button onclick="APP.toggleManagerSidebar()" id="mgr-nav-sidebar-btn" class="px-3 py-2 rounded-xl bg-[#181f30] hover:bg-[#20293f] border border-[#2e3a54] text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow active:scale-95 flex-shrink-0" title="Manager Navigation">
             <span>☰</span>
             <span class="hidden sm:inline">SECTIONS</span>
           </button>
-          <div class="w-10 h-10 rounded-xl bg-[#181e2b] border border-[#2b354a] text-amber-400 flex items-center justify-center shadow-inner flex-shrink-0">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#181e2b] border border-[#2b354a] text-amber-400 flex items-center justify-center shadow-inner flex-shrink-0">
             <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6"/>
             </svg>
           </div>
-          <div>
-            <h1 class="text-base sm:text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
-              <span id="mgr-hdr-title">ONYX OPERATIONS CONSOLE</span>
-              <span id="mgr-hdr-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#1a2133] text-neutral-300 border border-[#3b4764] uppercase tracking-widest font-mono">EXECUTIVE</span>
+          <div class="min-w-0">
+            <h1 class="text-sm sm:text-xl font-bold text-white tracking-tight flex items-center gap-2 truncate">
+              <span id="mgr-hdr-title" class="truncate">ONYX OPERATIONS CONSOLE</span>
+              <span id="mgr-hdr-badge" class="text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#1a2133] text-neutral-300 border border-[#3b4764] uppercase tracking-widest font-mono flex-shrink-0">EXECUTIVE</span>
             </h1>
-            <p id="mgr-hdr-subtitle" class="text-xs text-neutral-400 font-normal mt-0.5">Hospitality Management • Revenue Audit & Multi-Floor Governance</p>
+            <p id="mgr-hdr-subtitle" class="text-[10px] sm:text-xs text-neutral-400 font-normal mt-0.5 truncate max-w-[220px] sm:max-w-none">Hospitality Management • Revenue Audit & Multi-Floor Governance</p>
           </div>
         </div>
       </div>

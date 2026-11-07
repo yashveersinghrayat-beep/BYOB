@@ -89,9 +89,9 @@ const APP = {
     const pastBillsBtn = document.getElementById('btn-past-bills');
     if (pastBillsBtn) {
       if (this.state.userRole === 'manager') {
-        pastBillsBtn.classList.remove('hidden');
+        pastBillsBtn.className = "hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 hover:border-amber-400 text-xs font-bold text-amber-300 hover:text-white transition-all shadow-md";
       } else {
-        pastBillsBtn.classList.add('hidden');
+        pastBillsBtn.className = "hidden";
       }
     }
 
@@ -100,7 +100,7 @@ const APP = {
     if (!container) return;
 
     if (this.state.userRole === 'manager') {
-      container.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-xs shadow";
+      container.className = "hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-xs shadow";
       container.innerHTML = `
         <span class="text-xs">👑</span>
         <span class="text-[11px] font-bold text-amber-300 hidden sm:inline">Manager</span>
@@ -110,14 +110,14 @@ const APP = {
         <button onclick="APP.openWelcomeAuthModal()" title="Switch User / Logout" class="text-[10px] text-neutral-400 hover:text-white underline ml-1 font-medium">Switch</button>
       `;
     } else if (this.state.userRole === 'waiter') {
-      container.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#141824] border border-[#2b3347] text-xs shadow";
+      container.className = "hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#141824] border border-[#2b3347] text-xs shadow";
       container.innerHTML = `
         <span class="text-xs">👤</span>
         <span class="text-[11px] font-bold text-neutral-300 hidden sm:inline">Waiter</span>
         <button onclick="APP.openWelcomeAuthModal()" title="Login as Manager" class="text-[10px] text-amber-400 hover:text-amber-300 font-bold ml-1">🔐 Manager</button>
       `;
     } else {
-      container.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#141824] border border-[#2b3347] text-xs shadow";
+      container.className = "hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#141824] border border-[#2b3347] text-xs shadow";
       container.innerHTML = `
         <button onclick="APP.openWelcomeAuthModal()" class="text-[11px] text-amber-400 font-bold flex items-center gap-1">
           <span>🔐</span>
@@ -1400,9 +1400,9 @@ const APP = {
       }
       if (hdrBtn) { hdrBtn.classList.add('hidden'); hdrBtn.style.display = 'none'; }
       if (hdrSecPill) { hdrSecPill.classList.add('hidden'); hdrSecPill.classList.remove('flex'); hdrSecPill.style.display = 'none'; }
-      if (btnApp) btnApp.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center gap-1 shadow";
-      if (btnWeb) btnWeb.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center gap-1";
-      if (btnMgr) btnMgr.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center gap-1";
+      if (btnApp) btnApp.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center justify-center gap-1 shadow whitespace-nowrap min-w-[95px]";
+      if (btnWeb) btnWeb.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
+      if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
       if (this.state.appScreen === 'tables') this.goToTables();
     } else if (view === 'web') {
       this.closeManagerSidebar();
@@ -1424,9 +1424,9 @@ const APP = {
       }
       if (hdrBtn) { hdrBtn.classList.add('hidden'); hdrBtn.style.display = 'none'; }
       if (hdrSecPill) { hdrSecPill.classList.add('hidden'); hdrSecPill.classList.remove('flex'); hdrSecPill.style.display = 'none'; }
-      if (btnWeb) btnWeb.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center gap-1 shadow";
-      if (btnApp) btnApp.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center gap-1";
-      if (btnMgr) btnMgr.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center gap-1";
+      if (btnWeb) btnWeb.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center justify-center gap-1 shadow whitespace-nowrap min-w-[95px]";
+      if (btnApp) btnApp.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
+      if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
     } else if (view === 'manager') {
       document.body.classList.add('mgr-view-active');
       document.body.classList.remove('web-view-active');
@@ -1445,9 +1445,9 @@ const APP = {
       }
       if (hdrBtn) { hdrBtn.classList.remove('hidden'); hdrBtn.style.display = 'flex'; }
       if (hdrSecPill) { hdrSecPill.classList.remove('hidden'); hdrSecPill.classList.add('flex'); hdrSecPill.style.display = 'flex'; }
-      if (btnMgr) btnMgr.className = "px-3.5 py-1.5 rounded-lg text-xs font-black transition-all bg-gradient-to-r from-amber-500 to-amber-600 text-black flex items-center gap-1 shadow-lg";
-      if (btnApp) btnApp.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center gap-1";
-      if (btnWeb) btnWeb.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center gap-1";
+      if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all bg-gradient-to-r from-amber-500 to-amber-600 text-black flex items-center justify-center gap-1 shadow-lg whitespace-nowrap min-w-[95px]";
+      if (btnApp) btnApp.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
+      if (btnWeb) btnWeb.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
       this.renderManagerDashboard();
     }
 
@@ -4493,10 +4493,10 @@ const APP = {
     if (!badge) return;
 
     if (this.state.userRole === 'manager' && count > 0) {
-      badge.classList.remove('hidden');
+      badge.className = "hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-500/15 border border-red-500/40 hover:border-red-400 text-xs font-bold text-red-300 hover:text-white transition-all shadow-md";
       if (text) text.textContent = `${count} Void${count > 1 ? 's' : ''} (₹${amount})`;
     } else {
-      badge.classList.add('hidden');
+      badge.className = "hidden";
     }
   },
 
@@ -5373,13 +5373,13 @@ const APP = {
       dText.textContent = 'DB: Offline';
     }
 
-    // Outer Badge Container Glow (Green / Yellow / Red)
+    // Outer Badge Container Glow (Green / Yellow / Red) - Desktop/Tablet Only (hidden lg:flex)
     if (server.status === 'red' || db.status === 'red') {
-      badge.className = 'flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#221010] border-red-500/60';
+      badge.className = 'hidden lg:flex cursor-pointer hover:border-amber-400/60 transition-all items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#221010] border-red-500/60';
     } else if (server.status === 'yellow' || db.status === 'yellow') {
-      badge.className = 'flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#1e190e] border-amber-500/50';
+      badge.className = 'hidden lg:flex cursor-pointer hover:border-amber-400/60 transition-all items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#1e190e] border-amber-500/50';
     } else {
-      badge.className = 'flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#0d1714] border-emerald-500/40';
+      badge.className = 'hidden lg:flex cursor-pointer hover:border-amber-400/60 transition-all items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono transition-all duration-300 shadow bg-[#0d1714] border-emerald-500/40';
     }
   },
 

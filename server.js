@@ -274,6 +274,8 @@ async function handleRequest(req, res) {
       const body = await parseBody(req);
       const result = DB.transferTable(body.sourceTableId, body.targetTableId);
       broadcastEvent('TABLES_UPDATED', DB.getTables());
+      // Wireless Kitchen Printer: Print Table Shift Slip for Chefs
+      kitchenPrinter.printTransferSlip(body).catch(() => {});
       return sendJSON(res, 200, { success: true, result });
     }
     if (pathname === '/api/tables/force-clear' && method === 'POST') {
@@ -387,6 +389,8 @@ async function handleRequest(req, res) {
         broadcastEvent('TABLES_UPDATED', tables);
         broadcastEvent('ITEM_VOIDED', { result, tables, activeKots });
         bridge.pushVoidToCloud(result);
+        // Wireless Kitchen Printer: Print Immediate Cancellation Slip for Chefs
+        kitchenPrinter.printVoidSlip(result).catch(() => {});
         return sendJSON(res, 200, { success: true, result, tables, activeKots });
       } catch (err) {
         return sendJSON(res, 403, { success: false, error: err.message });
