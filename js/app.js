@@ -483,6 +483,11 @@ const APP = {
       try { localStorage.setItem('onyx_lang', lang); } catch (e) {}
     }
     this.updateLanguageUI();
+    this.renderAll();
+    this.updateCartUI();
+    this.updateTableHeaderBadges();
+    if (this.state.appScreen === 'review') this.renderReviewScreen();
+    if (this.state.appScreen === 'bill') this.renderRunningBillScreen();
     this.showToast(lang === 'hi' ? '🇮🇳 भाषा बदलकर हिंदी कर दी गई है' : '🇬🇧 Language switched to English');
   },
 

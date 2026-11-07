@@ -373,26 +373,51 @@ const I18N = {
 
   getDishName(item) {
     if (!item) return '';
-    const id = typeof item === 'string' ? item : (item.id || item.item_id || '');
-    if (this.currentLang === 'hi') {
-      if (id && this.dishes[id]) return this.dishes[id];
-      // Lookup by lowercased id
-      const lowerId = id.toLowerCase();
-      if (this.dishes[lowerId]) return this.dishes[lowerId];
-      // Fallback: match by item name
-      const name = (typeof item === 'object' ? (item.name || item.item_name || '') : item).trim();
-      if (name) {
-        for (const [k, v] of Object.entries(this.dishes)) {
-          if (k.toLowerCase() === lowerId) return v;
-        }
+    if (this.currentLang !== 'hi') {
+      return typeof item === 'object' ? (item.name || item.item_name || item.id || '') : item;
+    }
+
+    // 1. Direct ID lookup (prefer item_id, dish_id over database auto-increment numeric primary key)
+    let candidateId = '';
+    if (typeof item === 'string') {
+      candidateId = item;
+    } else if (typeof item === 'object') {
+      if (item.item_id) candidateId = String(item.item_id);
+      else if (item.dish_id) candidateId = String(item.dish_id);
+      else if (item.id && typeof item.id === 'string' && isNaN(Number(item.id))) candidateId = String(item.id);
+      else if (item.id) candidateId = String(item.id);
+    }
+
+    if (candidateId) {
+      if (this.dishes[candidateId]) return this.dishes[candidateId];
+      const lower = candidateId.toLowerCase();
+      if (this.dishes[lower]) return this.dishes[lower];
+    }
+
+    // 2. Fallback: match by English dish name against dishes dictionary and MENU_ITEMS
+    const name = String(typeof item === 'object' ? (item.name || item.item_name || '') : item).trim();
+    if (name) {
+      const lowerName = name.toLowerCase();
+      const menuList = (typeof MENU_ITEMS !== 'undefined' && Array.isArray(MENU_ITEMS))
+        ? MENU_ITEMS
+        : ((typeof window !== 'undefined' && window.MENU_ITEMS && Array.isArray(window.MENU_ITEMS))
+          ? window.MENU_ITEMS
+          : ((typeof window !== 'undefined' && window.DB && Array.isArray(window.DB.menuItems)) ? window.DB.menuItems : []));
+      const matched = menuList.find(m => m.name && m.name.toLowerCase() === lowerName);
+      if (matched && matched.id && this.dishes[matched.id]) {
+        return this.dishes[matched.id];
+      }
+      for (const [k, v] of Object.entries(this.dishes)) {
+        if (k.toLowerCase() === lowerName) return v;
       }
     }
-    return typeof item === 'object' ? (item.name || item.item_name || id) : item;
+
+    return typeof item === 'object' ? (item.name || item.item_name || candidateId) : item;
   },
 
   getCategoryName(cat) {
     if (!cat) return '';
-    const id = typeof cat === 'string' ? cat : (cat.id || '');
+    const id = String(typeof cat === 'string' ? cat : (cat.id || cat.category || ''));
     if (this.currentLang === 'hi' && this.categories.hi[id]) {
       return this.categories.hi[id];
     }
@@ -400,12 +425,13 @@ const I18N = {
   },
 
   getFloorName(floorName) {
-    if (this.currentLang !== 'hi') return floorName;
-    if (floorName === 'Ground Floor') return 'ग्राउंड फ्लोर';
-    if (floorName === '1st Floor') return 'पहली मंजिल';
-    if (floorName === '2nd Floor') return 'दूसरी मंजिल';
-    if (floorName === 'all' || floorName === 'All (42)') return 'सभी (42)';
-    return floorName;
+    if (this.currentLang !== 'hi' || !floorName) return floorName;
+    const str = String(floorName);
+    if (str.includes('Ground')) return 'ग्राउंड फ्लोर';
+    if (str.includes('1st')) return 'पहली मंजिल';
+    if (str.includes('2nd')) return 'दूसरी मंजिल';
+    if (str.includes('all') || str.includes('All')) return 'सभी (42)';
+    return str;
   }
 };
 
