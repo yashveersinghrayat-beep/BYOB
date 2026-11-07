@@ -23,9 +23,9 @@ const APP = {
     discountType: "none", // 'none' | 'percent' | 'flat'
     discountValue: 0,
     isRoundOff: true,
-    userRole: localStorage.getItem('onyx_user_role') || 'waiter', // 'waiter' | 'manager'
-    userEmail: localStorage.getItem('onyx_user_email') || 'waiter@onyx',
-    userName: localStorage.getItem('onyx_user_name') || 'Floor Staff',
+    userRole: 'waiter', // Default: Waiter Role (Secure zero-trust baseline)
+    userEmail: 'waiter@onyx',
+    userName: localStorage.getItem('onyx_staff_name') || 'Floor Staff',
     activeEditBill: null,
     editBillItems: [],
     pendingUpdate: null,
@@ -73,10 +73,17 @@ const APP = {
 
   // ================= 0. USER AUTH & ROLE MANAGEMENT =================
   initAuth() {
-    if (!this.state.userRole) {
+    // Zero-Trust Security: Every reload defaults to Waiter role!
+    // Manager privileges require explicit PIN unlock in the active session.
+    const sessionAuth = sessionStorage.getItem('onyx_manager_authenticated');
+    if (sessionAuth === 'true') {
+      this.state.userRole = 'manager';
+      this.state.userName = localStorage.getItem('onyx_user_name') || 'Owner / Manager';
+      this.state.userEmail = localStorage.getItem('onyx_user_email') || 'admin@google.in';
+    } else {
       this.state.userRole = 'waiter';
       this.state.userEmail = 'waiter@onyx';
-      this.state.userName = 'Floor Staff';
+      this.state.userName = localStorage.getItem('onyx_staff_name') || 'Floor Staff';
       localStorage.setItem('onyx_user_role', 'waiter');
       localStorage.setItem('onyx_user_email', 'waiter@onyx');
       localStorage.setItem('onyx_user_name', 'Floor Staff');
@@ -1003,18 +1010,8 @@ const APP = {
 
     // STEP-BY-STEP MOBILE WORKFLOW:
     if (this.state.currentView === 'app') {
-      if (isBilled) {
-        // Table already has bill printed ->
-        // Only Manager can see settlement confirmation modal; Waiter opens action sheet/payment proof!
-        if (this.state.userRole === 'manager') {
-          this.openPostPrintSettleModal(tableId);
-        } else {
-          this.openTableActionSheet(tableId);
-        }
-        return;
-      }
-      if (isOccupied) {
-        // Occupied Table: Open clean action sheet (Take Order vs View Bill)
+      if (isBilled || isOccupied) {
+        // Occupied / Billed Table: Open clean action sheet (Take Order vs View Bill vs Collect Proof)
         this.openTableActionSheet(tableId);
       } else {
         // Free Table: 1-Tap directly opens Menu
@@ -1353,10 +1350,10 @@ const APP = {
 
   handleActionSheetSettleClick() {
     this.closeTableActionSheet();
-    if (this.state.userRole === 'manager') {
-      this.openPostPrintSettleModal(this.state.selectedTableId);
-    } else {
+    if (this.state.currentView === 'app' || this.state.userRole !== 'manager') {
       this.openWaiterPaymentFlow(this.state.selectedTableId);
+    } else {
+      this.openPostPrintSettleModal(this.state.selectedTableId);
     }
   },
 
@@ -1452,6 +1449,8 @@ const APP = {
     const hdrSecPill = document.getElementById('hdr-manager-section-pill');
 
     if (view === 'app') {
+      this.state.userRole = 'waiter'; // Waiter Terminal is STRICTLY for waiters
+      this.renderAuthBadge();
       this.closeManagerSidebar();
       document.body.classList.remove('mgr-view-active');
       document.body.classList.remove('mgr-sidebar-open');
@@ -3255,7 +3254,7 @@ const APP = {
   },
 
   async settleFromTableUpiModal() {
-    if (this.state.userRole !== 'manager') {
+    if (this.state.currentView === 'app' || this.state.userRole !== 'manager') {
       const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
       this.showToast(isHi ? '🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Only Manager can settle bills. Please capture payment proof.');
       this.closeTableUpiModal();
@@ -3689,13 +3688,13 @@ const APP = {
   // Settle Table: Complete Payment, Free Table & Archive Settlement
   async settleTable() {
     // STRICT ROLE GUARD: Waiters can NEVER settle bills under any condition!
-    if (this.state.userRole !== 'manager') {
+    if (this.state.currentView === 'app' || this.state.userRole !== 'manager') {
       const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
       this.showToast(isHi ? '🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Access Restricted: Only Manager can settle bills. Please submit payment proof.');
       if (this.state.currentView === 'app') {
         this.openWaiterPaymentFlow();
       } else {
-        this.openWelcomeAuthModal();
+        this.openManagerPinGate();
       }
       return false;
     }
@@ -4306,7 +4305,7 @@ const APP = {
     if (!tId) return;
 
     // Strict Waiter Role Protection: Waiters can NEVER settle bills!
-    if (this.state.userRole !== 'manager') {
+    if (this.state.currentView === 'app' || this.state.userRole !== 'manager') {
       const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
       this.showToast(isHi ? '🔒 केवल मैनेजर ही टेबल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Only Manager can settle tables. Please collect payment proof.');
       this.openWaiterPaymentFlow(tId);
@@ -4457,9 +4456,9 @@ const APP = {
     }
     this.haptic('selection');
 
-    // Auto-start live glare-free camera if no proof attached yet
+    // Auto-start live in-app glare-free camera if no proof attached yet
     if (!this._tempPaymentProof) {
-      this.switchPaymentCaptureMode('live');
+      this.startLiveCamera();
     }
   },
 
@@ -4467,8 +4466,6 @@ const APP = {
     this.stopLiveCamera();
     const modal = document.getElementById('waiter-payment-proof-modal');
     if (modal) modal.classList.add('hidden');
-    const input = document.getElementById('waiter-proof-camera-input');
-    if (input) input.value = '';
     if (updateHistory && typeof history !== 'undefined' && window.location.hash === '#waiter-payment-proof') {
       history.back();
     }
@@ -4484,12 +4481,12 @@ const APP = {
     this.stopLiveCamera();
 
     if (loading) loading.classList.remove('hidden');
-    if (statusTxt) statusTxt.textContent = 'Starting Camera (Flash strictly OFF)...';
+    if (statusTxt) statusTxt.textContent = 'Opening Camera (Flash strictly OFF)...';
     if (snapBtn) snapBtn.disabled = true;
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('MediaDevices camera API not supported in this browser context');
+        throw new Error('Camera access not supported in this browser context');
       }
       const constraints = {
         video: {
@@ -4503,7 +4500,7 @@ const APP = {
       this._liveCameraStream = stream;
       video.srcObject = stream;
 
-      // STRICT FLASHLIGHT OFF: verify and enforce torch is disabled
+      // STRICT FLASHLIGHT OFF: verify and enforce torch is disabled to eliminate glare
       try {
         const track = stream.getVideoTracks()[0];
         if (track && track.getCapabilities) {
@@ -4520,11 +4517,11 @@ const APP = {
       if (loading) loading.classList.add('hidden');
       if (snapBtn) snapBtn.disabled = false;
     } catch (err) {
-      console.warn('Live camera access error, falling back to upload:', err.message);
+      console.warn('Live camera access error:', err.message);
       if (loading) {
-        if (statusTxt) statusTxt.textContent = 'Live camera unavailable. Use file upload.';
+        if (statusTxt) statusTxt.textContent = 'Camera blocked. Please grant camera permission in browser.';
       }
-      this.switchPaymentCaptureMode('upload');
+      this.showToast('⚠️ Please allow camera permission to capture customer payment screen');
     }
   },
 
@@ -4544,8 +4541,7 @@ const APP = {
   captureLivePhoto() {
     const video = document.getElementById('wpp-camera-video');
     if (!video || !video.videoWidth) {
-      // Fallback to native input if video stream is not emitting frames
-      document.getElementById('waiter-proof-camera-input')?.click();
+      this.showToast('⚠️ Camera is starting... Please wait a second');
       return;
     }
     const vw = video.videoWidth;
@@ -4574,35 +4570,14 @@ const APP = {
     this.stopLiveCamera();
 
     this.renderPaymentProofModalState(compressed);
-    this.showToast('📸 Photo proof captured! Click Submit Proof.');
+    this.showToast('📸 Photo captured! Tap ✅ Confirm (Tick) or 🔄 Retake.');
     this.haptic('impactLight');
   },
 
   retakePaymentProofPhoto() {
     this._tempPaymentProof = null;
     this.renderPaymentProofModalState(null);
-    this.switchPaymentCaptureMode('live');
-  },
-
-  switchPaymentCaptureMode(mode) {
-    const liveBox = document.getElementById('wpp-live-camera-box');
-    const uploadBox = document.getElementById('wpp-upload-box');
-    const tabLive = document.getElementById('wpp-tab-live');
-    const tabUpload = document.getElementById('wpp-tab-upload');
-
-    if (mode === 'live') {
-      if (liveBox) liveBox.classList.remove('hidden');
-      if (uploadBox) uploadBox.classList.add('hidden');
-      if (tabLive) tabLive.className = 'flex-1 py-1.5 rounded-md font-bold text-black bg-amber-500 shadow transition-all';
-      if (tabUpload) tabUpload.className = 'flex-1 py-1.5 rounded-md font-medium text-neutral-400 hover:text-white transition-all';
-      this.startLiveCamera();
-    } else {
-      this.stopLiveCamera();
-      if (liveBox) liveBox.classList.add('hidden');
-      if (uploadBox) uploadBox.classList.remove('hidden');
-      if (tabLive) tabLive.className = 'flex-1 py-1.5 rounded-md font-medium text-neutral-400 hover:text-white transition-all';
-      if (tabUpload) tabUpload.className = 'flex-1 py-1.5 rounded-md font-bold text-black bg-amber-500 shadow transition-all';
-    }
+    this.startLiveCamera();
   },
 
   renderPaymentProofModalState(proofDataUrl) {
@@ -4763,7 +4738,11 @@ const APP = {
 
   viewPastBillProof(billId) {
     const bill = (this.state.recentBillsMap && this.state.recentBillsMap[billId]) || (window.DB && window.DB.pastBills && window.DB.pastBills.find(b => b.id == billId));
-    if (!bill || !bill.payment_proof) {
+    let proof = bill?.payment_proof || bill?.paymentProof;
+    if (!proof && bill?.payment_ref && bill.payment_ref.includes('PROOF::')) {
+      proof = bill.payment_ref.split('PROOF::')[1];
+    }
+    if (!bill || !proof) {
       this.showToast('⚠️ No payment proof attached for this bill');
       return;
     }
@@ -4772,7 +4751,7 @@ const APP = {
     const titleEl = document.getElementById('ppv-table-name');
     const metaEl = document.getElementById('ppv-meta-info');
 
-    if (img) img.src = bill.payment_proof;
+    if (img) img.src = proof;
     if (titleEl) titleEl.textContent = `${bill.table_name || ('Table ' + bill.table_id)} • Bill #${bill.invoice_number || bill.id}`;
     if (metaEl) {
       const dt = new Date(bill.created_at || Date.now()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -5096,6 +5075,8 @@ const APP = {
         list.innerHTML = bills.map(b => {
           const dt = new Date(b.created_at || Date.now());
           const timeFormatted = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + ', ' + dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+          const proof = b.payment_proof || b.paymentProof || (b.payment_ref && b.payment_ref.includes('PROOF::') ? b.payment_ref.split('PROOF::')[1] : null);
+          if (proof && !b.payment_proof) b.payment_proof = proof;
           return `
             <div class="p-3 rounded-xl bg-[#0f121a] border border-[#23293a] flex items-center justify-between hover:border-amber-500/50 transition-colors">
               <div>
@@ -5110,7 +5091,7 @@ const APP = {
               </div>
               <div class="flex items-center gap-2">
                 <span class="font-mono font-black text-sm text-emerald-400">₹${b.grand_total}</span>
-                ${b.payment_proof ? `
+                ${proof ? `
                   <button 
                     onclick="APP.viewPastBillProof('${b.id}')"
                     class="px-2 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs flex items-center gap-1 shadow transition-all" title="View Customer Payment Proof">
@@ -6201,9 +6182,15 @@ const APP = {
       if (isAuthorized) {
         this.state.userRole = 'manager';
         this.state.currentStaffName = staffMatch ? staffMatch.name : 'Store Manager';
-        localStorage.setItem('onyx_user_role', 'manager');
-        localStorage.setItem('onyx_staff_name', this.state.currentStaffName);
+        sessionStorage.setItem('onyx_manager_authenticated', 'true');
+        this.renderAuthBadge();
         this.closeManagerPinGate();
+        if (typeof this._pendingSettlementCallback === 'function') {
+          const cb = this._pendingSettlementCallback;
+          this._pendingSettlementCallback = null;
+          cb();
+          return;
+        }
         this.setView('manager');
         this.showToast('💼 Executive Operations Console Authenticated');
         this.haptic('success');
@@ -6218,12 +6205,30 @@ const APP = {
       console.error('PIN verification error:', e);
       if (pin === '1234') {
         this.state.userRole = 'manager';
+        sessionStorage.setItem('onyx_manager_authenticated', 'true');
+        this.renderAuthBadge();
         this.closeManagerPinGate();
+        if (typeof this._pendingSettlementCallback === 'function') {
+          const cb = this._pendingSettlementCallback;
+          this._pendingSettlementCallback = null;
+          cb();
+          return;
+        }
         this.setView('manager');
       } else if (pinErr) {
         pinErr.classList.remove('hidden');
         pinErr.textContent = '❌ Invalid PIN. Try again or recover below.';
       }
+    }
+  },
+
+  promptManagerPinForSettlement(onSuccess) {
+    this._pendingSettlementCallback = onSuccess;
+    this.openManagerPinGate();
+    const pinErr = document.getElementById('mgr-gate-pin-error');
+    if (pinErr) {
+      pinErr.textContent = '🔒 Manager PIN Required to Settle Table';
+      pinErr.classList.remove('hidden');
     }
   },
 

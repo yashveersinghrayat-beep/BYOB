@@ -146,8 +146,10 @@ const I18N = {
       wppFlashNotice: "🚫⚡ Flashlight strictly OFF: Glare-free capture to read phone screen clearly",
       wppLiveCameraTab: "📹 Live Camera (No Flash)",
       wppUploadTab: "📁 Upload / File",
-      wppCaptureBtn: "⚪ Capture Photo (Glare-Free)",
-      wppAlignGuide: "📱 Align Customer Phone Screen",
+      wppCaptureBtn: "📸 Capture Photo (Glare-Free)",
+      wppAlignGuide: "📱 Align Customer Screen",
+      wppBtnConfirm: "✅ Confirm (Tick)",
+      wppBtnRetake: "🔄 Retake Photo",
       wppProofBtn: "📸 Proof"
     },
 
@@ -289,8 +291,10 @@ const I18N = {
       wppFlashNotice: "🚫⚡ फ्लैशलाइट बंद: फोन स्क्रीन पर चमक (glare) न पड़े ताकि UTR साफ दिखे",
       wppLiveCameraTab: "📹 लाइव कैमरा (नो फ्लैश)",
       wppUploadTab: "📁 गैलरी / अपलोड",
-      wppCaptureBtn: "⚪ फोटो खींचें (चमक-मुक्त)",
+      wppCaptureBtn: "📸 फोटो खींचें (चमक-मुक्त)",
       wppAlignGuide: "📱 ग्राहक का फोन स्क्रीन फ्रेम में रखें",
+      wppBtnConfirm: "✅ टिक करें (प्रमाण भेजें)",
+      wppBtnRetake: "🔄 दोबारा फोटो लें",
       wppProofBtn: "📸 प्रमाण"
     }
   },

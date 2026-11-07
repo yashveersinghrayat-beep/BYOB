@@ -373,7 +373,11 @@ class SupabaseBridge {
       try {
         const sc = bill.service_charge || 0;
         const baseRef = bill.payment_ref || '';
-        const combinedRef = sc > 0 ? (baseRef ? `${baseRef} | Service Charge: ₹${sc}` : `Fixed Service Charge: ₹${sc}`) : baseRef;
+        let combinedRef = sc > 0 ? (baseRef ? `${baseRef} | Service Charge: ₹${sc}` : `Fixed Service Charge: ₹${sc}`) : baseRef;
+        if (bill.payment_proof) {
+          const proofStr = typeof bill.payment_proof === 'object' ? JSON.stringify(bill.payment_proof) : String(bill.payment_proof);
+          combinedRef = combinedRef ? `${combinedRef} | PROOF::${proofStr}` : `PROOF::${proofStr}`;
+        }
 
         await fetch(`${SUPABASE_URL}/rest/v1/bills`, {
           method: 'POST',
@@ -461,9 +465,8 @@ class SupabaseBridge {
         status,
         updated_at: new Date().toISOString()
       };
-      if (paymentProof !== null && paymentProof !== undefined) {
-        bodyObj.payment_proof = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : String(paymentProof);
-      }
+      // Note: Supabase tables schema does not have payment_proof column; avoid PGRST204.
+      // payment_proof is preserved in SQLite WAL database and sub-25ms WebSocket broadcast.
 
       for (const tid of tidVariants) {
         await fetch(`${SUPABASE_URL}/rest/v1/tables?id=eq.${encodeURIComponent(tid)}`, {

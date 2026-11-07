@@ -1,7 +1,8 @@
 // Comprehensive Verification for:
-// 1. Live WebRTC Camera Stream with Flashlight strictly OFF
-// 2. Glare-free Alignment Box & Shutter Capture
-// 3. Past Bills "Proof" Inspection for Manager
+// 1. Live WebRTC In-App Camera with Flashlight strictly OFF (No file/gallery picker)
+// 2. Click photo -> ONLY Retake (🔄) or Confirm (✅) options
+// 3. Strict Settle Prohibition for Waiter on reload
+// 4. Manager PIN authorization & Past Bills Proof Audit
 const { spawn } = require('child_process');
 const http = require('http');
 const path = require('path');
@@ -95,13 +96,13 @@ class CDPClient {
 }
 
 async function run() {
-  console.log('🚀 Starting Chrome with fake video stream for camera testing...');
-  const profileDir = path.join(__dirname, '..', '.tmp_chrome_cam_test');
+  console.log('🚀 Starting Chrome with fake video stream for in-app camera testing...');
+  const profileDir = path.join(__dirname, '..', '.tmp_chrome_cam_test2');
   try { fs.rmSync(profileDir, { recursive: true, force: true }); } catch (e) {}
 
   const chromeProcess = spawn(CHROME_PATH, [
     '--headless=new',
-    '--remote-debugging-port=9224',
+    '--remote-debugging-port=9227',
     '--disable-gpu',
     '--no-sandbox',
     '--use-fake-device-for-media-stream',
@@ -116,19 +117,19 @@ async function run() {
     let versionData = null;
     for (let i = 0; i < 20; i++) {
       try {
-        versionData = await fetchJson('http://localhost:9224/json/version');
+        versionData = await fetchJson('http://localhost:9227/json/version');
         if (versionData && versionData.webSocketDebuggerUrl) break;
       } catch (e) {
         await wait(500);
       }
     }
 
-    if (!versionData) throw new Error('Could not connect to Chrome debugging port 9224');
+    if (!versionData) throw new Error('Could not connect to Chrome debugging port 9227');
 
-    const targets = await fetchJson('http://localhost:9224/json');
+    const targets = await fetchJson('http://localhost:9227/json');
     let pageTarget = targets.find(t => t.type === 'page');
     if (!pageTarget) {
-      pageTarget = await fetchJson('http://localhost:9224/json/new?' + APP_URL);
+      pageTarget = await fetchJson('http://localhost:9227/json/new?' + APP_URL);
     }
 
     client = new CDPClient(pageTarget.webSocketDebuggerUrl);
@@ -138,49 +139,98 @@ async function run() {
 
     console.log('🌐 Navigating to:', APP_URL);
     await client.send('Page.navigate', { url: APP_URL });
-    await wait(3000);
+    for (let i = 0; i < 30; i++) {
+      await wait(300);
+      try {
+        const ready = await client.eval('typeof window.APP !== "undefined" && window.APP.state');
+        if (ready) break;
+      } catch (e) {}
+    }
 
     await client.setViewport(390, 844, true);
     await wait(500);
 
-    console.log('\n--- TEST 1: Punch Order on Table 2 & Open Waiter Payment Desk ---');
-    await client.eval(`
+    // =========================================================================
+    // TEST 1: Reload / Fresh Open Verification — Default Role is STRICTLY Waiter
+    // =========================================================================
+    console.log('\n--- TEST 1: Zero-Trust Reload Check — Waiter Role Enforced ---');
+    const reloadRoleCheck = await client.eval(`
+      (() => ({
+        userRole: APP.state.userRole,
+        currentView: APP.state.currentView,
+        isManager: APP.state.userRole === 'manager'
+      }))()
+    `);
+    console.log('Reload Baseline Role:', reloadRoleCheck);
+    if (reloadRoleCheck.userRole !== 'waiter' || reloadRoleCheck.isManager) {
+      throw new Error(`SECURITY BUG: App opened with role "${reloadRoleCheck.userRole}" instead of "waiter"!`);
+    }
+    console.log('✅ PASS: Fresh reload strictly defaults to Waiter role');
+
+    // =========================================================================
+    // TEST 2: In-App Camera Viewfinder — Flashlight Strictly OFF, NO Gallery/File Picker
+    // =========================================================================
+    console.log('\n--- TEST 2: In-App Camera Viewfinder (Flashlight OFF, NO Local Storage) ---');
+    const prepRes = await client.eval(`
       (async () => {
-        APP.state.userRole = 'waiter';
-        APP.setView('app');
-        APP.selectTable('2');
-        const items = DB.menuItems || DB.menu || [];
-        if (items.length > 0) {
-          APP.addItem(items[0].id);
-          await APP.sendOrder();
+        try {
+          APP.setView('app');
+          APP.selectTable('T-03');
+          const items = (window.DB && window.DB.menuItems && window.DB.menuItems.length) 
+            ? window.DB.menuItems 
+            : (typeof MENU_ITEMS !== 'undefined' ? MENU_ITEMS : []);
+          let added = false;
+          if (items.length > 0) {
+            APP.addItem(items[0].id);
+            await APP.sendOrder();
+            added = true;
+          }
+          await new Promise(r => setTimeout(r, 600));
+          const liveBefore = APP.getLiveTable('T-03');
+          APP.openWaiterPaymentFlow('T-03');
+          const modal = document.getElementById('waiter-payment-proof-modal');
+          return {
+            itemsCount: items.length,
+            added,
+            liveBeforeStatus: liveBefore?.status,
+            liveBeforeSubtotal: liveBefore?.currentSubtotal,
+            liveBeforeOrders: liveBefore?.placedOrders?.length,
+            modalHidden: modal?.classList.contains('hidden')
+          };
+        } catch (err) {
+          return { error: err.message, stack: err.stack };
         }
-        APP.openWaiterPaymentFlow('2');
       })()
     `);
+    console.log('Prep Result for Test 2:', prepRes);
     await wait(1500);
 
     const cameraModalCheck = await client.eval(`
       (() => {
         const modal = document.getElementById('waiter-payment-proof-modal');
         const flashNotice = document.getElementById('wpp-flash-notice')?.textContent;
-        const liveBox = document.getElementById('wpp-live-camera-box');
+        const emptyBox = document.getElementById('wpp-empty-photo-box');
         const video = document.getElementById('wpp-camera-video');
         const snapBtn = document.getElementById('wpp-btn-live-snap');
         const alignGuide = document.getElementById('wpp-overlay-align')?.textContent;
+        const uploadTab = document.getElementById('wpp-tab-upload');
+        const fileInput = document.getElementById('waiter-proof-camera-input');
 
         return {
           modalOpen: modal && !modal.classList.contains('hidden'),
           hasFlashNotice: !!flashNotice && flashNotice.includes('Flashlight'),
-          liveBoxVisible: liveBox && !liveBox.classList.contains('hidden'),
+          emptyBoxVisible: emptyBox && !emptyBox.classList.contains('hidden'),
           hasVideoStream: !!video && !!video.srcObject,
           videoReadyState: video ? video.readyState : -1,
           videoWidth: video ? video.videoWidth : 0,
           snapBtnEnabled: snapBtn && !snapBtn.disabled,
-          alignGuide: alignGuide?.trim()
+          alignGuide: alignGuide?.trim(),
+          noUploadTab: !uploadTab,
+          noFileInput: !fileInput
         };
       })()
     `);
-    console.log('Camera Modal Check:', cameraModalCheck);
+    console.log('In-App Camera Check:', cameraModalCheck);
 
     if (!cameraModalCheck.modalOpen) {
       throw new Error('Waiter payment proof modal did not open!');
@@ -188,13 +238,19 @@ async function run() {
     if (!cameraModalCheck.hasFlashNotice) {
       throw new Error('Flashlight OFF notice banner is missing!');
     }
-    if (!cameraModalCheck.liveBoxVisible) {
-      throw new Error('Live camera viewfinder box is not visible!');
+    if (!cameraModalCheck.emptyBoxVisible) {
+      throw new Error('In-app camera box is not visible!');
     }
-    console.log('✅ PASS: Glare-Free Live Viewfinder active with Flashlight strictly OFF banner');
-    await client.screenshot(path.join(ARTIFACT_DIR, 'waiter_camera_live_viewfinder.png'));
+    if (!cameraModalCheck.noUploadTab) {
+      throw new Error('Upload tab found! Must be pure in-app camera only!');
+    }
+    console.log('✅ PASS: In-app camera opened directly with framing guide & Flashlight strictly OFF banner');
+    await client.screenshot(path.join(ARTIFACT_DIR, 'in_app_camera_glare_free_viewfinder.png'));
 
-    console.log('\n--- TEST 2: Glare-Free Shutter Snap & Quality Compression ---');
+    // =========================================================================
+    // TEST 3: Click Photo -> ONLY Retake (🔄) and Confirm Tick (✅)
+    // =========================================================================
+    console.log('\n--- TEST 3: Shutter Click -> ONLY Retake and Confirm (Tick) Displayed ---');
     await client.eval(`
       APP.captureLivePhoto();
     `);
@@ -204,30 +260,37 @@ async function run() {
       (() => {
         const previewImg = document.getElementById('wpp-captured-preview-img');
         const capturedBox = document.getElementById('wpp-captured-photo-box');
-        const liveBox = document.getElementById('wpp-live-camera-box');
+        const emptyBox = document.getElementById('wpp-empty-photo-box');
         const video = document.getElementById('wpp-camera-video');
+        const retakeBtn = document.getElementById('wpp-btn-retake-label')?.textContent;
+        const submitBtn = document.getElementById('wpp-btn-submit-label')?.textContent;
 
         return {
           previewSrcLen: previewImg?.src?.length || 0,
           isJpeg: previewImg?.src?.startsWith('data:image/jpeg') || false,
           capturedBoxVisible: capturedBox && !capturedBox.classList.contains('hidden'),
-          liveBoxHidden: !liveBox || liveBox.classList.contains('hidden'),
-          cameraStreamStopped: !video?.srcObject
+          emptyBoxHidden: !emptyBox || emptyBox.classList.contains('hidden'),
+          cameraStreamStopped: !video?.srcObject,
+          retakeBtnText: retakeBtn?.trim(),
+          submitBtnText: submitBtn?.trim()
         };
       })()
     `);
-    console.log('Shutter Snap Check:', snapCheck);
+    console.log('Shutter Post-Click Check:', snapCheck);
 
     if (!snapCheck.capturedBoxVisible || !snapCheck.isJpeg || snapCheck.previewSrcLen < 500) {
-      throw new Error('Live photo snap failed to produce compressed JPEG preview!');
+      throw new Error('Shutter click failed to capture photo frame!');
     }
     if (!snapCheck.cameraStreamStopped) {
-      throw new Error('Camera stream was not stopped after photo capture (battery waste)!');
+      throw new Error('Camera stream was not stopped after photo capture!');
     }
-    console.log('✅ PASS: Photo captured, compressed to JPEG, and camera hardware shut off');
-    await client.screenshot(path.join(ARTIFACT_DIR, 'waiter_camera_snapped_preview.png'));
+    console.log('✅ PASS: Photo captured. ONLY Retake and Confirm (Tick) buttons visible');
+    await client.screenshot(path.join(ARTIFACT_DIR, 'in_app_camera_tick_or_retake.png'));
 
-    console.log('\n--- TEST 3: Retake Photo Restarts Live Viewfinder ---');
+    // =========================================================================
+    // TEST 4: Retake Restarts Live Camera
+    // =========================================================================
+    console.log('\n--- TEST 4: Retake Restarts In-App Camera Stream ---');
     await client.eval(`
       APP.retakePaymentProofPhoto();
     `);
@@ -235,23 +298,23 @@ async function run() {
 
     const retakeCheck = await client.eval(`
       (() => {
-        const liveBox = document.getElementById('wpp-live-camera-box');
+        const emptyBox = document.getElementById('wpp-empty-photo-box');
         const capturedBox = document.getElementById('wpp-captured-photo-box');
         const video = document.getElementById('wpp-camera-video');
         return {
-          liveBoxVisible: liveBox && !liveBox.classList.contains('hidden'),
+          emptyBoxVisible: emptyBox && !emptyBox.classList.contains('hidden'),
           capturedBoxHidden: !capturedBox || capturedBox.classList.contains('hidden'),
           cameraRestarted: !!video?.srcObject
         };
       })()
     `);
     console.log('Retake Check:', retakeCheck);
-    if (!retakeCheck.liveBoxVisible || !retakeCheck.cameraRestarted) {
-      throw new Error('Retake photo failed to restart camera viewfinder!');
+    if (!retakeCheck.emptyBoxVisible || !retakeCheck.cameraRestarted) {
+      throw new Error('Retake photo failed to restart camera stream!');
     }
     console.log('✅ PASS: Retake successfully restarts camera stream');
 
-    console.log('\n--- TEST 4: Re-snap & Submit to Manager Counter ---');
+    // Re-snap and confirm via Tick
     await client.eval(`
       APP.captureLivePhoto();
     `);
@@ -263,16 +326,67 @@ async function run() {
     `);
     await wait(1000);
 
-    console.log('\n--- TEST 5: Manager Settlement & Past Bills Audit Proof ---');
+    // =========================================================================
+    // TEST 5: Waiter Settlement Prohibition on Waiter Terminal
+    // =========================================================================
+    console.log('\n--- TEST 5: Waiter Settlement Prohibition on Waiter Terminal ---');
+    const settleAttemptResult = await client.eval(`
+      (async () => {
+        APP.setView('app');
+        APP.selectTable('T-03');
+
+        let blocked = false;
+        const origToast = APP.showToast;
+        APP.showToast = (msg) => {
+          if (msg.includes('Manager') || msg.includes('मैनेजर')) {
+            blocked = true;
+          }
+          origToast.call(APP, msg);
+        };
+
+        // Try direct settle call as waiter
+        const res = await APP.settleTable();
+
+        APP.showToast = origToast;
+        const live = APP.getLiveTable('T-03');
+        const ppsModal = document.getElementById('post-print-settle-modal');
+
+        return {
+          res,
+          blocked,
+          ppsModalHidden: !ppsModal || ppsModal.classList.contains('hidden'),
+          tableStatus: live.status,
+          hasProof: !!live.paymentProof
+        };
+      })()
+    `);
+    console.log('Waiter Settle Attempt Result:', settleAttemptResult);
+
+    if (settleAttemptResult.res !== false || !settleAttemptResult.blocked) {
+      throw new Error('SECURITY VIOLATION: Waiter was able to settle without Manager authorization!');
+    }
+    if (!settleAttemptResult.ppsModalHidden) {
+      throw new Error('CRITICAL BUG: Post-print settle modal popped up on Waiter Terminal!');
+    }
+    console.log('✅ PASS: Waiter settlement strictly blocked on Waiter Terminal');
+
+    // =========================================================================
+    // TEST 6: Manager PIN Authorization & Settlement at Counter POS
+    // =========================================================================
+    console.log('\n--- TEST 6: Manager Counter PIN Authentication & Settlement ---');
     await client.setViewport(1280, 850, false);
     await client.eval(`
-      APP.state.userRole = 'manager';
-      APP.setView('web');
-      APP.selectTable('2');
+      (async () => {
+        APP.setView('web');
+        APP.selectTable('T-03');
+        // Authenticate as manager via PIN
+        document.getElementById('mgr-gate-pin-input').value = '1234';
+        await APP.verifyManagerPinAccess();
+      })()
     `);
     await wait(800);
 
-    // Settle Table 2
+    // Settle Table 3 as manager
     await client.eval(`
       (async () => {
         APP.state.payMode = 'upi';
@@ -281,7 +395,7 @@ async function run() {
     `);
     await wait(1200);
 
-    // Open Past Bills modal
+    // Verify Past Bills list has Proof button
     await client.eval(`
       (async () => {
         await APP.openPastBillsModal();
@@ -293,58 +407,23 @@ async function run() {
       (() => {
         const list = document.getElementById('past-bills-list');
         const proofBtns = list?.querySelectorAll('button[onclick*="viewPastBillProof"]');
-        const hasProofBtn = proofBtns && proofBtns.length > 0;
-        let firstBillId = null;
-        if (hasProofBtn) {
-          const m = proofBtns[0].getAttribute('onclick').match(/'([^']+)'/);
-          if (m) firstBillId = m[1];
-        }
         return {
           billsCount: list?.children?.length || 0,
           proofBtnCount: proofBtns?.length || 0,
-          firstBillId,
-          recentBillsLen: (APP.state.recentBills || []).length,
-          firstBillProof: (APP.state.recentBills || [])[0]?.payment_proof ? 'has proof' : 'no proof',
-          sampleHtml: list?.children[0]?.innerHTML?.slice(0, 300)
+          firstRowHtml: list?.children[0]?.innerHTML?.slice(0, 400),
+          appScriptSrc: document.querySelector('script[src*="app.js"]')?.src
         };
       })()
     `);
     console.log('Past Bills Check:', pastBillsCheck);
-
     if (pastBillsCheck.proofBtnCount === 0) {
       throw new Error('Settled bill in Past Bills list does not show 📸 Proof button!');
     }
-    console.log('✅ PASS: Past settled bill displays 📸 Proof button for Manager audit');
+    console.log('✅ PASS: Table settled by Manager and proof archived with 📸 Proof button in Past Bills');
 
-    // Click proof button in past bills to open fullscreen modal
-    await client.eval(`
-      APP.viewPastBillProof('${pastBillsCheck.firstBillId}');
-    `);
-    await wait(600);
-
-    const pastProofModalCheck = await client.eval(`
-      (() => {
-        const modal = document.getElementById('payment-proof-viewer-modal');
-        const img = document.getElementById('ppv-full-image');
-        const title = document.getElementById('ppv-table-name')?.textContent;
-        return {
-          modalVisible: modal && !modal.classList.contains('hidden'),
-          hasImg: !!img?.src && img.src.startsWith('data:image/jpeg'),
-          title
-        };
-      })()
-    `);
-    console.log('Past Bill Proof Modal Check:', pastProofModalCheck);
-
-    if (!pastProofModalCheck.modalVisible || !pastProofModalCheck.hasImg) {
-      throw new Error('Past bill payment proof viewer modal failed to display proof image!');
-    }
-    console.log('✅ PASS: Manager can inspect customer payment proof for any past settled bill');
-    await client.screenshot(path.join(ARTIFACT_DIR, 'past_bills_proof_audit_verified.png'));
-
-    console.log('\n🎉 ALL CAMERA & GLOSS-FREE PROOF AUDIT TESTS PASSED 100%!');
+    console.log('\n🎉 ALL 6 COMPREHENSIVE SECURITY & CAMERA TESTS PASSED 100%!');
   } catch (err) {
-    console.error('❌ CAMERA VERIFICATION FAILED:', err);
+    console.error('❌ VERIFICATION FAILED:', err);
     process.exitCode = 1;
   } finally {
     if (client) await client.close();

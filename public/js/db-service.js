@@ -944,9 +944,14 @@ const DB_SERVICE = {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
+          const rawTid = String(tableId || '');
+          const tidNum = rawTid.replace(/\D/g, '');
+          const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
+          const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
+
           await client.from('kots').insert([{
             id: kotId,
-            table_id: tableId,
+            table_id: altTid,
             table_name: tableName,
             waiter_name: assignedWaiter,
             status: 'pending'
@@ -963,10 +968,12 @@ const DB_SERVICE = {
           }));
           await client.from('kot_items').insert(kotItems);
 
-          await client.from('tables').update({
-            status: 'occupied',
-            current_subtotal: newSubtotal
-          }).eq('id', tableId);
+          for (const tid of tidVariants) {
+            await client.from('tables').update({
+              status: 'occupied',
+              current_subtotal: newSubtotal
+            }).eq('id', tid);
+          }
 
           return { id: kotId, items };
         } catch (e) {
@@ -1097,8 +1104,6 @@ const DB_SERVICE = {
         const client = ONYX_CLOUD_CONFIG.getClient();
         if (client) {
           const upd = { status, updated_at: new Date().toISOString() };
-          if (paymentProof) upd.payment_proof = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : paymentProof;
-          
           const rawTid = String(tableId || '');
           const tidNum = rawTid.replace(/\D/g, '');
           const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
@@ -1108,6 +1113,12 @@ const DB_SERVICE = {
             await client.from('tables').update(upd).eq('id', tid).catch(() => {});
           }
         }
+        // Mirror to local server bridge if reachable
+        fetch(`${getApiBase()}/api/tables/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tableId, status, paymentProof })
+        }).catch(() => {});
       } else {
         await this.post('/api/tables/status', { tableId, status, paymentProof });
       }
@@ -1154,7 +1165,11 @@ const DB_SERVICE = {
         try {
           const sc = Number(billData.serviceCharge || 0);
           const baseRef = billData.paymentRef || '';
-          const paymentRef = sc > 0 ? (baseRef ? `${baseRef} | Service Charge: ₹${sc}` : `Fixed Service Charge: ₹${sc}`) : baseRef;
+          let paymentRef = sc > 0 ? (baseRef ? `${baseRef} | Service Charge: ₹${sc}` : `Fixed Service Charge: ₹${sc}`) : baseRef;
+          if (billData.paymentProof) {
+            const proofStr = typeof billData.paymentProof === 'object' ? JSON.stringify(billData.paymentProof) : String(billData.paymentProof);
+            paymentRef = paymentRef ? `${paymentRef} | PROOF::${proofStr}` : `PROOF::${proofStr}`;
+          }
 
           const { error: billErr } = await client.from('bills').insert([{
             id: billId,
@@ -1359,6 +1374,11 @@ const DB_SERVICE = {
             const activeBills = bills.filter(b => b.status !== 'void' && b.status !== 'cancelled');
             activeBills.forEach(b => {
               b.items = (b.bill_items || []).filter(bi => !bi.is_archived);
+              if (!b.payment_proof && b.payment_ref && b.payment_ref.includes('PROOF::')) {
+                const parts = b.payment_ref.split('PROOF::');
+                b.payment_proof = parts[1];
+                b.payment_ref = parts[0].replace(/\|\s*$/, '').trim();
+              }
             });
             return activeBills;
           }
