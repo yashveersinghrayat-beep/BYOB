@@ -223,26 +223,39 @@ const APP = {
     }
   },
 
+  // Robust Numeric / String Table ID Equality Matcher (handles 1, '1', 'T-1', 'T-01')
+  isSameTableId(idA, idB) {
+    if (idA === idB) return true;
+    const sA = String(idA || '').toLowerCase();
+    const sB = String(idB || '').toLowerCase();
+    if (sA === sB) return true;
+    const numA = parseInt(sA.replace(/[^0-9]/g, ''), 10);
+    const numB = parseInt(sB.replace(/[^0-9]/g, ''), 10);
+    return !isNaN(numA) && !isNaN(numB) && numA === numB;
+  },
+
   // Helper to get Table definition
   getTable(tid = null) {
     const targetId = tid || this.state.selectedTableId;
     const all = (typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : []);
-    return all.find(t => String(t.id) === String(targetId)) || all[0] || { id: targetId, name: `Table ${targetId}`, position: 'Floor' };
+    const match = all.find(t => this.isSameTableId(t.id, targetId));
+    if (match) return match;
+    const num = parseInt(String(targetId || '').replace(/[^0-9]/g, ''), 10);
+    return all[0] || { id: targetId, name: `Table ${num || targetId}`, position: 'Floor' };
   },
 
   // Helper to get Live Table State (from SQLite backend / DB Service)
   getLiveTable(tid = null) {
     const targetId = tid || this.state.selectedTableId;
     if (window.DB && window.DB.tables && window.DB.tables.length > 0) {
-      const found = window.DB.tables.find(t => String(t.id) === String(targetId));
+      const found = window.DB.tables.find(t => this.isSameTableId(t.id, targetId));
       if (found) return found;
     }
-    const def = (typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : []).find(t => String(t.id) === String(targetId));
-    const strId = String(targetId || '1');
-    const cleanNum = strId.replace(/^T-?/i, '');
+    const def = (typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : []).find(t => this.isSameTableId(t.id, targetId));
+    const num = parseInt(String(targetId || '').replace(/[^0-9]/g, ''), 10);
     return {
       id: targetId,
-      name: def ? def.name : `Table ${cleanNum || strId}`,
+      name: def ? def.name : `Table ${num || targetId}`,
       position: def ? def.position : 'Main Hall',
       floor: def ? def.floor : '1st Floor',
       landmark: def ? def.landmark : '',
@@ -256,9 +269,10 @@ const APP = {
   // Helper to get current waiter's pending local round cart for selected table
   getLocalCart(tid = null) {
     const targetId = tid || this.state.selectedTableId;
-    if (!this.state.localCarts[targetId]) {
-      this.state.localCarts[targetId] = [];
-    }
+    if (this.state.localCarts[targetId]) return this.state.localCarts[targetId];
+    const key = Object.keys(this.state.localCarts).find(k => this.isSameTableId(k, targetId));
+    if (key && this.state.localCarts[key]) return this.state.localCarts[key];
+    this.state.localCarts[targetId] = [];
     return this.state.localCarts[targetId];
   },
 
@@ -622,6 +636,27 @@ const APP = {
     if (sheetTakeOrder) sheetTakeOrder.innerHTML = `<span>${t('takeOrderOption', '➕ Take Order / Add Items →')}</span>`;
     const sheetViewBill = document.getElementById('sheet-btn-view-bill');
     if (sheetViewBill) sheetViewBill.innerHTML = `<span>${t('viewBillOption', '🧾 View Running Bill & Settlement →')}</span>`;
+    const sheetQuickSettle = document.getElementById('sheet-btn-settle-label');
+    if (sheetQuickSettle) sheetQuickSettle.textContent = isHi ? '💳 तुरंत टेबल सेटल करें (कैश / UPI) →' : '💳 Quick Settle Table (Cash / UPI) →';
+
+    // 7B. Post-Print Settlement Prompt Modal
+    const ppsTitle = document.getElementById('pps-modal-title');
+    const ppsSub = document.getElementById('pps-modal-subtitle');
+    const ppsCash = document.getElementById('pps-btn-cash-label');
+    const ppsUpi = document.getElementById('pps-btn-upi-label');
+    const ppsCard = document.getElementById('pps-btn-card-label');
+    const ppsLater = document.getElementById('pps-btn-later-label');
+    const ppsView = document.getElementById('pps-btn-view-bill-label');
+    const ppsHint = document.getElementById('pps-later-hint');
+
+    if (ppsTitle) ppsTitle.textContent = t('billPrintedModalTitle', '🖨️ Bill Printed • Settle Table?');
+    if (ppsSub) ppsSub.textContent = t('billPrintedModalSubtitle', 'Has customer payment been collected? Settle table now:');
+    if (ppsCash) ppsCash.textContent = t('postPrintCashBtn', '💵 Cash Received • Settle & Free Table');
+    if (ppsUpi) ppsUpi.textContent = t('postPrintUpiBtn', '📱 UPI / QR Received • Settle & Free Table');
+    if (ppsCard) ppsCard.textContent = t('postPrintCardBtn', '💳 Card / EDC Machine Settled');
+    if (ppsLater) ppsLater.textContent = t('postPrintLaterBtn', '⏳ Not Yet (Bill Given, Awaiting Payment)');
+    if (ppsView) ppsView.textContent = t('postPrintViewBillBtn', '➕ View Bill / Add More Items');
+    if (ppsHint) ppsHint.textContent = t('postPrintLaterHint', "Table will show as '🧾 BILLED' on Floor Map until payment is settled.");
 
     // 8. Re-render dynamic active parts
     this.renderCategories();
@@ -896,10 +931,16 @@ const APP = {
 
     const table = this.getTable();
     const live = this.getLiveTable();
-    const isOccupied = (live.currentSubtotal || 0) > 0 || live.status === 'occupied';
+    const isBilled = live.status === 'bill_printed';
+    const isOccupied = (live.currentSubtotal || 0) > 0 || live.status === 'occupied' || isBilled;
 
     // STEP-BY-STEP MOBILE WORKFLOW:
     if (this.state.currentView === 'app') {
+      if (isBilled) {
+        // Table already has bill printed -> open Post-Print Settle Prompt immediately!
+        this.openPostPrintSettleModal(tableId);
+        return;
+      }
       if (isOccupied) {
         // Occupied Table: Open clean action sheet (Take Order vs View Bill)
         this.openTableActionSheet(tableId);
@@ -907,6 +948,11 @@ const APP = {
         // Free Table: 1-Tap directly opens Menu
         this.openMenuForSelectedTable();
       }
+      return;
+    }
+
+    if (isBilled) {
+      this.openPostPrintSettleModal(tableId);
       return;
     }
 
@@ -1194,12 +1240,19 @@ const APP = {
     const nameEl = document.getElementById('sheet-table-name');
     if (nameEl) nameEl.textContent = `${table.name} (${table.position})`;
 
+    const isBilled = liveTable.status === 'bill_printed';
     const statusEl = document.getElementById('sheet-table-status');
     if (statusEl) {
       if (typeof I18N !== 'undefined' && I18N.currentLang === 'hi') {
-        statusEl.textContent = `🔴 व्यस्त • चालू बिल: ₹${subtotal.toLocaleString('en-IN')} (${placed.length} आइटम)`;
+        statusEl.className = isBilled ? "text-xs text-amber-400 font-bold font-mono" : "text-xs text-red-400 font-bold font-mono";
+        statusEl.textContent = isBilled
+          ? `🧾 बिल दिया • चालू बिल: ₹${subtotal.toLocaleString('en-IN')} (भुगतान बाकी)`
+          : `🔴 व्यस्त • चालू बिल: ₹${subtotal.toLocaleString('en-IN')} (${placed.length} आइटम)`;
       } else {
-        statusEl.textContent = `🔴 Occupied • Active Bill: ₹${subtotal.toLocaleString('en-IN')} (${placed.length} items)`;
+        statusEl.className = isBilled ? "text-xs text-amber-400 font-bold font-mono" : "text-xs text-red-400 font-bold font-mono";
+        statusEl.textContent = isBilled
+          ? `🧾 BILLED • Active Bill: ₹${subtotal.toLocaleString('en-IN')} (Awaiting Settlement)`
+          : `🔴 Occupied • Active Bill: ₹${subtotal.toLocaleString('en-IN')} (${placed.length} items)`;
       }
     }
 
@@ -1606,11 +1659,12 @@ const APP = {
     // 1. Mobile Floor Grid (Used in app-screen-tables)
     if (mobileGrid) {
       mobileGrid.innerHTML = filteredTables.map(t => {
-        const isCurrent = t.id === this.state.selectedTableId;
+        const isCurrent = this.isSameTableId(t.id, this.state.selectedTableId);
         const liveTable = this.getLiveTable(t.id);
         const placedOrders = liveTable.placedOrders || [];
         const subtotal = liveTable.currentSubtotal || placedOrders.reduce((s, i) => s + (i.price * i.qty), 0);
-        const isOccupied = subtotal > 0 || liveTable.status === 'occupied';
+        const isBilled = liveTable.status === 'bill_printed';
+        const isOccupied = subtotal > 0 || liveTable.status === 'occupied' || isBilled;
         const cleanPosition = (t.position || 'Hall').split('•')[0].trim();
 
         const draftItems = this.getLocalCart(t.id);
@@ -1621,7 +1675,22 @@ const APP = {
         let middleHtml = "";
         let footerHtml = "";
 
-        if (isOccupied) {
+        if (isBilled) {
+          cardClass = isCurrent ? "table-card-selected-billed ring-2 ring-amber-400" : "table-card-billed border-2 border-amber-400/90 bg-[#1f1910]";
+          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-black font-mono animate-pulse">🧾 ${isHi ? 'बिल दिया' : 'BILLED'}</span>`;
+          middleHtml = `
+            <div class="my-0.5">
+              <div class="text-xs font-black font-mono text-amber-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
+              <div class="text-[9px] text-amber-400/90 font-bold">${isHi ? '⏳ भुगतान बाकी' : '⏳ Awaiting Settle'}</div>
+            </div>
+          `;
+          footerHtml = `
+            <div class="flex items-center justify-between text-[9px] pt-1 border-t border-amber-500/40 text-amber-300 font-bold w-full">
+              <span>👥 ${t.seats} ${seatsSuffix}</span>
+              <span class="text-amber-400 font-mono font-black">${isHi ? 'सेटल करें →' : 'SETTLE →'}</span>
+            </div>
+          `;
+        } else if (isOccupied) {
           cardClass = isCurrent ? "table-card-selected-occupied ring-2 ring-amber-400" : "table-card-occupied";
           headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white font-mono">${occBadge}</span>`;
           middleHtml = `
@@ -1670,10 +1739,11 @@ const APP = {
     // 2. Web POS Top Tables Strip (Clean, Uncrowded & Instant Visual)
     if (webStrip) {
       webStrip.innerHTML = filteredTables.map(t => {
-        const isCurrent = t.id === this.state.selectedTableId;
+        const isCurrent = this.isSameTableId(t.id, this.state.selectedTableId);
         const liveTable = this.getLiveTable(t.id);
         const subtotal = liveTable.currentSubtotal || (liveTable.placedOrders || []).reduce((s, i) => s + (i.price * i.qty), 0);
-        const isOccupied = subtotal > 0 || liveTable.status === 'occupied';
+        const isBilled = liveTable.status === 'bill_printed';
+        const isOccupied = subtotal > 0 || liveTable.status === 'occupied' || isBilled;
         const draftItems = this.getLocalCart(t.id);
         const draftCount = draftItems.reduce((s, i) => s + i.qty, 0);
 
@@ -1681,13 +1751,19 @@ const APP = {
         let statusBadge = "";
 
         if (isCurrent) {
-          if (isOccupied) {
+          if (isBilled) {
+            btnClasses = "bg-amber-500 text-black border-2 border-yellow-200 font-black shadow-[0_0_18px_rgba(245,158,11,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
+            statusBadge = `🧾 ₹${subtotal.toLocaleString('en-IN')} (${isHi ? 'बिल दिया' : 'BILLED'})`;
+          } else if (isOccupied) {
             btnClasses = "bg-red-600 text-white border-2 border-yellow-300 font-black shadow-[0_0_16px_rgba(239,68,68,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
             statusBadge = `🔴 ₹${subtotal.toLocaleString('en-IN')}`;
           } else {
             btnClasses = "bg-emerald-600 text-white border-2 border-yellow-300 font-black shadow-[0_0_16px_rgba(16,185,129,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
             statusBadge = isHi ? "🟢 खाली" : "🟢 Free";
           }
+        } else if (isBilled) {
+          btnClasses = "bg-[#382606] text-amber-200 border-2 border-amber-400 hover:border-amber-300 font-black shadow-[0_3px_10px_rgba(245,158,11,0.4)]";
+          statusBadge = `🧾 ₹${subtotal.toLocaleString('en-IN')}`;
         } else if (isOccupied) {
           btnClasses = "bg-[#450e17] text-white border-2 border-red-500 hover:border-red-400 font-bold shadow-[0_3px_10px_rgba(239,68,68,0.35)]";
           statusBadge = `🔴 ₹${subtotal.toLocaleString('en-IN')}`;
@@ -3513,6 +3589,7 @@ const APP = {
     const billingModal = document.getElementById('billing-modal');
     if (billingModal) billingModal.classList.add('hidden');
     this.closeEpsonReceiptModal();
+    this.closePostPrintSettleModal();
     this.updateCartUI();
     this.renderMenuItems();
     this.renderFloorTables();
@@ -3527,6 +3604,8 @@ const APP = {
     const modal = document.getElementById('epson-modal');
     const table = this.getTable();
     const liveTable = this.getLiveTable();
+    const receiptEl = document.getElementById('epson-print-wrapper');
+    if (receiptEl) receiptEl.dataset.isReprint = customBill ? 'true' : 'false';
 
     let items = [];
     let subtotal = 0;
@@ -3946,6 +4025,128 @@ const APP = {
     } catch (err) {
       console.warn('Thermal print error, calling window.print():', err);
       window.print();
+    }
+
+    // Trigger Post-Print Settlement Prompt for live running bills
+    const targetTableId = this.state.selectedTableId;
+    const liveTable = this.getLiveTable(targetTableId);
+    const hasLiveOrders = liveTable && ((liveTable.placedOrders && liveTable.placedOrders.length > 0) || (liveTable.currentSubtotal || 0) > 0);
+    const isPastReprint = receiptEl?.dataset?.isReprint === 'true' || (document.getElementById('epson-inv-no')?.textContent || '').includes('REPRINT');
+
+    if (hasLiveOrders && !isPastReprint && targetTableId) {
+      this.markTableAsBillPrinted(targetTableId);
+      setTimeout(() => {
+        this.openPostPrintSettleModal(targetTableId);
+      }, 700);
+    }
+  },
+
+  // ================= 8E-2. POST-PRINT SETTLEMENT AUTO-PROMPT ENGINE =================
+  async markTableAsBillPrinted(tableId) {
+    if (!tableId) return;
+    const liveTable = this.getLiveTable(tableId);
+    if (liveTable) {
+      liveTable.status = 'bill_printed';
+      liveTable.billPrinted = true;
+      liveTable.billPrintedAt = Date.now();
+    }
+    if (window.DB && window.DB.tables) {
+      const dbTable = window.DB.tables.find(t => this.isSameTableId(t.id, tableId));
+      if (dbTable) {
+        dbTable.status = 'bill_printed';
+      }
+    }
+    this.renderFloorTables();
+    this.updateTableHeaderBadges();
+    this.updateFloorBottomDock();
+
+    try {
+      if (window.DB && typeof window.DB.updateTableStatus === 'function') {
+        await window.DB.updateTableStatus(tableId, 'bill_printed');
+      } else {
+        fetch('/api/tables/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tableId, status: 'bill_printed' })
+        }).catch(() => {});
+      }
+    } catch(e) {
+      console.warn('Sync table status bill_printed notice:', e.message);
+    }
+  },
+
+  openPostPrintSettleModal(tableId, customTotal = null) {
+    const tId = tableId || this.state.selectedTableId;
+    if (!tId) return;
+    this.state.selectedTableId = tId;
+    const table = this.getTable();
+    const liveTable = this.getLiveTable(tId);
+    const placed = liveTable.placedOrders || [];
+    const totals = this.calculateTotalBill();
+    const grandTotal = customTotal !== null ? customTotal : (totals.grandTotal || liveTable.currentSubtotal || 0);
+
+    const modal = document.getElementById('post-print-settle-modal');
+    const titleEl = document.getElementById('pps-modal-title');
+    const subtitleEl = document.getElementById('pps-modal-subtitle');
+    const nameEl = document.getElementById('pps-table-name');
+    const countEl = document.getElementById('pps-order-count');
+    const totalEl = document.getElementById('pps-grand-total');
+    const cashBtnLabel = document.getElementById('pps-btn-cash-label');
+    const upiBtnLabel = document.getElementById('pps-btn-upi-label');
+    const cardBtnLabel = document.getElementById('pps-btn-card-label');
+    const laterBtnLabel = document.getElementById('pps-btn-later-label');
+    const viewBillBtnLabel = document.getElementById('pps-btn-view-bill-label');
+    const hintEl = document.getElementById('pps-later-hint');
+
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const t = (k, fb) => (typeof I18N !== 'undefined') ? I18N.t(k, fb) : (fb || k);
+
+    if (titleEl) titleEl.textContent = t('billPrintedModalTitle', '🖨️ Bill Printed • Settle Table?');
+    if (subtitleEl) subtitleEl.textContent = t('billPrintedModalSubtitle', 'Has customer payment been collected? Settle table now:');
+    if (nameEl) nameEl.textContent = `${table.name} (${table.position || 'Floor'})`;
+    if (countEl) countEl.textContent = `${placed.length} ${isHi ? 'ऑर्डर' : 'Orders'} • ₹${(liveTable.currentSubtotal || 0).toLocaleString('en-IN')}`;
+    if (totalEl) totalEl.textContent = `₹${Math.round(grandTotal).toLocaleString('en-IN')}`;
+
+    if (cashBtnLabel) cashBtnLabel.textContent = t('postPrintCashBtn', '💵 Cash Received • Settle & Free Table');
+    if (upiBtnLabel) upiBtnLabel.textContent = t('postPrintUpiBtn', '📱 UPI / QR Received • Settle & Free Table');
+    if (cardBtnLabel) cardBtnLabel.textContent = t('postPrintCardBtn', '💳 Card / EDC Machine Settled');
+    if (laterBtnLabel) laterBtnLabel.textContent = t('postPrintLaterBtn', '⏳ Not Yet (Bill Given, Awaiting Payment)');
+    if (viewBillBtnLabel) viewBillBtnLabel.textContent = t('postPrintViewBillBtn', '➕ View Bill / Add More Items');
+    if (hintEl) hintEl.textContent = t('postPrintLaterHint', "Table will show as '🧾 BILLED' on Floor Map until payment is settled.");
+
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
+    this.haptic('selection');
+  },
+
+  closePostPrintSettleModal() {
+    const modal = document.getElementById('post-print-settle-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  async settleFromPostPrint(payMode = 'cash') {
+    this.state.payMode = payMode;
+    this.closePostPrintSettleModal();
+    this.closeEpsonReceiptModal();
+    const table = this.getTable();
+    this.showToast(`💳 Processing ${payMode.toUpperCase()} settlement for ${table.name}...`);
+    await this.settleTable();
+  },
+
+  keepTableAsBillPrinted() {
+    const tId = this.state.selectedTableId;
+    this.markTableAsBillPrinted(tId);
+    this.closePostPrintSettleModal();
+    this.closeEpsonReceiptModal();
+    const table = this.getTable();
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const toastMsg = (typeof I18N !== 'undefined') 
+      ? I18N.t('postPrintLaterToast', `🧾 Table ${table.name} marked 'Bill Given'. Don't forget to settle when payment arrives!`)
+      : `🧾 Table ${table.name} marked 'Bill Given'. Don't forget to settle when payment arrives!`;
+    this.showToast(toastMsg);
+    if (this.state.currentView === 'app') {
+      this.goToTables();
     }
   },
 

@@ -1069,6 +1069,28 @@ const DB_SERVICE = {
     }
   },
 
+  async updateTableStatus(tableId, status) {
+    let t = this.tables.find(x => x.id === tableId || String(x.id) === String(tableId));
+    if (t) {
+      t.status = status;
+      this.saveLocalTables();
+      this.notifyTables();
+    }
+    this.broadcastRealtime('TABLE_STATUS_UPDATED', { tableId, status });
+    try {
+      if (this.mode === 'supabase_cloud') {
+        const client = ONYX_CLOUD_CONFIG.getClient();
+        if (client) {
+          await client.from('tables').update({ status, updated_at: new Date().toISOString() }).eq('id', tableId);
+        }
+      } else {
+        await this.post('/api/tables/status', { tableId, status });
+      }
+    } catch (e) {
+      console.warn('Sync table status error:', e.message);
+    }
+  },
+
   async settleBill(billData) {
     const billId = 'BILL-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
     const invNo = billData.invoiceNumber || ('INV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Date.now().toString(36).toUpperCase().slice(-4) + Math.floor(100 + Math.random() * 900));

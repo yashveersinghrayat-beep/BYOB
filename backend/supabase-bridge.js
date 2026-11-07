@@ -427,6 +427,24 @@ class SupabaseBridge {
     }
   }
 
+  // 3A. Mirror Table Status (e.g. bill_printed / vacant / occupied) to Supabase Cloud
+  async pushTableStatusToCloud(tableId, status) {
+    try {
+      if (!tableId || !status) return;
+      await fetch(`${SUPABASE_URL}/rest/v1/tables?id=eq.${encodeURIComponent(tableId)}`, {
+        method: 'PATCH',
+        headers: HEADERS,
+        body: JSON.stringify({
+          status,
+          updated_at: new Date().toISOString()
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
+    } catch (e) {
+      console.warn('[Supabase Bridge] Failed to mirror table status to cloud:', e.message);
+    }
+  }
+
   // 3B. Mirror Item Void / Cancellation to Supabase Cloud (Anti-Theft)
   async pushVoidToCloud(voidResult) {
     try {

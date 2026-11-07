@@ -107,7 +107,21 @@ const I18N = {
       orderSavedToast: "Order saved for",
       tableSelectedToast: "Selected",
       itemAddedToast: "added to",
-      cartEmptyWarning: "Cart is empty. Please add dishes from menu first!"
+      cartEmptyWarning: "Cart is empty. Please add dishes from menu first!",
+
+      // Post-Print Settle Prompt
+      billPrintedBadge: "BILLED",
+      billPrintedStatus: "Bill Printed",
+      awaitingPayment: "Awaiting Payment",
+      billPrintedModalTitle: "🖨️ Bill Printed • Settle Table?",
+      billPrintedModalSubtitle: "Has the customer paid? Settle and free table now:",
+      postPrintCashBtn: "💵 Cash Received • Settle & Free Table",
+      postPrintUpiBtn: "📱 UPI / QR Received • Settle & Free Table",
+      postPrintCardBtn: "💳 Card / EDC Machine Settled",
+      postPrintLaterBtn: "⏳ Not Yet (Bill Given, Awaiting Payment)",
+      postPrintLaterHint: "Table will show as '🧾 BILLED' on Floor Map until payment is settled.",
+      postPrintLaterToast: "🧾 Table marked 'Bill Given'. Don't forget to settle when payment arrives!",
+      postPrintViewBillBtn: "➕ View Bill / Add Items"
     },
 
     hi: {
@@ -209,7 +223,21 @@ const I18N = {
       orderSavedToast: "ऑर्डर सुरक्षित किया गया टेबल",
       tableSelectedToast: "चुना गया",
       itemAddedToast: "जोड़ा गया",
-      cartEmptyWarning: "कार्ट खाली है। कृपया पहले मेन्यू से आइटम जोड़ें!"
+      cartEmptyWarning: "कार्ट खाली है। कृपया पहले मेन्यू से आइटम जोड़ें!",
+
+      // Post-Print Settle Prompt
+      billPrintedBadge: "बिल दिया",
+      billPrintedStatus: "बिल दिया गया",
+      awaitingPayment: "भुगतान बाकी है",
+      billPrintedModalTitle: "🖨️ बिल प्रिंट हो गया • टेबल सेटल करें?",
+      billPrintedModalSubtitle: "क्या ग्राहक ने बिल चुका दिया? टेबल को अभी सेटल और फ्री करना है?",
+      postPrintCashBtn: "💵 कैश मिला • सेटल करके टेबल खाली करें",
+      postPrintUpiBtn: "📱 UPI / QR पेमेंट मिली • सेटल करके टेबल खाली करें",
+      postPrintCardBtn: "💳 कार्ड / EDC मशीन पेमेंट मिली",
+      postPrintLaterBtn: "⏳ अभी नहीं (बिल दिया है, पेमेंट बाकी है)",
+      postPrintLaterHint: "पेमेंट आने तक फ्लोर मैप पर टेबल '🧾 बिल दिया' दिखेगी।",
+      postPrintLaterToast: "🧾 टेबल पर 'बिल दिया' मार्क हुआ। पेमेंट आते ही सेटल करना न भूलें!",
+      postPrintViewBillBtn: "➕ बिल देखें / और ऑर्डर जोड़ें"
     }
   },
 

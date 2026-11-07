@@ -661,6 +661,11 @@ module.exports = {
     return this.getTables();
   },
 
+  updateTableStatus(tableId, status) {
+    db.prepare('UPDATE tables SET status = ? WHERE id = ?').run(status, tableId);
+    return this.getTables();
+  },
+
   // --- Menu Management ---
   getCategories() {
     return db.prepare('SELECT * FROM categories WHERE active = 1 AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY sort_order').all();

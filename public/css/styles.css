@@ -257,6 +257,25 @@ body {
   box-shadow: 0 0 20px rgba(239, 68, 68, 0.55) !important;
 }
 
+/* 2B. 🧾 VIBRANT AMBER/GOLD (BILL PRINTED / AWAITING SETTLEMENT) */
+.table-card-billed {
+  background: linear-gradient(145deg, #3d2406 0%, #1c1002 100%) !important;
+  border: 2.5px solid #f59e0b !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4), inset 0 0 12px rgba(245, 158, 11, 0.15) !important;
+  color: #ffffff !important;
+}
+.table-card-billed:hover {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.6) !important;
+}
+
+.table-card-selected-billed {
+  background: linear-gradient(145deg, #4d2f09 0%, #291804 100%) !important;
+  border: 3.5px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.85), inset 0 0 14px rgba(251, 191, 36, 0.3) !important;
+  color: #ffffff !important;
+}
+
 /* 3A. 🟡 SELECTED FREE TABLE */
 .table-card-selected-free {
   background: linear-gradient(145deg, #0e4c2f 0%, #062b1a 100%) !important;
