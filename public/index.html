@@ -191,9 +191,8 @@
         <button 
           id="hdr-sidebar-toggle-btn" 
           onclick="APP.toggleManagerSidebar()" 
-          onmouseenter="APP.onSidebarHoverZoneEnter()"
           class="hidden flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#141824] hover:bg-[#1f2638] border border-amber-500/40 text-amber-300 transition-all duration-300 shadow group active:scale-95 cursor-pointer"
-          title="Toggle Navigation Sidebar (Hover or Click)">
+          title="Toggle Navigation Sidebar">
           <div class="w-4 h-3.5 flex flex-col justify-between">
             <span class="hdr-bar bar-top block w-4 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
             <span class="hdr-bar bar-mid block w-4 h-0.5 bg-amber-400 rounded-full transition-all duration-300 origin-center"></span>
@@ -358,12 +357,7 @@
   <div id="view-app-container" class="w-full flex justify-center p-0">
     <div class="app-frame w-full">
       
-      <!-- Authentic Smartphone Status Bar (Visible on Desktop Simulator View) -->
-      <div class="hidden sm:flex items-center justify-between px-5 pt-1.5 pb-1 bg-[#121520] text-[10px] text-neutral-400 font-mono border-b border-[#202738] flex-shrink-0 select-none">
-        <span class="font-bold text-neutral-300 flex items-center gap-1">📱 ONYX Waiter</span>
-        <span class="w-10 h-3 bg-black/70 rounded-full border border-neutral-700/60 flex items-center justify-center"><span class="w-1.5 h-1.5 rounded-full bg-neutral-700"></span></span>
-        <span class="text-emerald-400 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Live</span>
-      </div>
+
       
       <!-- ================= SCREEN 1: TABLE SELECTION (TASK: PICK TABLE) ================= -->
       <div id="app-screen-tables" class="flex-1 flex flex-col overflow-hidden bg-[#0c0e15]">
@@ -733,10 +727,8 @@
           </button>
         </div>
       </div>
-    </div>
-    
-    <!-- DESKTOP TABLES CONTAINERS -->
-    <div id="web-tables-strip" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2"></div>
+      <!-- DESKTOP TABLES CONTAINERS -->
+      <div id="web-tables-strip" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2"></div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -871,13 +863,7 @@
     </div>
   </div>
 
-  <!-- ================= MANAGER SLIDING HOVER SIDEBAR ================= -->
-  <div id="mgr-sidebar-hover-zone" onmouseenter="APP.onSidebarHoverZoneEnter()" title="Move cursor here to reveal Manager Menu"></div>
-
-  <div id="mgr-sidebar-trigger-pill" onmouseenter="APP.onSidebarHoverZoneEnter()" onclick="APP.toggleManagerSidebar()" title="Click or hover to open Manager Navigation">
-    <span class="text-amber-400 text-sm font-black">☰</span>
-    <span class="text-[11px] font-bold text-neutral-200 hidden md:inline">MENU</span>
-  </div>
+  <!-- ================= MANAGER SLIDING SIDEBAR (CLICK ONLY) ================= -->
 
   <!-- Backdrop for clean dismissal on click outside -->
   <div id="mgr-sidebar-backdrop" onclick="APP.closeManagerSidebar()" title="Click outside to close sidebar"></div>
