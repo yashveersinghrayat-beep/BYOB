@@ -331,11 +331,11 @@
     </div>
   </header>
 
-  <!-- ================= VIEW 1: MOBILE APP MODE (HIGH-SPEED WAITER UI) ================= -->
+  <!-- ================= VIEW 1: MOBILE APP MODE (HIGH-SPEED 4-STEP WORKFLOW) ================= -->
   <div id="view-app-container" class="w-full flex justify-center p-0 lg:py-2.5 lg:px-4">
     <div class="app-frame w-full">
       
-      <!-- ================= 1A: TABLE SELECTION SCREEN (OPENS FIRST ON APP LAUNCH) ================= -->
+      <!-- ================= SCREEN 1: TABLE SELECTION (TASK: PICK TABLE) ================= -->
       <div id="app-screen-tables" class="flex-1 flex flex-col overflow-hidden bg-[#0c0e15]">
         
         <!-- Header: Table Selection -->
@@ -343,36 +343,22 @@
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-black text-white flex items-center gap-2">
               <span>🪑 Floor Tables</span>
-              <span id="floor-summary-badge" class="text-[10px] font-mono font-bold bg-[#1d2232] text-amber-400 px-2 py-0.5 rounded-full border border-amber-400/30">42 Tables (3 Floors)</span>
+              <span id="floor-summary-badge" class="text-[10px] font-mono font-bold bg-[#1d2232] text-amber-400 px-2 py-0.5 rounded-full border border-amber-400/30">18 Tables</span>
             </h2>
             <!-- Clean Compact Status Legend -->
-            <div class="flex items-center gap-1.5 text-[10px] font-bold">
-              <span class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
-                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>Free
-              </span>
-              <span class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/20 border border-red-500/40 text-red-300">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>Occupied
-              </span>
-              <span class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300">
-                <span class="w-2 h-2 rounded-full bg-amber-400"></span>Selected
-              </span>
+            <div class="flex items-center gap-2 text-[10px] font-bold">
+              <span class="flex items-center gap-1 text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Free</span>
+              <span class="flex items-center gap-1 text-red-400"><span class="w-2 h-2 rounded-full bg-red-500"></span>Occupied</span>
             </div>
           </div>
         </div>
 
-        <!-- 3-FLOOR TABS (All 42 | Ground Floor 18 | 1st Floor 7 | 2nd Floor 17) -->
+        <!-- 3-FLOOR TABS (Default: Ground Floor • Zero Floor Scroll Clutter) -->
         <div class="px-3 py-2 bg-[#0e111a] border-b border-[#23293a] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <button 
-            id="mobile-floor-tab-all" 
-            onclick="APP.setFloorFilter('all')" 
-            class="mobile-floor-btn active px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1 flex-shrink-0">
-            <span>🌐</span>
-            <span>All (42)</span>
-          </button>
           <button 
             id="mobile-floor-tab-gf" 
             onclick="APP.setFloorFilter('Ground Floor')" 
-            class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
+            class="mobile-floor-btn active px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1 flex-shrink-0">
             <span>🌿</span>
             <span>Ground Floor (18)</span>
           </button>
@@ -390,201 +376,275 @@
             <span>🏬</span>
             <span>2nd Floor (17)</span>
           </button>
+          <button 
+            id="mobile-floor-tab-all" 
+            onclick="APP.setFloorFilter('all')" 
+            class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
+            <span>🌐</span>
+            <span>All (42)</span>
+          </button>
         </div>
 
-        <!-- SUMMARY STRIP -->
-        <div class="px-3 py-1.5 bg-[#121622] border-b border-[#1f2637] flex items-center justify-between">
-          <div class="flex items-center gap-1.5">
-            <span id="floor-summary-badge" class="text-xs font-bold text-neutral-300">42 Tables (All Floors)</span>
-          </div>
-          <span class="text-[10px] text-amber-400 font-bold">⚡ 1-Tap Table Open</span>
+        <!-- SUMMARY STRIP (Single click open notice) -->
+        <div class="px-3 py-1 bg-[#121622] border-b border-[#1f2637] flex items-center justify-between text-[11px]">
+          <span class="text-neutral-400 font-medium">⚡ Touch any table to take order</span>
+          <span class="text-amber-400 font-bold">1-Tap Workflow</span>
         </div>
 
-        <!-- 42 TABLES TOP-DOWN GRID (Responsive: 2 cols on Mobile, 4-6 cols on Laptop) -->
-        <div id="app-floor-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+        <!-- 3-COLUMNS COMPACT TABLES GRID (Fits entire floor on screen without endless scroll) -->
+        <div id="app-floor-grid" class="flex-1 overflow-y-auto p-2.5 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           <!-- Rendered dynamically via JS -->
-        </div>
-
-        <!-- STICKY BOTTOM ACTION DOCK: SELECTED TABLE BAR -->
-        <div id="floor-bottom-dock" class="p-3 bg-[#131722] border-t-2 border-amber-500/40 shadow-2xl flex flex-col gap-2">
-          
-          <!-- Top Row: Selected Table Identity & Live Amount -->
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span id="dock-status-icon" class="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-xs font-black">🪑</span>
-              <div class="flex items-center gap-1.5">
-                <span id="dock-table-name" class="text-sm font-black text-white">Table 1</span>
-                <span id="dock-table-badge" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-black">🟢 FREE</span>
-              </div>
-            </div>
-            <div id="dock-table-info" class="text-[11px] font-bold text-neutral-300 text-right">Front Left • 4 Seats</div>
-          </div>
-
-          <!-- Bottom Row: Big Action Buttons (No Squish, No Cutoff) -->
-          <div class="flex items-center gap-2">
-            <button 
-              id="dock-upi-btn"
-              onclick="APP.openTableUpiModal()"
-              class="hidden flex-1 py-2.5 px-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5 active:scale-95">
-              <span>📱 Pay UPI</span>
-            </button>
-            <button 
-              id="dock-bill-btn"
-              onclick="APP.openBillingPage()"
-              class="hidden flex-1 py-2.5 px-3 bg-[#241217] hover:bg-[#3d1822] text-red-300 border border-red-500/50 font-black text-xs uppercase rounded-xl transition-all shadow flex items-center justify-center gap-1.5">
-              <span>🧾 Settle Invoice</span>
-            </button>
-            <button 
-              id="dock-menu-btn"
-              onclick="APP.openMenuForSelectedTable()" 
-              class="flex-1 py-2.5 px-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs uppercase rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5">
-              <span>🍽️ Take Order (Menu) →</span>
-            </button>
-          </div>
-
         </div>
 
       </div>
 
-      <!-- ================= 1B: MENU & ORDER SCREEN (OPENS WHEN TABLE IS TAPPED) ================= -->
-      <div id="app-screen-menu" class="flex-1 flex flex-col overflow-hidden hidden">
+      <!-- ================= SCREEN 2: MENU & ORDER TAKING (TASK: SELECT ITEMS) ================= -->
+      <div id="app-screen-menu" class="flex-1 flex flex-col overflow-hidden hidden bg-[#0c0e15]">
         
         <!-- Top Mobile Control Header with Back to Tables Button -->
-        <div class="p-2 bg-[#141722] border-b border-[#23293a] flex items-center justify-between gap-2">
-          <!-- Back to Tables button -->
+        <div class="px-3 py-2 bg-[#141722] border-b border-[#23293a] flex items-center justify-between gap-2">
           <button 
             onclick="APP.goToTables()" 
-            class="flex items-center gap-2 bg-[#1e2333] hover:bg-[#252c40] active:scale-95 px-2.5 py-1.5 rounded-xl border border-[#2e374f] text-left transition-all">
+            class="flex items-center gap-1.5 bg-[#1e2333] hover:bg-[#252c40] active:scale-95 px-2.5 py-1.5 rounded-xl border border-[#2e374f] text-left transition-all">
             <span class="text-amber-400 font-black text-sm">←</span>
-            <div>
-              <div class="text-xs font-black text-white flex items-center gap-1">
-                <span id="app-sub-table">Table 4</span>
-                <span class="text-[9px] text-amber-400 font-mono">🪑 Change</span>
-              </div>
-              <div id="app-sub-landmark" class="text-[10px] text-neutral-400">Middle • Left Row</div>
+            <div class="flex flex-col">
+              <span id="app-sub-table" class="text-xs font-black text-white leading-tight">Table 1</span>
+              <span id="app-sub-landmark" class="text-[9px] text-amber-400 font-mono">Change Table</span>
             </div>
           </button>
 
-          <div class="flex items-center gap-1.5">
-            <!-- Mode Toggle: Fast Grid vs Visual Photos -->
-            <div class="flex bg-[#0f1118] p-0.5 rounded-lg border border-[#23293a] text-[10px]">
-              <button id="btn-sub-speed" onclick="APP.setSubMode('speed')" class="px-2 py-0.5 rounded font-bold bg-amber-500 text-black">⚡ Fast</button>
-              <button id="btn-sub-visual" onclick="APP.setSubMode('visual')" class="px-2 py-0.5 rounded font-semibold text-neutral-400">🖼️ Photos</button>
-            </div>
-
-            <!-- Direct Detailed Billing Button -->
-            <button 
-              onclick="APP.openBillingPage()"
-              class="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500 hover:text-black rounded-lg text-xs font-bold text-amber-400 flex items-center gap-1 transition-all">
-              <span>Bill:</span>
-              <span id="app-header-tab-amount" class="font-mono">₹0</span>
-            </button>
-          </div>
+          <!-- If occupied, direct jump to running bill -->
+          <button 
+            id="menu-header-bill-btn"
+            onclick="APP.openRunningBillScreen()" 
+            class="px-2.5 py-1.5 bg-[#1f1724] border border-amber-500/40 rounded-xl text-xs font-bold text-amber-300 flex items-center gap-1 active:scale-95 shadow">
+            <span>🧾 Running:</span>
+            <span id="app-header-tab-amount" class="font-mono font-black text-white">₹0</span>
+          </button>
         </div>
 
         <!-- Instant Search & Quick Filter Bar -->
         <div class="p-2 bg-[#12141c] border-b border-[#202534] flex gap-2 items-center">
-          <!-- Instant Search Box -->
           <div class="relative flex-1">
             <input 
               id="app-search-input"
               type="text" 
-              placeholder="Search 'ct' for Chicken Tikka, 'ice'..."
+              placeholder="Search dishes & drinks (e.g. 'naan', 'tikka', 'ice')..."
               oninput="APP.handleSearch(this.value)"
-              class="w-full bg-[#181c28] border border-[#2b3347] rounded-lg pl-7 pr-6 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400">
+              class="w-full bg-[#181c28] border border-[#2b3347] rounded-xl pl-7 pr-6 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400">
             <span class="absolute left-2 top-2 text-neutral-500 text-xs">🔍</span>
             <button id="app-clear-search" onclick="APP.clearSearch()" class="absolute right-2 top-1.5 text-neutral-500 hover:text-white text-xs hidden">✕</button>
           </div>
 
           <!-- Veg/Non-Veg Quick Toggle -->
-          <div class="flex items-center gap-1 bg-[#181c28] p-0.5 rounded-lg border border-[#2b3347] flex-shrink-0 text-[11px]">
-            <button onclick="APP.setDietFilter('all')" id="app-diet-all" class="px-2 py-1 rounded font-bold bg-neutral-800 text-white">All</button>
-            <button onclick="APP.setDietFilter('veg')" id="app-diet-veg" class="px-2 py-1 rounded text-neutral-400 hover:text-white">Veg</button>
-            <button onclick="APP.setDietFilter('nonveg')" id="app-diet-nonveg" class="px-2 py-1 rounded text-neutral-400 hover:text-white">Non</button>
+          <div class="flex items-center gap-1 bg-[#181c28] p-0.5 rounded-xl border border-[#2b3347] flex-shrink-0 text-[11px]">
+            <button onclick="APP.setDietFilter('all')" id="app-diet-all" class="px-2 py-1 rounded-lg font-bold bg-neutral-800 text-white">All</button>
+            <button onclick="APP.setDietFilter('veg')" id="app-diet-veg" class="px-2 py-1 rounded-lg text-emerald-400 hover:text-white">🟢 Veg</button>
+            <button onclick="APP.setDietFilter('nonveg')" id="app-diet-nonveg" class="px-2 py-1 rounded-lg text-red-400 hover:text-white">🔴 Non</button>
           </div>
         </div>
 
-        <!-- ⚡ 1-TAP TABLE EXTRAS & QUICK INSTRUCTIONS (ZERO SEARCH NEEDED) -->
-        <div class="px-2 py-1.5 bg-[#0d1017] border-b border-[#1f2638] flex items-center gap-1.5 overflow-x-auto hide-scrollbar select-none shadow-inner">
-          <span class="text-[9px] font-black text-amber-400 uppercase tracking-wider flex-shrink-0 flex items-center gap-0.5">⚡ 1-Tap Extras:</span>
-          <button type="button" onclick="APP.addQuickRoundExtra('🧅 Extra Pyaz (Side)', 0)" class="px-2.5 py-1 rounded-xl bg-[#161a26] hover:bg-[#232a3c] text-[10px] font-bold text-neutral-200 border border-[#2c364d] flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>🧅 +Pyaz</span>
-          </button>
-          <button type="button" onclick="APP.addQuickRoundExtra('🥣 Extra Chutney (Mint/Green)', 0)" class="px-2.5 py-1 rounded-xl bg-[#161a26] hover:bg-[#232a3c] text-[10px] font-bold text-neutral-200 border border-[#2c364d] flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>🥣 +Chutney</span>
-          </button>
-          <button type="button" onclick="APP.addQuickRoundExtra('🍋 Extra Lemon (Nimbu)', 0)" class="px-2.5 py-1 rounded-xl bg-[#161a26] hover:bg-[#232a3c] text-[10px] font-bold text-neutral-200 border border-[#2c364d] flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>🍋 +Nimbu</span>
-          </button>
-          <button type="button" onclick="APP.addQuickRoundExtra('🌶️ Hari Mirch Fry (Side)', 0)" class="px-2.5 py-1 rounded-xl bg-[#161a26] hover:bg-[#232a3c] text-[10px] font-bold text-neutral-200 border border-[#2c364d] flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>🌶️ +Mirch Fry</span>
-          </button>
-          <button type="button" onclick="APP.addQuickRoundExtra('🕒 Serve Starters First', 0)" class="px-2.5 py-1 rounded-xl bg-[#261f10] hover:bg-[#3d3016] text-[10px] font-bold text-amber-300 border border-amber-500/40 flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>🕒 Starter Pehle</span>
-          </button>
-          <button type="button" onclick="APP.addQuickRoundExtra('🧊 Ice Bucket Alag', 0)" class="px-2.5 py-1 rounded-xl bg-[#10232c] hover:bg-[#163543] text-[10px] font-bold text-cyan-300 border border-cyan-500/40 flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>🧊 Ice Bucket</span>
-          </button>
-          <button type="button" onclick="APP.addQuickRoundExtra('🥤 Extra Disposable Glasses', 0)" class="px-2.5 py-1 rounded-xl bg-[#161a26] hover:bg-[#232a3c] text-[10px] font-bold text-neutral-200 border border-[#2c364d] flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>🥤 Glasses</span>
-          </button>
-          <button type="button" onclick="APP.addQuickRoundExtra('📦 Parcel / Packing', 0)" class="px-2.5 py-1 rounded-xl bg-[#161a26] hover:bg-[#232a3c] text-[10px] font-bold text-neutral-200 border border-[#2c364d] flex-shrink-0 flex items-center gap-1 active:scale-95 transition-all shadow-sm">
-            <span>📦 Parcel</span>
-          </button>
+        <!-- HORIZONTAL SWIPEABLE CATEGORY PILLS (Takes 0 side-width, gives 100% width to items) -->
+        <div id="app-category-pills" class="px-2 py-1.5 bg-[#0e111a] border-b border-[#23293a] flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none">
+          <!-- Rendered dynamically via JS -->
         </div>
 
-        <!-- MAIN SPLIT WORKSPACE: LEFT CATEGORY RAIL + RIGHT SPEED TILES -->
-        <div class="flex-1 flex overflow-hidden">
-          <!-- LEFT: Vertical Category Rail -->
-          <div class="category-rail hide-scrollbar" id="app-rail"></div>
-
-          <!-- RIGHT: Rapid Order Punching Area -->
-          <div class="flex-1 overflow-y-auto p-2.5 space-y-2 bg-[#0c0d12]" id="app-items-container"></div>
+        <!-- FULL-WIDTH SPEED MENU ITEMS CONTAINER -->
+        <div class="flex-1 overflow-y-auto p-2.5 space-y-1.5 bg-[#0c0d12]" id="app-items-container">
+          <!-- Rendered dynamically via JS -->
         </div>
 
-        <!-- ================= GLANCEABLE BOTTOM BAR (NO POPUP NEEDED) ================= -->
-        <div id="app-bottom-bar" class="p-2.5 bg-[#141722] border-t border-[#252b3b] flex flex-col gap-1.5 shadow-2xl z-30">
-          
-          <!-- Live Tray Preview Strip (Shows items inline without covering screen) -->
-          <div id="app-tray-strip" onclick="APP.toggleTrayDrawer()" class="flex items-center justify-between text-[11px] px-1 text-neutral-300 cursor-pointer active:opacity-75 select-none" title="Tap to view round items & notes">
-            <div class="flex items-center gap-1.5 truncate max-w-[240px]">
-              <span class="text-amber-400 font-bold uppercase tracking-wider text-[10px]">Round:</span>
-              <span id="app-tray-inline-items" class="text-neutral-300 font-medium truncate">No items in round tray</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span id="app-tray-round-total" class="font-mono font-bold text-amber-400">₹0</span>
-              <span id="app-tray-toggle-icon" class="text-[10px] text-amber-400 font-bold">▲ Review</span>
-            </div>
-          </div>
-
-          <!-- Expandable Round Tray Review Drawer -->
-          <div id="app-tray-drawer" class="hidden flex-col gap-1.5 max-h-48 overflow-y-auto custom-scroll pt-1 border-t border-[#232938]">
-            <div id="app-tray-drawer-items" class="flex flex-col gap-1.5">
-              <!-- Rendered dynamically by updateCartUI -->
-            </div>
-          </div>
-
-          <!-- Action Buttons: [🔥 Punch Order] + [🧾 Table Bill & Pay] -->
+        <!-- FLOATING STICKY BOTTOM ORDER BAR (Only visible when items are added) -->
+        <div id="app-menu-bottom-bar" class="hidden p-2.5 bg-[#131622] border-t-2 border-amber-500/50 shadow-2xl flex items-center justify-between gap-3 z-30 transition-all">
           <div class="flex items-center gap-2">
-            <!-- 1. PUNCH ORDER BUTTON: Instantly places the round on that table -->
-            <button 
-              id="app-btn-fire"
-              onclick="APP.sendOrder()" 
-              class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs uppercase tracking-wide rounded-xl shadow-lg transition-all disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center gap-1.5">
-              <span>🔥 Punch Order</span>
-            </button>
-
-            <!-- 2. BILLING & PAY BUTTON: Opens full detailed billing page -->
-            <button 
-              onclick="APP.openBillingPage()" 
-              class="py-2.5 px-4 bg-neutral-800 hover:bg-neutral-700 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl border border-neutral-700 transition-all flex items-center gap-1.5">
-              <span>🧾 Bill & Pay</span>
-            </button>
+            <div class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-sm font-black text-amber-400">
+              🛒
+            </div>
+            <div>
+              <div class="text-xs font-black text-white flex items-center gap-1.5">
+                <span id="app-bar-items-count">0 Items</span>
+                <span class="text-neutral-500">•</span>
+                <span id="app-bar-round-total" class="font-mono text-amber-400 font-black">₹0</span>
+              </div>
+              <div class="text-[10px] text-neutral-400">Current round items</div>
+            </div>
           </div>
 
+          <button 
+            id="app-bar-review-btn"
+            onclick="APP.openReviewOrderScreen()" 
+            class="py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-black font-black text-xs uppercase tracking-wide rounded-xl shadow-lg transition-all flex items-center gap-1.5">
+            <span>Review Order →</span>
+          </button>
         </div>
 
       </div>
+
+      <!-- ================= SCREEN 3: REVIEW ORDER & KOT PUNCH (TASK: VERIFY & SEND TO KITCHEN) ================= -->
+      <div id="app-screen-review" class="flex-1 flex flex-col overflow-hidden hidden bg-[#0c0e15]">
+        <!-- Top Header: Back to Menu + Step Indicator -->
+        <div class="px-3.5 py-2.5 bg-[#141722] border-b border-[#23293a] flex items-center justify-between">
+          <button onclick="APP.openMenuForSelectedTable()" class="flex items-center gap-1.5 bg-[#1e2333] hover:bg-[#252c40] px-2.5 py-1.5 rounded-xl border border-[#2e374f] text-xs font-bold text-white active:scale-95">
+            <span class="text-amber-400 font-black">←</span> Back to Menu
+          </button>
+          <div class="text-right">
+            <div id="review-screen-table-title" class="text-xs font-black text-white">Table 1 • Round 1</div>
+            <div class="text-[9px] text-amber-400 font-mono font-bold">STEP 3: KITCHEN CONFIRMATION</div>
+          </div>
+        </div>
+
+        <!-- Review Content (Scrollable) -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <!-- Items List Card -->
+          <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
+            <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center justify-between">
+              <span>📋 Items in this Round</span>
+              <span id="review-items-badge" class="text-[10px] font-mono text-amber-400 font-bold">0 Items</span>
+            </div>
+            <div id="review-items-list" class="space-y-2">
+              <!-- Rendered dynamically -->
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-[#232a3c] flex items-center justify-between text-xs font-black">
+              <span class="text-neutral-300">Round Subtotal:</span>
+              <span id="review-round-subtotal" class="font-mono text-amber-400 text-sm">₹0</span>
+            </div>
+          </div>
+
+          <!-- Special Kitchen Cooking Instructions -->
+          <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
+            <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center gap-1.5">
+              <span>👨‍🍳 Kitchen Cooking Notes</span>
+            </div>
+            
+            <!-- Quick Instruction 1-Tap Chips -->
+            <div class="flex flex-wrap gap-1.5 mb-2.5">
+              <button type="button" onclick="APP.toggleKitchenNoteChip(this, '🌶️ Less Spicy')" class="kitchen-note-chip px-2.5 py-1 rounded-xl bg-[#191e2b] hover:bg-[#242b3d] text-[10px] font-bold text-neutral-300 border border-[#2d364b] transition-all">🌶️ Less Spicy</button>
+              <button type="button" onclick="APP.toggleKitchenNoteChip(this, '🌶️🌶️ Extra Spicy')" class="kitchen-note-chip px-2.5 py-1 rounded-xl bg-[#191e2b] hover:bg-[#242b3d] text-[10px] font-bold text-neutral-300 border border-[#2d364b] transition-all">🌶️ Extra Spicy</button>
+              <button type="button" onclick="APP.toggleKitchenNoteChip(this, '🍃 Less Oil')" class="kitchen-note-chip px-2.5 py-1 rounded-xl bg-[#191e2b] hover:bg-[#242b3d] text-[10px] font-bold text-neutral-300 border border-[#2d364b] transition-all">🍃 Less Oil</button>
+              <button type="button" onclick="APP.toggleKitchenNoteChip(this, '🧄 No Onion/Garlic')" class="kitchen-note-chip px-2.5 py-1 rounded-xl bg-[#191e2b] hover:bg-[#242b3d] text-[10px] font-bold text-neutral-300 border border-[#2d364b] transition-all">🧄 Jain (No Onion/Garlic)</button>
+              <button type="button" onclick="APP.toggleKitchenNoteChip(this, '🕒 Starters First')" class="kitchen-note-chip px-2.5 py-1 rounded-xl bg-[#191e2b] hover:bg-[#242b3d] text-[10px] font-bold text-neutral-300 border border-[#2d364b] transition-all">🕒 Starters First</button>
+              <button type="button" onclick="APP.toggleKitchenNoteChip(this, '🧊 Extra Ice')" class="kitchen-note-chip px-2.5 py-1 rounded-xl bg-[#191e2b] hover:bg-[#242b3d] text-[10px] font-bold text-neutral-300 border border-[#2d364b] transition-all">🧊 Extra Ice</button>
+            </div>
+
+            <!-- Custom Kitchen Instruction Input -->
+            <input 
+              id="review-kitchen-custom-note"
+              type="text" 
+              placeholder="Custom instructions for chef (e.g. deliver drinks before food)..."
+              class="w-full bg-[#181c28] border border-[#2b3347] rounded-xl px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400">
+          </div>
+        </div>
+
+        <!-- Bottom Action: Huge Send to Kitchen Button -->
+        <div class="p-3 bg-[#131722] border-t-2 border-amber-500/50 shadow-2xl">
+          <button 
+            id="review-punch-kot-btn"
+            onclick="APP.punchOrderFromReview()" 
+            class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-black font-black text-sm uppercase tracking-wider rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2">
+            <span>🔥 SEND TO KITCHEN (PUNCH KOT)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= SCREEN 4: RUNNING TABLE BILL & SETTLE (TASK: VIEW BILL & PAY) ================= -->
+      <div id="app-screen-bill" class="flex-1 flex flex-col overflow-hidden hidden bg-[#0c0e15]">
+        <!-- Top Header: Back to Tables + Table Title -->
+        <div class="px-3.5 py-2.5 bg-[#141722] border-b border-[#23293a] flex items-center justify-between">
+          <button onclick="APP.goToTables()" class="flex items-center gap-1.5 bg-[#1e2333] hover:bg-[#252c40] px-2.5 py-1.5 rounded-xl border border-[#2e374f] text-xs font-bold text-white active:scale-95">
+            <span class="text-amber-400 font-black">←</span> Floor Tables
+          </button>
+          <div class="text-right">
+            <div id="bill-screen-table-title" class="text-xs font-black text-white">Table 1 • Running Bill</div>
+            <div id="bill-screen-status-badge" class="text-[9px] text-red-400 font-mono font-bold">🔴 OCCUPIED</div>
+          </div>
+        </div>
+
+        <!-- Bill Content (Scrollable) -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <!-- Active KOTs Breakdown -->
+          <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
+            <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center justify-between">
+              <span>🔥 Running Kitchen Orders (KOTs)</span>
+              <span id="bill-kots-count" class="text-[10px] font-mono text-amber-400 font-bold">0 KOTs</span>
+            </div>
+            <div id="bill-running-kots-list" class="space-y-2">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Bill Financial Summary -->
+          <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow space-y-2">
+            <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-1">🧾 Payment Summary</div>
+            <div class="flex justify-between text-xs text-neutral-300">
+              <span>Items Subtotal:</span>
+              <span id="bill-screen-subtotal" class="font-mono font-bold text-white">₹0</span>
+            </div>
+            <div class="flex justify-between text-xs text-neutral-300">
+              <span>GST (5%):</span>
+              <span id="bill-screen-gst" class="font-mono text-neutral-300">₹0</span>
+            </div>
+            <div class="flex justify-between text-xs text-neutral-300">
+              <span>Round Off:</span>
+              <span id="bill-screen-roundoff" class="font-mono text-neutral-400">₹0</span>
+            </div>
+            <div class="pt-2 border-t border-[#232a3c] flex justify-between items-center">
+              <span class="text-sm font-black text-white">Grand Total:</span>
+              <span id="bill-screen-grand-total" class="font-mono text-xl font-black text-amber-400">₹0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Action Bar -->
+        <div class="p-3 bg-[#131722] border-t border-[#252c3e] flex flex-col gap-2 shadow-2xl">
+          <div class="flex items-center gap-2">
+            <button 
+              onclick="APP.openMenuForSelectedTable()" 
+              class="flex-1 py-2.5 px-3 bg-[#1c2233] hover:bg-[#242c42] active:scale-95 text-white font-extrabold text-xs rounded-xl border border-[#2f3952] transition-all flex items-center justify-center gap-1.5">
+              <span>➕ Add More Food / Drinks</span>
+            </button>
+            <button 
+              onclick="APP.printThermalReceipt()" 
+              class="py-2.5 px-3 bg-[#1a202c] hover:bg-[#252f40] active:scale-95 text-cyan-300 font-extrabold text-xs rounded-xl border border-cyan-500/40 transition-all flex items-center justify-center gap-1.5">
+              <span>🖨️ Print Bill</span>
+            </button>
+          </div>
+          <button 
+            onclick="APP.openBillingPage()" 
+            class="w-full py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-black font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+            <span>💳 Settle Payment (Cash / UPI) →</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= OCCUPIED TABLE ACTION SHEET (POPUP MODAL) ================= -->
+      <div id="table-action-sheet" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target === this) APP.closeTableActionSheet()">
+        <div class="w-full sm:max-w-md bg-[#131722] border-t-2 sm:border border-amber-500/50 rounded-t-3xl sm:rounded-3xl p-4 shadow-2xl space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-[#23293a]">
+            <div>
+              <h3 id="sheet-table-name" class="text-base font-black text-white">Table 1</h3>
+              <p id="sheet-table-status" class="text-xs text-red-400 font-bold font-mono">🔴 Occupied • ₹0 Active</p>
+            </div>
+            <button onclick="APP.closeTableActionSheet()" class="w-8 h-8 rounded-full bg-[#1e2333] hover:bg-[#272e42] text-neutral-400 hover:text-white flex items-center justify-center text-sm font-bold">✕</button>
+          </div>
+
+          <div class="flex flex-col gap-2.5 pt-1">
+            <button 
+              onclick="APP.closeTableActionSheet(); APP.openMenuForSelectedTable();"
+              class="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-black font-black text-sm uppercase rounded-2xl shadow-lg flex items-center justify-center gap-2">
+              <span>➕ Take Order / Add Items →</span>
+            </button>
+
+            <button 
+              onclick="APP.closeTableActionSheet(); APP.openRunningBillScreen();"
+              class="w-full py-3 px-4 bg-[#1e2333] hover:bg-[#272e42] active:scale-98 text-white font-extrabold text-xs uppercase rounded-xl border border-[#323c54] flex items-center justify-center gap-2">
+              <span>🧾 View Running Bill & Settlement →</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
     </div>
   </div>

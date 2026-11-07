@@ -695,21 +695,19 @@ const APP = {
     this.checkSystemHealth();
   },
 
-  // ================= 3. TABLE NAVIGATION (FLOOR MAP FIRST) =================
-  // Open Floor Map Screen
+  // ================= 3. TABLE NAVIGATION (4-STEP WORKFLOW ENGINE) =================
+  // Step 1: Open Floor Tables Screen
   goToTables(push = true) {
     this.state.appScreen = "tables";
     const screenTables = document.getElementById('app-screen-tables');
     const screenMenu = document.getElementById('app-screen-menu');
+    const screenReview = document.getElementById('app-screen-review');
+    const screenBill = document.getElementById('app-screen-bill');
 
-    if (screenTables) {
-      screenTables.classList.remove('hidden');
-      screenTables.style.setProperty('display', 'flex', 'important');
-    }
-    if (screenMenu) {
-      screenMenu.classList.add('hidden');
-      screenMenu.style.setProperty('display', 'none', 'important');
-    }
+    if (screenTables) { screenTables.classList.remove('hidden'); screenTables.style.setProperty('display', 'flex', 'important'); }
+    if (screenMenu) { screenMenu.classList.add('hidden'); screenMenu.style.setProperty('display', 'none', 'important'); }
+    if (screenReview) { screenReview.classList.add('hidden'); screenReview.style.setProperty('display', 'none', 'important'); }
+    if (screenBill) { screenBill.classList.add('hidden'); screenBill.style.setProperty('display', 'none', 'important'); }
 
     if (push && typeof history !== 'undefined') {
       if (window.location.hash !== '#tables') {
@@ -721,13 +719,11 @@ const APP = {
     this.updateFloorBottomDock();
   },
 
-  // Select Table from Floor Map (Instant Radiant Amber Highlight + Floor Bottom Dock Update)
+  // Select Table from Floor Map
   selectTable(tableId) {
     this.haptic('selection');
-    const isAlreadySelected = this.state.selectedTableId === tableId;
     this.state.selectedTableId = tableId;
 
-    // Instantly re-render floor map so tapped table lights up in radiant yellow
     this.renderFloorTables();
     this.updateTableHeaderBadges();
     this.updateCartUI();
@@ -737,30 +733,33 @@ const APP = {
     const live = this.getLiveTable();
     const isOccupied = (live.currentSubtotal || 0) > 0 || live.status === 'occupied';
 
-    // SINGLE-CLICK WORKFLOW:
-    // On Mobile Waiter View: Tapping any table immediately opens its menu!
+    // STEP-BY-STEP MOBILE WORKFLOW:
     if (this.state.currentView === 'app') {
-      this.openMenuForSelectedTable();
+      if (isOccupied) {
+        // Occupied Table: Open clean action sheet (Take Order vs View Bill)
+        this.openTableActionSheet(tableId);
+      } else {
+        // Free Table: 1-Tap directly opens Menu
+        this.openMenuForSelectedTable();
+      }
       return;
     }
 
     this.showToast(`Selected ${table.name} (${table.position}) • ${isOccupied ? `🔴 ₹${live.currentSubtotal.toLocaleString('en-IN')}` : '🟢 Free'}`);
   },
 
-  // Open Menu for currently selected table
+  // Step 2: Open Menu for currently selected table
   openMenuForSelectedTable(push = true) {
     this.state.appScreen = "menu";
     const screenTables = document.getElementById('app-screen-tables');
     const screenMenu = document.getElementById('app-screen-menu');
+    const screenReview = document.getElementById('app-screen-review');
+    const screenBill = document.getElementById('app-screen-bill');
 
-    if (screenTables) {
-      screenTables.classList.add('hidden');
-      screenTables.style.setProperty('display', 'none', 'important');
-    }
-    if (screenMenu) {
-      screenMenu.classList.remove('hidden');
-      screenMenu.style.setProperty('display', 'flex', 'important');
-    }
+    if (screenTables) { screenTables.classList.add('hidden'); screenTables.style.setProperty('display', 'none', 'important'); }
+    if (screenMenu) { screenMenu.classList.remove('hidden'); screenMenu.style.setProperty('display', 'flex', 'important'); }
+    if (screenReview) { screenReview.classList.add('hidden'); screenReview.style.setProperty('display', 'none', 'important'); }
+    if (screenBill) { screenBill.classList.add('hidden'); screenBill.style.setProperty('display', 'none', 'important'); }
 
     if (push && typeof history !== 'undefined') {
       if (window.location.hash !== '#menu') {
@@ -772,6 +771,240 @@ const APP = {
     this.renderMenuItems();
     this.updateCartUI();
     this.updateTableHeaderBadges();
+  },
+
+  // Step 3: Open Review Order & KOT Confirmation Screen
+  openReviewOrderScreen(push = true) {
+    const cart = this.getLocalCart();
+    if (cart.length === 0) {
+      this.showToast('⚠️ Cart is empty. Please add dishes from menu first!');
+      return;
+    }
+    this.state.appScreen = "review";
+    const screenTables = document.getElementById('app-screen-tables');
+    const screenMenu = document.getElementById('app-screen-menu');
+    const screenReview = document.getElementById('app-screen-review');
+    const screenBill = document.getElementById('app-screen-bill');
+
+    if (screenTables) { screenTables.classList.add('hidden'); screenTables.style.setProperty('display', 'none', 'important'); }
+    if (screenMenu) { screenMenu.classList.add('hidden'); screenMenu.style.setProperty('display', 'none', 'important'); }
+    if (screenReview) { screenReview.classList.remove('hidden'); screenReview.style.setProperty('display', 'flex', 'important'); }
+    if (screenBill) { screenBill.classList.add('hidden'); screenBill.style.setProperty('display', 'none', 'important'); }
+
+    if (push && typeof history !== 'undefined') {
+      if (window.location.hash !== '#review') {
+        history.pushState({ screen: 'review', tableId: this.state.selectedTableId }, '', '#review');
+      }
+    }
+
+    this.renderReviewScreen();
+  },
+
+  // Render Step 3 Review Items List & Round Calculations
+  renderReviewScreen() {
+    const table = this.getTable();
+    const liveTable = this.getLiveTable();
+    const cart = this.getLocalCart();
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const count = cart.reduce((sum, item) => sum + item.qty, 0);
+
+    const titleEl = document.getElementById('review-screen-table-title');
+    if (titleEl) {
+      const placedKots = (liveTable.placedOrders || []).length;
+      titleEl.textContent = `${table.name} • ${placedKots > 0 ? 'Next Round' : 'Round 1'}`;
+    }
+
+    const badgeEl = document.getElementById('review-items-badge');
+    if (badgeEl) badgeEl.textContent = `${count} Items`;
+
+    const subtotalEl = document.getElementById('review-round-subtotal');
+    if (subtotalEl) subtotalEl.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
+
+    const listEl = document.getElementById('review-items-list');
+    if (listEl) {
+      if (cart.length === 0) {
+        listEl.innerHTML = `<div class="py-6 text-center text-neutral-500 text-xs font-medium">Round is empty. Tap 'Back to Menu' to add items.</div>`;
+      } else {
+        listEl.innerHTML = cart.map(item => `
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#0b0e15] border border-[#232b3d]">
+            <div class="flex-1 min-w-0 pr-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold text-white truncate">${item.name}</span>
+              </div>
+              <div class="text-[11px] text-amber-400 font-mono font-bold mt-0.5">
+                ₹${item.price} × ${item.qty} = ₹${(item.price * item.qty).toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="flex items-center bg-[#150f05] border border-amber-400 rounded-xl p-0.5 shadow-sm">
+                <button type="button" onclick="APP.changeQty('${item.id}', -1); APP.renderReviewScreen();" class="w-7 h-7 rounded-lg bg-[#2b1c08] text-amber-300 font-black text-xs flex items-center justify-center active:scale-95">-</button>
+                <span class="text-xs font-black text-amber-300 font-mono w-7 text-center">${item.qty}</span>
+                <button type="button" onclick="APP.changeQty('${item.id}', 1); APP.renderReviewScreen();" class="w-7 h-7 rounded-lg bg-amber-400 text-black font-black text-xs flex items-center justify-center active:scale-95">+</button>
+              </div>
+
+              <button type="button" onclick="APP.changeQty('${item.id}', -${item.qty}); APP.renderReviewScreen();" class="w-7 h-7 rounded-lg bg-red-500/15 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 flex items-center justify-center text-xs transition-all active:scale-95" title="Remove item">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+  },
+
+  // Toggle 1-Tap Cooking Instruction Note Chips
+  toggleKitchenNoteChip(btn, noteText) {
+    this.haptic('tick');
+    const isActive = btn.classList.contains('active');
+    if (isActive) {
+      btn.classList.remove('active', 'bg-amber-400', 'text-black', 'border-amber-400');
+      btn.classList.add('bg-[#191e2b]', 'text-neutral-300', 'border-[#2d364b]');
+    } else {
+      btn.classList.add('active', 'bg-amber-400', 'text-black', 'border-amber-400');
+      btn.classList.remove('bg-[#191e2b]', 'text-neutral-300', 'border-[#2d364b]');
+    }
+  },
+
+  // Punch KOT Directly from Step 3 Review Screen
+  async punchOrderFromReview() {
+    const cart = this.getLocalCart();
+    if (cart.length === 0) {
+      this.showToast('⚠️ Cart is empty!');
+      return;
+    }
+
+    // Collect active notes from chips
+    const activeChips = Array.from(document.querySelectorAll('.kitchen-note-chip.active')).map(b => b.textContent.trim());
+    const customInput = document.getElementById('review-kitchen-custom-note');
+    const customNote = customInput ? customInput.value.trim() : '';
+
+    const allNotes = [...activeChips, ...(customNote ? [customNote] : [])].join(' • ');
+
+    if (allNotes) {
+      cart.forEach(item => {
+        item.notes = item.notes ? `${item.notes} | ${allNotes}` : allNotes;
+      });
+      this.saveLocalCarts();
+    }
+
+    // Clear chips and input for next order
+    document.querySelectorAll('.kitchen-note-chip.active').forEach(b => {
+      b.classList.remove('active', 'bg-amber-400', 'text-black', 'border-amber-400');
+      b.classList.add('bg-[#191e2b]', 'text-neutral-300', 'border-[#2d364b]');
+    });
+    if (customInput) customInput.value = '';
+
+    await this.sendOrder();
+    this.goToTables();
+  },
+
+  // Step 4: Open Running Bill Screen for Table
+  openRunningBillScreen(push = true) {
+    this.state.appScreen = "bill";
+    const screenTables = document.getElementById('app-screen-tables');
+    const screenMenu = document.getElementById('app-screen-menu');
+    const screenReview = document.getElementById('app-screen-review');
+    const screenBill = document.getElementById('app-screen-bill');
+
+    if (screenTables) { screenTables.classList.add('hidden'); screenTables.style.setProperty('display', 'none', 'important'); }
+    if (screenMenu) { screenMenu.classList.add('hidden'); screenMenu.style.setProperty('display', 'none', 'important'); }
+    if (screenReview) { screenReview.classList.add('hidden'); screenReview.style.setProperty('display', 'none', 'important'); }
+    if (screenBill) { screenBill.classList.remove('hidden'); screenBill.style.setProperty('display', 'flex', 'important'); }
+
+    if (push && typeof history !== 'undefined') {
+      if (window.location.hash !== '#bill') {
+        history.pushState({ screen: 'bill', tableId: this.state.selectedTableId }, '', '#bill');
+      }
+    }
+
+    this.renderRunningBillScreen();
+  },
+
+  // Render Step 4 Running Bill & Totals
+  renderRunningBillScreen() {
+    const table = this.getTable();
+    const liveTable = this.getLiveTable();
+    const placedOrders = liveTable.placedOrders || [];
+    const subtotal = liveTable.currentSubtotal || placedOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const gstRate = 0.05; // 5% GST
+    const gstAmount = Math.round(subtotal * gstRate * 100) / 100;
+    const rawTotal = subtotal + gstAmount;
+    const grandTotal = Math.round(rawTotal);
+    const roundOff = Math.round((grandTotal - rawTotal) * 100) / 100;
+
+    const titleEl = document.getElementById('bill-screen-table-title');
+    if (titleEl) titleEl.textContent = `${table.name} • Running Bill`;
+
+    const badgeEl = document.getElementById('bill-screen-status-badge');
+    if (badgeEl) {
+      if (subtotal > 0 || liveTable.status === 'occupied') {
+        badgeEl.className = "text-[9px] text-red-400 font-mono font-bold";
+        badgeEl.textContent = "🔴 OCCUPIED";
+      } else {
+        badgeEl.className = "text-[9px] text-emerald-400 font-mono font-bold";
+        badgeEl.textContent = "🟢 FREE";
+      }
+    }
+
+    const countEl = document.getElementById('bill-kots-count');
+    if (countEl) countEl.textContent = `${placedOrders.length} Items`;
+
+    const subtotalEl = document.getElementById('bill-screen-subtotal');
+    if (subtotalEl) subtotalEl.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
+
+    const gstEl = document.getElementById('bill-screen-gst');
+    if (gstEl) gstEl.textContent = `₹${gstAmount.toLocaleString('en-IN')}`;
+
+    const roundOffEl = document.getElementById('bill-screen-roundoff');
+    if (roundOffEl) roundOffEl.textContent = `${roundOff >= 0 ? '+' : ''}₹${roundOff.toFixed(2)}`;
+
+    const grandTotalEl = document.getElementById('bill-screen-grand-total');
+    if (grandTotalEl) grandTotalEl.textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
+
+    const listEl = document.getElementById('bill-running-kots-list');
+    if (listEl) {
+      if (placedOrders.length === 0) {
+        listEl.innerHTML = `<div class="py-6 text-center text-neutral-500 text-xs font-medium">No placed orders on this table yet. Tap 'Add More Food / Drinks' to take order.</div>`;
+      } else {
+        listEl.innerHTML = placedOrders.map((item, idx) => `
+          <div class="flex items-center justify-between py-2 border-b border-[#232a3c] text-xs">
+            <div class="flex-1 min-w-0 pr-2">
+              <div class="text-neutral-200 font-bold truncate">${item.name}</div>
+              <div class="text-[10px] text-neutral-400 font-mono">${item.qty} × ₹${item.price} ${item.notes ? `• <span class="text-amber-300">📝 ${item.notes}</span>` : ''}</div>
+            </div>
+            <div class="font-mono font-bold text-white text-right">
+              ₹${(item.price * item.qty).toLocaleString('en-IN')}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+  },
+
+  // Occupied Table Action Sheet Controls
+  openTableActionSheet(tableId) {
+    this.haptic('selection');
+    this.state.selectedTableId = tableId;
+    const table = this.getTable();
+    const liveTable = this.getLiveTable();
+    const subtotal = liveTable.currentSubtotal || (liveTable.placedOrders || []).reduce((s, i) => s + (i.price * i.qty), 0);
+
+    const nameEl = document.getElementById('sheet-table-name');
+    if (nameEl) nameEl.textContent = `${table.name} (${table.position})`;
+
+    const statusEl = document.getElementById('sheet-table-status');
+    if (statusEl) {
+      statusEl.textContent = `🔴 Occupied • Active Bill: ₹${subtotal.toLocaleString('en-IN')} (${(liveTable.placedOrders || []).length} items)`;
+    }
+
+    const sheet = document.getElementById('table-action-sheet');
+    if (sheet) sheet.classList.remove('hidden');
+  },
+
+  closeTableActionSheet() {
+    const sheet = document.getElementById('table-action-sheet');
+    if (sheet) sheet.classList.add('hidden');
   },
 
   // Update Floor Bottom Dock
@@ -1175,89 +1408,45 @@ const APP = {
         let footerHtml = "";
 
         if (isOccupied) {
-          const footprint = this.buildTableFootprint(placedOrders, 3);
-          const waiterName = liveTable.waiterName || t.waiterName || '';
-          const waiterBadge = waiterName ? `<span class="text-[9px] font-bold text-amber-300/80 truncate max-w-[90px]" title="Waiter: ${waiterName}">👤 ${waiterName.split(' ')[0]}</span>` : '';
-
-          if (isCurrent) {
-            // Selected & Occupied
-            cardClass = "table-card-selected-occupied";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow ring-2 ring-amber-400">🔴 ₹${subtotal.toLocaleString('en-IN')}</span>`;
-          } else if (draftCount > 0) {
-            // Unselected & Occupied with Draft Items
-            cardClass = "table-card-occupied border-2 border-amber-400";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow">🔴 ₹${subtotal.toLocaleString('en-IN')}</span><span class="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-black shadow animate-pulse">+DRAFT</span>`;
-          } else {
-            // Unselected & Occupied
-            cardClass = "table-card-occupied";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow">🔴 ₹${subtotal.toLocaleString('en-IN')}</span>`;
-          }
-
+          cardClass = isCurrent ? "table-card-selected-occupied ring-2 ring-amber-400" : "table-card-occupied";
+          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white font-mono">OCC</span>`;
           middleHtml = `
-            <div class="my-1 w-full overflow-hidden">
-              <div class="flex items-baseline justify-between gap-1">
-                <span class="text-xl font-black font-mono text-white tracking-tight leading-none">₹${subtotal.toLocaleString('en-IN')}</span>
-                ${waiterBadge}
-              </div>
-              <!-- Order Footprint Pills Strip (Fixed 2-Line Container, Zero Layout Spill) -->
-              <div class="flex flex-wrap items-center gap-1 mt-1.5 min-h-[24px] max-h-[48px] overflow-hidden" title="${footprint.tooltip}">
-                ${footprint.pillsHtml}
-              </div>
+            <div class="my-0.5">
+              <div class="text-xs font-black font-mono text-red-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
             </div>
           `;
-
           footerHtml = `
-            <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-red-500/30 text-neutral-300 font-medium w-full">
-              <span>👥 ${t.seats} Seats</span>
-              <span class="truncate font-bold text-neutral-200" title="${t.landmark || cleanPosition}">${cleanPosition}</span>
+            <div class="flex items-center justify-between text-[9px] pt-1 border-t border-red-500/30 text-neutral-300 font-medium w-full">
+              <span>👥 ${t.seats}s</span>
+              <span class="text-amber-300 font-mono font-bold">${placedOrders.length} KOT</span>
             </div>
           `;
         } else {
-          // Free / Vacant Table
-          if (isCurrent) {
-            // Selected & Free
-            cardClass = "table-card-selected-free";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-black shadow ring-2 ring-amber-400">🟢 FREE</span>`;
-          } else if (draftCount > 0) {
-            // Unselected & Free with Draft Items
-            cardClass = "table-card-free border-2 border-amber-400/80";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black shadow animate-pulse">🟡 DRAFT (${draftCount})</span>`;
-          } else {
-            // Unselected & Free
-            cardClass = "table-card-free";
-            headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-black shadow">🟢 FREE</span>`;
-          }
-
+          cardClass = isCurrent ? "table-card-selected-free ring-2 ring-amber-400" : (draftCount > 0 ? "table-card-free border border-amber-400/80" : "table-card-free");
+          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-black">FREE</span>`;
           middleHtml = `
-            <div class="my-1">
-              <div class="text-base font-extrabold ${draftCount > 0 ? 'text-amber-300' : 'text-emerald-300'} tracking-tight leading-none">${draftCount > 0 ? `${draftCount} Pending` : 'Ready'}</div>
-              <div class="text-[10px] font-medium ${draftCount > 0 ? 'text-amber-400' : 'text-emerald-400/90'} mt-1">${draftCount > 0 ? 'Unpunched Round' : 'Tap to select'}</div>
+            <div class="my-0.5">
+              <div class="text-[11px] font-bold text-emerald-400/90 leading-tight">${draftCount > 0 ? `🟡 +${draftCount}` : 'Available'}</div>
             </div>
           `;
-
           footerHtml = `
-            <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-emerald-500/30 text-neutral-300 font-medium w-full">
-              <span>👥 ${t.seats} Seats</span>
-              <span class="truncate font-bold text-neutral-200">${cleanPosition}</span>
+            <div class="flex items-center justify-between text-[9px] pt-1 border-t border-emerald-500/30 text-neutral-400 font-medium w-full">
+              <span>👥 ${t.seats}s</span>
+              <span class="truncate font-mono">${cleanPosition}</span>
             </div>
           `;
         }
 
         return `
           <button 
+            type="button"
             onclick="APP.selectTable('${t.id}')"
-            class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between min-h-[120px] shadow-lg group overflow-hidden">
-            
-            <!-- Top Row: Table Name + Single Clean Badge -->
+            class="floor-table-card ${cardClass} p-2 rounded-xl text-left transition-all flex flex-col justify-between min-h-[72px] shadow group overflow-hidden active:scale-95">
             <div class="flex items-center justify-between w-full">
-              <span class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">${t.name}</span>
+              <span class="text-xs font-black text-white group-hover:text-amber-300 transition-colors">${t.name}</span>
               ${headerBadge}
             </div>
-
-            <!-- Middle: Large Rupee Amount or Status + Smart Footprint -->
             ${middleHtml}
-
-            <!-- Bottom: Capacity & Position -->
             ${footerHtml}
           </button>
         `;
@@ -1323,7 +1512,28 @@ const APP = {
 
   // ================= 5. CATEGORIES & MENU =================
   renderCategories() {
-    // 1. Mobile Vertical Category Rail
+    // 1. Mobile Horizontal Swipeable Category Pills (High-Speed Top Bar)
+    const categoryPills = document.getElementById('app-category-pills');
+    if (categoryPills) {
+      categoryPills.innerHTML = CATEGORIES.map(c => {
+        const active = this.state.activeCategory === c.id;
+        return `
+          <button 
+            type="button"
+            onclick="APP.setCategory('${c.id}')"
+            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 active:scale-95 ${
+              active 
+                ? 'bg-amber-500 text-black font-black shadow-md' 
+                : 'bg-[#161a25] text-neutral-300 border border-[#273042] hover:text-white'
+            }">
+            <span>${c.icon}</span>
+            <span>${c.name}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    // 1B. Mobile Vertical Category Rail (Fallback)
     const appRail = document.getElementById('app-rail');
     if (appRail) {
       appRail.innerHTML = CATEGORIES.map(c => {
@@ -2200,6 +2410,29 @@ const APP = {
         fireBtn.disabled = true;
         fireBtn.textContent = `🔥 Punch Order`;
       }
+    }
+
+    // 1C. High-Speed Workflow Floating Bottom Bar (Screen 2 -> Screen 3)
+    const menuBottomBar = document.getElementById('app-menu-bottom-bar');
+    const barItemsCount = document.getElementById('app-bar-items-count');
+    const barRoundTotal = document.getElementById('app-bar-round-total');
+    const barReviewBtn = document.getElementById('app-bar-review-btn');
+
+    if (menuBottomBar) {
+      if (count > 0) {
+        menuBottomBar.classList.remove('hidden');
+        menuBottomBar.style.setProperty('display', 'flex', 'important');
+        if (barItemsCount) barItemsCount.textContent = `${count} Item${count > 1 ? 's' : ''}`;
+        if (barRoundTotal) barRoundTotal.textContent = `₹${roundTotal.toLocaleString('en-IN')}`;
+        if (barReviewBtn) barReviewBtn.innerHTML = `<span>Review Order (${count}) →</span>`;
+      } else {
+        menuBottomBar.classList.add('hidden');
+        menuBottomBar.style.setProperty('display', 'none', 'important');
+      }
+    }
+
+    if (this.state.appScreen === 'review') {
+      this.renderReviewScreen();
     }
 
     // 1B. Mobile Handheld Expandable Round Tray Drawer

@@ -661,5 +661,40 @@ body.mgr-sidebar-open #main-app-header {
   }
 }
 
+/* 4-Step Dedicated Workflow Styles */
+.kitchen-note-chip {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.kitchen-note-chip.active {
+  background-color: #f59e0b !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
+}
+
+#table-action-sheet {
+  transition: opacity 0.2s ease;
+}
+
+#app-menu-bottom-bar {
+  animation: slideUpBottomBar 0.25s ease-out;
+}
+
+@keyframes slideUpBottomBar {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+
 
 
