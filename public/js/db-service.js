@@ -1349,19 +1349,21 @@ const DB_SERVICE = {
 
   // Fetch Recent Settled Bills (For Reprinting & Manager Adjustments)
   async getRecentBills(limit = 30) {
-    // 1. Authoritative Local SQLite / REST API First (contains full payment_proof blobs & KOT items)
+    // 1. Try local server first if reachable (contains full SQLite records with payment_proof)
     try {
       const res = await fetch(`${getApiBase()}/api/bills/recent?limit=${limit}`);
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.bills) && data.bills.length > 0) {
-        return data.bills;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.bills) && data.bills.length > 0) {
+          return data.bills;
+        }
       }
     } catch (e) {
-      // Fallback to Supabase Cloud if local server is unreachable
+      // Local server not reachable (e.g. standalone cloud client)
     }
 
-    // 2. Cloud Fallback
-    if (this.mode === 'supabase_cloud') {
+    // 2. Query Supabase Cloud
+    if (this.mode === 'supabase_cloud' || (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured())) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -1388,7 +1390,14 @@ const DB_SERVICE = {
       }
     }
 
-    return [];
+    try {
+      const res = await fetch(`${getApiBase()}/api/bills/recent?limit=${limit}`);
+      const data = await res.json();
+      return data.success ? data.bills : [];
+    } catch (e) {
+      console.warn('Failed to fetch recent bills:', e);
+      return [];
+    }
   },
 
   // Fetch Bill Modification Audit Logs
