@@ -363,60 +363,52 @@
       <div id="app-screen-tables" class="flex-1 flex flex-col overflow-hidden bg-[#0c0e15]">
         
         <!-- Header: Table Selection -->
-        <div class="px-3.5 py-2.5 bg-[#141722] border-b border-[#23293a]">
+        <div class="px-4 py-3 bg-[#131622] border-b border-[#22283a]">
           <div class="flex items-center justify-between">
-            <h2 class="text-sm font-black text-white flex items-center gap-2">
-              <span id="floor-header-title">🪑 Floor Tables</span>
+            <div class="flex items-center gap-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]"></span>
+              <h2 id="floor-header-title" class="text-sm font-black text-white tracking-wide uppercase">Floor Tables</h2>
               <span id="floor-summary-badge" class="text-[10px] font-mono font-bold bg-[#1d2232] text-amber-400 px-2 py-0.5 rounded-full border border-amber-400/30">18 Tables</span>
-            </h2>
+            </div>
             <!-- Clean Compact Status Legend -->
-            <div class="flex items-center gap-2 text-[10px] font-bold">
-              <span class="flex items-center gap-1 text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400"></span><span id="legend-label-free">Free</span></span>
-              <span class="flex items-center gap-1 text-red-400"><span class="w-2 h-2 rounded-full bg-red-500"></span><span id="legend-label-occ">Occupied</span></span>
+            <div class="flex items-center gap-2.5 text-[11px] font-bold">
+              <span class="flex items-center gap-1.5 text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span><span id="legend-label-free">Free</span></span>
+              <span class="flex items-center gap-1.5 text-rose-400"><span class="w-2 h-2 rounded-full bg-rose-500"></span><span id="legend-label-occ">Occupied</span></span>
+              <span class="flex items-center gap-1.5 text-amber-400"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span><span id="legend-label-billed">Billed</span></span>
             </div>
           </div>
         </div>
 
-        <!-- 3-FLOOR TABS (Default: Ground Floor • Zero Floor Scroll Clutter) -->
-        <div class="px-3 py-2 bg-[#0e111a] border-b border-[#23293a] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <!-- 3-FLOOR CORPORATE SEGMENTED TABS -->
+        <div class="px-3 py-2 bg-[#0e111a] border-b border-[#23293a] flex items-center gap-2 overflow-x-auto no-scrollbar">
           <button 
             id="mobile-floor-tab-gf" 
             onclick="APP.setFloorFilter('Ground Floor')" 
-            class="mobile-floor-btn active px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1 flex-shrink-0">
-            <span>🌿</span>
+            class="mobile-floor-btn active px-3.5 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-500 text-black shadow flex items-center gap-1.5 flex-shrink-0">
             <span id="tab-label-gf">Ground Floor (18)</span>
           </button>
           <button 
             id="mobile-floor-tab-f1" 
             onclick="APP.setFloorFilter('1st Floor')" 
-            class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
-            <span>🏢</span>
+            class="mobile-floor-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1.5 flex-shrink-0">
             <span id="tab-label-f1">1st Floor (7)</span>
           </button>
           <button 
             id="mobile-floor-tab-f2" 
             onclick="APP.setFloorFilter('2nd Floor')" 
-            class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
-            <span>🏬</span>
+            class="mobile-floor-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1.5 flex-shrink-0">
             <span id="tab-label-f2">2nd Floor (17)</span>
           </button>
           <button 
             id="mobile-floor-tab-all" 
             onclick="APP.setFloorFilter('all')" 
-            class="mobile-floor-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1 flex-shrink-0">
-            <span>🌐</span>
+            class="mobile-floor-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#171b26] text-neutral-300 hover:text-white border border-[#2b3347] flex items-center gap-1.5 flex-shrink-0">
             <span id="tab-label-all">All (42)</span>
           </button>
         </div>
 
-        <!-- SUMMARY STRIP (Single click open notice) -->
-        <div class="px-3 py-1 bg-[#121622] border-b border-[#1f2637] flex items-center justify-between text-[11px]">
-          <span id="floor-action-notice" class="text-neutral-400 font-medium">⚡ Touch any table to take order</span>
-          <span id="floor-workflow-label" class="text-amber-400 font-bold">1-Tap Workflow</span>
-        </div>
-
         <!-- 3-COLUMNS COMPACT TABLES GRID (Fits entire floor on screen without endless scroll) -->
-        <div id="app-floor-grid" class="flex-1 overflow-y-auto p-2.5 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+        <div id="app-floor-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
           <!-- Rendered dynamically via JS -->
         </div>
 
@@ -518,7 +510,7 @@
         </div>
 
         <!-- Review Content (Scrollable) -->
-        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+        <div id="review-scroll-container" class="flex-1 overflow-y-auto p-3 space-y-3">
           <!-- Items List Card -->
           <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
             <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center justify-between">
@@ -584,7 +576,7 @@
         </div>
 
         <!-- Bill Content (Scrollable) -->
-        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+        <div id="bill-scroll-container" class="flex-1 overflow-y-auto p-3 space-y-3">
           <!-- Active Orders Breakdown -->
           <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
             <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center justify-between">

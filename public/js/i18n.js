@@ -19,11 +19,11 @@ const I18N = {
       installApp: "Install App",
       phoneQr: "Phone QR",
       manager: "Manager",
-      floorMap: "🪑 Floor Map",
+      floorMap: "Floor Tables",
       changeTable: "Change Table",
 
       // Floor & Table Selection
-      floorTables: "🪑 Floor Tables",
+      floorTables: "Floor Tables",
       tablesCountSuffix: "Tables",
       free: "Free",
       occupied: "Occupied",
@@ -135,11 +135,11 @@ const I18N = {
       installApp: "ऐप इंस्टॉल करें",
       phoneQr: "फोन क्यूआर",
       manager: "मैनेजर",
-      floorMap: "🪑 टेबल फ्लोर",
+      floorMap: "टेबल फ्लोर",
       changeTable: "टेबल बदलें",
 
       // Floor & Table Selection
-      floorTables: "🪑 फ्लोर टेबल्स",
+      floorTables: "फ्लोर टेबल्स",
       tablesCountSuffix: "टेबल",
       free: "खाली",
       occupied: "व्यस्त",

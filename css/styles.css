@@ -123,23 +123,27 @@ body {
 /* Responsive Handheld Terminal Layout (Edge-to-Edge on Mobile, Ergonomic Professional Workstation on Desktop) */
 #view-app-container:not(.hidden) {
   width: 100% !important;
-  min-height: calc(100vh - 60px) !important;
+  height: calc(100vh - 65px) !important;
+  max-height: calc(100vh - 65px) !important;
   display: flex !important;
   justify-content: center !important;
+  align-items: center !important;
   background: #080a10 !important;
-  padding: 16px 20px !important;
+  padding: 10px 16px !important;
   box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
 .app-frame {
   width: 100% !important;
-  max-width: 960px !important;
-  min-height: calc(100vh - 92px) !important;
+  max-width: 1060px !important;
+  height: 100% !important;
+  max-height: 100% !important;
   margin: 0 auto !important;
   border-radius: 20px !important;
-  border: 1px solid #1f2637 !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
-  background: #0c0e15 !important;
+  border: 1px solid #1f2738 !important;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.7) !important;
+  background: #0b0e17 !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
@@ -149,11 +153,14 @@ body {
 @media (max-width: 640px) {
   #view-app-container:not(.hidden) {
     padding: 0 !important;
-    background: #0c0e15 !important;
+    height: calc(100vh - 56px) !important;
+    max-height: calc(100vh - 56px) !important;
+    background: #0b0e17 !important;
   }
   .app-frame {
     max-width: 100% !important;
-    min-height: 100vh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
@@ -234,14 +241,14 @@ body {
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.3) !important;
 }
 
-/* ================= VIBRANT HIGH-CONTRAST TABLE FLOOR CARDS ================= */
+/* ================= LUXURY HIGH-CONTRAST RESTAURANT TABLE CARDS ================= */
 .floor-table-card {
-  border-radius: 18px;
+  border-radius: 16px;
   transition: all 0.16s ease-in-out;
   position: relative;
   cursor: pointer;
   outline: none;
-  min-height: 120px;
+  min-height: 94px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -250,54 +257,54 @@ body {
   transform: scale(0.97);
 }
 
-/* 1. 🟢 BRIGHT SOLID GREEN (VACANT / FREE TABLE) */
+/* 1. 🟢 SLEEK EMERALD (VACANT / FREE TABLE) */
 .table-card-free {
-  background: linear-gradient(145deg, #093c24 0%, #042415 100%) !important;
-  border: 2.5px solid #10b981 !important;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25) !important;
+  background: linear-gradient(145deg, #0d2218 0%, #06140e 100%) !important;
+  border: 1.5px solid #10b981 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18) !important;
   color: #ffffff !important;
 }
 .table-card-free:hover {
   border-color: #34d399 !important;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.45) !important;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35) !important;
 }
 
-/* 2. 🔴 BRIGHT SOLID RED (OCCUPIED / ACTIVE RUNNING ORDERS) */
+/* 2. 🔴 SLEEK CRIMSON (OCCUPIED / ACTIVE RUNNING ORDERS) */
 .table-card-occupied {
-  background: linear-gradient(145deg, #4c0d16 0%, #29060c 100%) !important;
-  border: 2.5px solid #ef4444 !important;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
+  background: linear-gradient(145deg, #2b0e14 0%, #17070b 100%) !important;
+  border: 1.5px solid #ef4444 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.22) !important;
   color: #ffffff !important;
 }
 .table-card-occupied:hover {
   border-color: #f87171 !important;
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.55) !important;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.45) !important;
 }
 
 /* 2B. 🧾 VIBRANT AMBER/GOLD (BILL PRINTED / AWAITING SETTLEMENT) */
 .table-card-billed {
-  background: linear-gradient(145deg, #3d2406 0%, #1c1002 100%) !important;
-  border: 2.5px solid #f59e0b !important;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4), inset 0 0 12px rgba(245, 158, 11, 0.15) !important;
+  background: linear-gradient(145deg, #2d1a06 0%, #180d02 100%) !important;
+  border: 2px solid #f59e0b !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3), inset 0 0 10px rgba(245, 158, 11, 0.1) !important;
   color: #ffffff !important;
 }
 .table-card-billed:hover {
   border-color: #fbbf24 !important;
-  box-shadow: 0 0 22px rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5) !important;
 }
 
 .table-card-selected-billed {
-  background: linear-gradient(145deg, #4d2f09 0%, #291804 100%) !important;
-  border: 3.5px solid #fbbf24 !important;
-  box-shadow: 0 0 24px rgba(251, 191, 36, 0.85), inset 0 0 14px rgba(251, 191, 36, 0.3) !important;
+  background: linear-gradient(145deg, #3d2308 0%, #1f1103 100%) !important;
+  border: 3px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.7) !important;
   color: #ffffff !important;
 }
 
 /* 3A. 🟡 SELECTED FREE TABLE */
 .table-card-selected-free {
-  background: linear-gradient(145deg, #0e4c2f 0%, #062b1a 100%) !important;
-  border: 3.5px solid #fbbf24 !important;
-  box-shadow: 0 0 24px rgba(251, 191, 36, 0.8), inset 0 0 12px rgba(251, 191, 36, 0.25) !important;
+  background: linear-gradient(145deg, #0d2e1f 0%, #061c13 100%) !important;
+  border: 3px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.7) !important;
   color: #ffffff !important;
 }
 
@@ -656,6 +663,42 @@ body.mgr-sidebar-open #main-app-header {
   position: relative !important;
 }
 
+#app-floor-grid,
+#app-items-container,
+#review-scroll-container,
+#bill-scroll-container {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
+
+#app-floor-grid::-webkit-scrollbar,
+#app-items-container::-webkit-scrollbar,
+#review-scroll-container::-webkit-scrollbar,
+#bill-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+#app-floor-grid::-webkit-scrollbar-track,
+#app-items-container::-webkit-scrollbar-track,
+#review-scroll-container::-webkit-scrollbar-track,
+#bill-scroll-container::-webkit-scrollbar-track {
+  background: rgba(10, 14, 22, 0.4);
+}
+#app-floor-grid::-webkit-scrollbar-thumb,
+#app-items-container::-webkit-scrollbar-thumb,
+#review-scroll-container::-webkit-scrollbar-thumb,
+#bill-scroll-container::-webkit-scrollbar-thumb {
+  background: #252f44;
+  border-radius: 999px;
+}
+#app-floor-grid::-webkit-scrollbar-thumb:hover,
+#app-items-container::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
 #app-screen-tables.hidden,
 #app-screen-menu.hidden,
 #app-screen-review.hidden,
@@ -716,7 +759,7 @@ body.mgr-sidebar-open #main-app-header {
 
 #app-items-container {
   flex: 1 1 0% !important;
-  height: 0 !important;
+  height: 100% !important;
   min-height: 0 !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;

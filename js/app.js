@@ -1647,11 +1647,11 @@ const APP = {
       : RESTAURANT_TABLES.filter(t => t.floor === currentFloor);
 
     const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
-    const freeBadge = isHi ? 'खाली' : 'FREE';
-    const occBadge = isHi ? 'व्यस्त' : 'OCC';
+    const freeBadge = isHi ? 'खाली' : 'VACANT';
+    const occBadge = isHi ? 'व्यस्त' : 'OCCUPIED';
     const availText = isHi ? 'उपलब्ध' : 'Available';
-    const seatsSuffix = isHi ? 'सीट' : 's';
-    const ordersWord = isHi ? 'ऑर्डर' : 'KOT';
+    const seatsSuffix = isHi ? 'सीटें' : 'Seats';
+    const ordersWord = isHi ? 'ऑर्डर' : 'Orders';
 
     const summaryBadge = document.getElementById('floor-summary-badge');
     if (summaryBadge) {
@@ -1683,43 +1683,44 @@ const APP = {
 
         if (isBilled) {
           cardClass = isCurrent ? "table-card-selected-billed ring-2 ring-amber-400" : "table-card-billed border-2 border-amber-400/90 bg-[#1f1910]";
-          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-black font-mono animate-pulse">🧾 ${isHi ? 'बिल दिया' : 'BILLED'}</span>`;
+          headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black font-mono animate-pulse">🧾 ${isHi ? 'बिल दिया' : 'BILLED'}</span>`;
           middleHtml = `
-            <div class="my-0.5">
-              <div class="text-xs font-black font-mono text-amber-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
-              <div class="text-[9px] text-amber-400/90 font-bold">${isHi ? '⏳ भुगतान बाकी' : '⏳ Awaiting Settle'}</div>
+            <div class="my-1">
+              <div class="text-sm font-black font-mono text-amber-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
+              <div class="text-[10px] text-amber-400/90 font-bold">${isHi ? '⏳ भुगतान बाकी' : '⏳ Awaiting Settle'}</div>
             </div>
           `;
           footerHtml = `
-            <div class="flex items-center justify-between text-[9px] pt-1 border-t border-amber-500/40 text-amber-300 font-bold w-full">
+            <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-amber-500/30 text-amber-300 font-bold w-full">
               <span>👥 ${t.seats} ${seatsSuffix}</span>
               <span class="text-amber-400 font-mono font-black">${isHi ? 'सेटल करें →' : 'SETTLE →'}</span>
             </div>
           `;
         } else if (isOccupied) {
-          cardClass = isCurrent ? "table-card-selected-occupied ring-2 ring-amber-400" : "table-card-occupied";
-          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white font-mono">${occBadge}</span>`;
+          cardClass = isCurrent ? "table-card-selected-occupied ring-2 ring-rose-400" : "table-card-occupied";
+          headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white font-mono">${occBadge}</span>`;
           middleHtml = `
-            <div class="my-0.5">
-              <div class="text-xs font-black font-mono text-red-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
+            <div class="my-1">
+              <div class="text-sm font-black font-mono text-rose-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
+              <div class="text-[10px] text-neutral-400 font-medium">${placedOrders.length} ${ordersWord}</div>
             </div>
           `;
           footerHtml = `
-            <div class="flex items-center justify-between text-[9px] pt-1 border-t border-red-500/30 text-neutral-300 font-medium w-full">
+            <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-rose-500/30 text-neutral-300 font-medium w-full">
               <span>👥 ${t.seats} ${seatsSuffix}</span>
-              <span class="text-amber-300 font-mono font-bold">${placedOrders.length} ${ordersWord}</span>
+              <span class="text-amber-400 font-mono font-bold">${cleanPosition}</span>
             </div>
           `;
         } else {
-          cardClass = isCurrent ? "table-card-selected-free ring-2 ring-amber-400" : (draftCount > 0 ? "table-card-free border border-amber-400/80" : "table-card-free");
-          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-black">${freeBadge}</span>`;
+          cardClass = isCurrent ? "table-card-selected-free ring-2 ring-emerald-400" : (draftCount > 0 ? "table-card-free border border-amber-400/80" : "table-card-free");
+          headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">${freeBadge}</span>`;
           middleHtml = `
-            <div class="my-0.5">
-              <div class="text-[11px] font-bold text-emerald-400/90 leading-tight">${draftCount > 0 ? `🟡 +${draftCount}` : availText}</div>
+            <div class="my-1">
+              <div class="text-xs font-bold text-emerald-400/90 leading-tight">${draftCount > 0 ? `🟡 +${draftCount} draft` : availText}</div>
             </div>
           `;
           footerHtml = `
-            <div class="flex items-center justify-between text-[9px] pt-1 border-t border-emerald-500/30 text-neutral-400 font-medium w-full">
+            <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-emerald-500/30 text-neutral-400 font-medium w-full">
               <span>👥 ${t.seats} ${seatsSuffix}</span>
               <span class="truncate font-mono">${cleanPosition}</span>
             </div>
@@ -1730,9 +1731,9 @@ const APP = {
           <button 
             type="button"
             onclick="APP.selectTable('${t.id}')"
-            class="floor-table-card ${cardClass} p-2 rounded-xl text-left transition-all flex flex-col justify-between min-h-[72px] shadow group overflow-hidden active:scale-95">
+            class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between shadow-lg group overflow-hidden active:scale-95">
             <div class="flex items-center justify-between w-full">
-              <span class="text-xs font-black text-white group-hover:text-amber-300 transition-colors">${t.name}</span>
+              <span class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">${t.name}</span>
               ${headerBadge}
             </div>
             ${middleHtml}
@@ -2001,64 +2002,53 @@ const APP = {
           const qty = inCart ? inCart.qty : 0;
           const isVeg = this.isItemVeg(item);
           const noteText = (inCart && inCart.notes) ? inCart.notes : '';
-          const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
           const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
           const addBtnLabel = (typeof I18N !== 'undefined') ? I18N.t('addBtn', '+ Add') : '+ Add';
 
           return `
-            <div class="speed-tile ${qty > 0 ? 'has-qty' : ''}">
-              <div class="flex items-center gap-2.5 flex-1 min-w-0" onclick="APP.addItem('${item.id}')">
+            <div class="speed-tile ${qty > 0 ? 'has-qty' : ''} p-2.5 rounded-2xl flex items-center justify-between gap-3 bg-[#131622] border border-[#242c40] hover:border-[#384564] transition-all">
+              <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onclick="APP.addItem('${item.id}')">
                 
-                <!-- Crisp Food Thumbnail (Recognizable at a glance in small tile) -->
+                <!-- Crisp Food Thumbnail -->
                 <div class="w-12 h-12 rounded-xl overflow-hidden bg-neutral-900 border border-[#2b3447] flex-shrink-0 relative shadow-sm cursor-pointer group" onclick="event.stopPropagation(); APP.openPhotoModal('${item.id}')" title="Tap to preview dish">
                   <img src="${item.image}" alt="${displayName}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-200">
                   <span class="${isVeg ? 'badge-veg' : 'badge-nonveg'} absolute top-1 left-1 ring-1 ring-black shadow"></span>
                 </div>
 
                 <div class="truncate flex-1 min-w-0">
-                  <div class="text-xs font-black text-white truncate leading-tight">${displayName}</div>
-                  <div class="text-xs font-bold text-amber-400 font-mono mt-0.5">₹${item.price}</div>
-                  ${noteText ? `<div class="text-[10px] text-amber-300 font-semibold truncate flex items-center gap-1 mt-0.5"><span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">📝 ${noteText}</span></div>` : ''}
-
-                  <!-- ⚡ Instant 1-Touch Quick Modifiers (No Modal Needed - 0.2s Speed) -->
-                  <div class="flex items-center gap-1 mt-1 overflow-x-auto hide-scrollbar">
-                    ${isBarItem ? `
-                      <button type="button" onclick="event.stopPropagation(); APP.addWithQuickPreference('${item.id}', '🧊 Without Ice')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${noteText.includes('Without Ice') ? 'bg-cyan-400 text-black font-black' : 'bg-[#181d2a] text-neutral-300 border border-[#2b354b]'} active:scale-95 transition-all">🧊 No Ice</button>
-                      <button type="button" onclick="event.stopPropagation(); APP.addWithQuickPreference('${item.id}', '❄️ Super Chilled')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${noteText.includes('Chilled') ? 'bg-cyan-400 text-black font-black' : 'bg-[#181d2a] text-neutral-300 border border-[#2b354b]'} active:scale-95 transition-all">❄️ Chilled</button>
-                    ` : `
-                      <button type="button" onclick="event.stopPropagation(); APP.addWithQuickPreference('${item.id}', '🌶️ Spicy')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${noteText.includes('Spicy') && !noteText.includes('Mild') ? 'bg-amber-400 text-black font-black' : 'bg-[#181d2a] text-neutral-300 border border-[#2b354b]'} active:scale-95 transition-all">🌶️ Spicy</button>
-                      <button type="button" onclick="event.stopPropagation(); APP.addWithQuickPreference('${item.id}', '🌱 Mild Spicy')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${noteText.includes('Mild') ? 'bg-amber-400 text-black font-black' : 'bg-[#181d2a] text-neutral-300 border border-[#2b354b]'} active:scale-95 transition-all">🌱 Mild</button>
-                      <button type="button" onclick="event.stopPropagation(); APP.addWithQuickPreference('${item.id}', '🧅 Pyaz Extra')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${noteText.includes('Pyaz') ? 'bg-amber-400 text-black font-black' : 'bg-[#181d2a] text-neutral-300 border border-[#2b354b]'} active:scale-95 transition-all">🧅 +Pyaz</button>
-                      <button type="button" onclick="event.stopPropagation(); APP.addWithQuickPreference('${item.id}', '✨ Extra Crispy')" class="px-1.5 py-0.5 rounded text-[9px] font-bold ${noteText.includes('Crispy') ? 'bg-amber-400 text-black font-black' : 'bg-[#181d2a] text-neutral-300 border border-[#2b354b]'} active:scale-95 transition-all">✨ Crispy</button>
-                    `}
+                  <div class="text-xs sm:text-sm font-black text-white truncate leading-tight">${displayName}</div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-xs font-black text-amber-400 font-mono">₹${item.price}</span>
+                    ${item.category ? `<span class="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">• ${item.category}</span>` : ''}
                   </div>
+                  ${noteText ? `<div class="text-[10px] text-amber-300 font-semibold truncate flex items-center gap-1 mt-1"><span class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">📝 ${noteText}</span></div>` : ''}
                 </div>
               </div>
 
-              <!-- Action Controls -->
+              <!-- Action Controls: + ADD or [ - 1 + ] stepper + Note button -->
               <div class="flex items-center gap-1.5 flex-shrink-0">
                 ${qty > 0 ? `
                   <button 
                     onclick="APP.openItemNoteModal('${item.id}')" 
-                    title="More custom preferences" 
-                    class="w-7 h-7 rounded-xl ${noteText ? 'bg-amber-500 text-black font-black ring-2 ring-amber-400/40' : 'bg-[#1a1f2e] text-neutral-400 hover:text-amber-300 border border-[#2f384f]'} flex items-center justify-center text-xs transition-colors">
+                    title="Preferences / Cooking Instructions" 
+                    class="w-8 h-8 rounded-xl ${noteText ? 'bg-amber-500 text-black font-black ring-2 ring-amber-400/50' : 'bg-[#1c2234] text-neutral-400 hover:text-amber-300 border border-[#2f3a52]'} flex items-center justify-center text-xs transition-colors active:scale-95">
                     📝
                   </button>
-                  <div class="flex items-center bg-[#150f05] border-2 border-amber-400 rounded-xl p-0.5 shadow-md">
-                    <button onclick="APP.changeQty('${item.id}', -1)" class="w-6 h-6 rounded-lg bg-[#2b1c08] text-amber-300 hover:bg-amber-500 hover:text-black font-black text-xs flex items-center justify-center transition-colors">-</button>
-                    <span class="text-xs font-black text-amber-300 font-mono w-6 text-center">${qty}</span>
-                    <button onclick="APP.changeQty('${item.id}', 1)" class="w-6 h-6 rounded-lg bg-amber-400 text-black hover:bg-amber-300 font-black text-xs flex items-center justify-center transition-colors">+</button>
+                  <div class="flex items-center bg-[#181105] border-2 border-amber-400/90 rounded-xl p-0.5 shadow-md">
+                    <button onclick="APP.changeQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-[#2b1c08] text-amber-300 hover:bg-amber-500 hover:text-black font-black text-sm flex items-center justify-center transition-colors active:scale-90">-</button>
+                    <span class="text-xs font-black text-amber-300 font-mono w-7 text-center select-none">${qty}</span>
+                    <button onclick="APP.changeQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-amber-400 text-black hover:bg-amber-300 font-black text-sm flex items-center justify-center transition-colors active:scale-90">+</button>
                   </div>
                 ` : `
                   <button 
                     onclick="APP.openItemNoteModal('${item.id}')"
                     title="Add with custom preferences"
-                    class="w-7 h-7 rounded-xl bg-[#161a25] hover:bg-amber-500/20 text-neutral-400 hover:text-amber-300 border border-[#2b354b] flex items-center justify-center text-xs transition-colors">
+                    class="w-8 h-8 rounded-xl bg-[#161a25] hover:bg-[#202738] text-neutral-400 hover:text-amber-300 border border-[#2b354b] flex items-center justify-center text-xs transition-colors active:scale-95">
                     📝
                   </button>
                   <button 
                     onclick="APP.addItem('${item.id}')"
-                    class="h-7 px-3 bg-[#1a1f2e] hover:bg-amber-400 hover:text-black text-amber-300 font-extrabold text-xs rounded-xl border border-amber-400/50 transition-all flex items-center gap-1 active:scale-90 shadow-sm">
+                    class="h-8 px-3.5 bg-gradient-to-r from-amber-500/10 to-amber-500/20 hover:from-amber-500 hover:to-amber-600 hover:text-black text-amber-300 font-black text-xs rounded-xl border border-amber-500/50 transition-all flex items-center gap-1 active:scale-95 shadow-sm">
                     <span>${addBtnLabel}</span>
                   </button>
                 `}
