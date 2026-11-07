@@ -1360,6 +1360,8 @@ const APP = {
       this.closeManagerSidebar();
       document.body.classList.remove('mgr-view-active');
       document.body.classList.remove('mgr-sidebar-open');
+      document.body.classList.remove('web-view-active');
+      document.body.classList.add('app-view-active');
       if (containerApp) {
         containerApp.classList.remove('hidden');
         containerApp.style.setProperty('display', 'flex', 'important');
@@ -1382,6 +1384,8 @@ const APP = {
       this.closeManagerSidebar();
       document.body.classList.remove('mgr-view-active');
       document.body.classList.remove('mgr-sidebar-open');
+      document.body.classList.remove('app-view-active');
+      document.body.classList.add('web-view-active');
       if (containerApp) {
         containerApp.classList.add('hidden');
         containerApp.style.setProperty('display', 'none', 'important');
@@ -1401,6 +1405,8 @@ const APP = {
       if (btnMgr) btnMgr.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center gap-1";
     } else if (view === 'manager') {
       document.body.classList.add('mgr-view-active');
+      document.body.classList.remove('web-view-active');
+      document.body.classList.remove('app-view-active');
       if (containerApp) {
         containerApp.classList.add('hidden');
         containerApp.style.setProperty('display', 'none', 'important');

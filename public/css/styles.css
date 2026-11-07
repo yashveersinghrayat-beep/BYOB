@@ -19,12 +19,39 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
-  height: 100vh !important;
-  max-height: 100vh !important;
+html {
+  min-height: 100vh;
   margin: 0 !important;
   padding: 0 !important;
-  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.web-view-active,
+body.mgr-view-active {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+#view-web-container {
+  overflow-y: visible !important;
+  min-height: calc(100vh - 65px);
+}
+
+@media (max-width: 640px) {
+  body.app-view-active {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+  }
 }
 
 body {
