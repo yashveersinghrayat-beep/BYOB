@@ -4409,6 +4409,7 @@ const APP = {
   },
 
   openWaiterPaymentFlow(tableId) {
+    this._cameraFacingMode = 'environment';
     const tId = tableId || this.state.selectedTableId;
     if (tId) this.state.selectedTableId = tId;
     const table = this.getTable();
@@ -4471,32 +4472,106 @@ const APP = {
     }
   },
 
+  // Default camera facing mode: strictly rear/back camera ('environment')
+  _cameraFacingMode: 'environment',
+
+  async getBackCameraStream() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Camera access not supported in this browser context');
+    }
+
+    const preferredFacing = this._cameraFacingMode || 'environment';
+
+    // Strategy 1: On environment mode, explicitly find and select back/rear camera deviceId
+    if (preferredFacing === 'environment' && navigator.mediaDevices.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        
+        // Find device explicitly labeled back / rear / environment / camera2 0
+        const backCam = videoDevices.find(d => {
+          const lbl = (d.label || '').toLowerCase();
+          return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment');
+        });
+
+        if (backCam && backCam.deviceId) {
+          try {
+            return await navigator.mediaDevices.getUserMedia({
+              video: {
+                deviceId: { exact: backCam.deviceId },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+              },
+              audio: false
+            });
+          } catch (e) {
+            console.warn('Direct deviceId back camera attempt failed, trying exact facingMode:', e.message);
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Strategy 2: Exact facingMode constraint ('environment' for back, 'user' for front)
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { exact: preferredFacing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+    } catch (e) {
+      console.warn(`Exact facingMode ${preferredFacing} failed, trying ideal:`, e.message);
+    }
+
+    // Strategy 3: Ideal facingMode constraint (fallback for desktop webcams or devices rejecting exact)
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: preferredFacing },
+          width: { ideal: 1280 },
+          height: { ideal: 960 }
+        },
+        audio: false
+      });
+    } catch (e) {
+      console.warn(`Ideal facingMode ${preferredFacing} failed, fallback to basic video:`, e.message);
+    }
+
+    // Strategy 4: Fallback to any available video stream
+    return await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false
+    });
+  },
+
+  async toggleCameraFacing() {
+    this._cameraFacingMode = (this._cameraFacingMode === 'environment') ? 'user' : 'environment';
+    this.haptic('selection');
+    await this.startLiveCamera();
+  },
+
   async startLiveCamera() {
     const video = document.getElementById('wpp-camera-video');
     const loading = document.getElementById('wpp-camera-loading');
     const snapBtn = document.getElementById('wpp-btn-live-snap');
     const statusTxt = document.getElementById('wpp-camera-status-text');
+    const alignEl = document.getElementById('wpp-overlay-align');
     if (!video) return;
 
     this.stopLiveCamera();
 
     if (loading) loading.classList.remove('hidden');
-    if (statusTxt) statusTxt.textContent = 'Opening Camera (Flash strictly OFF)...';
+    if (statusTxt) {
+      statusTxt.textContent = this._cameraFacingMode === 'user' 
+        ? 'Opening Front Camera...' 
+        : 'Opening Rear Camera (Flash OFF)...';
+    }
     if (snapBtn) snapBtn.disabled = true;
 
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access not supported in this browser context');
-      }
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 960 }
-        },
-        audio: false
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await this.getBackCameraStream();
       this._liveCameraStream = stream;
       video.srcObject = stream;
 
@@ -4516,6 +4591,11 @@ const APP = {
       await video.play().catch(e => console.warn('Video play warning:', e));
       if (loading) loading.classList.add('hidden');
       if (snapBtn) snapBtn.disabled = false;
+      if (alignEl) {
+        alignEl.textContent = this._cameraFacingMode === 'user' 
+          ? '🤳 Front Camera' 
+          : '📷 Rear Camera Active';
+      }
     } catch (err) {
       console.warn('Live camera access error:', err.message);
       if (loading) {
@@ -4575,6 +4655,7 @@ const APP = {
   },
 
   retakePaymentProofPhoto() {
+    this._cameraFacingMode = 'environment';
     this._tempPaymentProof = null;
     this.renderPaymentProofModalState(null);
     this.startLiveCamera();

@@ -226,7 +226,8 @@ async function run() {
           snapBtnEnabled: snapBtn && !snapBtn.disabled,
           alignGuide: alignGuide?.trim(),
           noUploadTab: !uploadTab,
-          noFileInput: !fileInput
+          noFileInput: !fileInput,
+          facingMode: APP._cameraFacingMode
         };
       })()
     `);
@@ -244,7 +245,13 @@ async function run() {
     if (!cameraModalCheck.noUploadTab) {
       throw new Error('Upload tab found! Must be pure in-app camera only!');
     }
-    console.log('✅ PASS: In-app camera opened directly with framing guide & Flashlight strictly OFF banner');
+    if (cameraModalCheck.facingMode !== 'environment') {
+      throw new Error(`CRITICAL BUG: Camera facingMode is "${cameraModalCheck.facingMode}" instead of "environment" (Back Camera)!`);
+    }
+    if (!cameraModalCheck.alignGuide || !cameraModalCheck.alignGuide.includes('Rear Camera')) {
+      throw new Error('Framing guide does not indicate Rear Camera active!');
+    }
+    console.log('✅ PASS: In-app camera opened directly with BACK/REAR CAMERA strictly active & Flashlight OFF');
     await client.screenshot(path.join(ARTIFACT_DIR, 'in_app_camera_glare_free_viewfinder.png'));
 
     // =========================================================================
