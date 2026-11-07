@@ -252,6 +252,8 @@ function initDatabase() {
   `);
 
   // Auto-migration for existing SQLite databases
+  try { db.exec('ALTER TABLE tables ADD COLUMN payment_proof TEXT;'); } catch (e) {}
+  try { db.exec('ALTER TABLE bills ADD COLUMN payment_proof TEXT;'); } catch (e) {}
   try { db.exec('ALTER TABLE bills ADD COLUMN round_off REAL DEFAULT 0;'); } catch (e) {}
   try { db.exec('ALTER TABLE bills ADD COLUMN service_charge REAL DEFAULT 0;'); } catch (e) {}
   try { db.exec('ALTER TABLE bills ADD COLUMN restaurant_name TEXT;'); } catch (e) {}
@@ -639,10 +641,21 @@ module.exports = {
       t.placedOrders = orders;
       t.currentSubtotal = orders.reduce((sum, o) => sum + (o.price * o.qty), 0);
 
-      // Self-healing: if an occupied table has no pending orders left, reset to vacant
-      if (orders.length === 0 && t.status === 'occupied') {
+      // Parse payment proof if attached
+      if (t.payment_proof) {
+        try {
+          t.paymentProof = typeof t.payment_proof === 'string' ? JSON.parse(t.payment_proof) : t.payment_proof;
+        } catch(e) {
+          t.paymentProof = t.payment_proof;
+        }
+      } else {
+        t.paymentProof = null;
+      }
+
+      // Self-healing: if an occupied table has no pending orders left and no proof, reset to vacant
+      if (orders.length === 0 && (t.status === 'occupied' || t.status === 'bill_printed') && !t.paymentProof) {
         t.status = 'vacant';
-        db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ?").run(t.id);
+        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL WHERE id = ?").run(t.id);
       }
     }
     return tables;
@@ -661,8 +674,13 @@ module.exports = {
     return this.getTables();
   },
 
-  updateTableStatus(tableId, status) {
-    db.prepare('UPDATE tables SET status = ? WHERE id = ?').run(status, tableId);
+  updateTableStatus(tableId, status, paymentProof = null) {
+    if (paymentProof !== null && paymentProof !== undefined) {
+      const proofStr = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : String(paymentProof);
+      db.prepare('UPDATE tables SET status = ?, payment_proof = ? WHERE id = ?').run(status, proofStr, tableId);
+    } else {
+      db.prepare('UPDATE tables SET status = ? WHERE id = ?').run(status, tableId);
+    }
     return this.getTables();
   },
 
@@ -764,20 +782,22 @@ module.exports = {
 
     db.exec('BEGIN TRANSACTION;');
     try {
+      const paymentProofStr = billData.paymentProof ? (typeof billData.paymentProof === 'object' ? JSON.stringify(billData.paymentProof) : String(billData.paymentProof)) : null;
+
       db.prepare(`
         INSERT INTO bills (
           id, invoice_number, table_id, table_name, waiter_name, cashier_name,
           customer_name, customer_phone, subtotal, discount_type, discount_value,
           discount_amount, cgst, sgst, service_charge, round_off, grand_total, payment_mode, payment_ref, split_count,
-          restaurant_name, gstin, fssai
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          restaurant_name, gstin, fssai, payment_proof
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         billId, invNumber, billData.tableId, billData.tableName || ('Table ' + billData.tableId), billData.waiterName || 'Staff',
         billData.cashierName || 'Cashier', billData.customerName || 'Guest', billData.customerPhone || '',
         billData.subtotal || 0, billData.discountType || 'none', billData.discountValue || 0,
         billData.discountAmount || 0, billData.cgst || 0, billData.sgst || 0, billData.serviceCharge || 0, billData.roundOff || 0, billData.grandTotal || (billData.subtotal || 0),
         billData.paymentMode || 'cash', billData.paymentRef || '', billData.splitCount || 1,
-        restName, gstin, fssai
+        restName, gstin, fssai, paymentProofStr
       );
 
       // Snapshot line items (fallback to querying unbilled kot_items if items array not provided)
@@ -795,11 +815,16 @@ module.exports = {
         insertBillItem.run(billId, item.id || 'item', item.name || 'Item', item.price || 0, item.qty || 1, (item.price || 0) * (item.qty || 1), item.notes || '');
       }
 
-      // Mark all unserved/active KOTs for this table as billed
-      db.prepare("UPDATE kots SET status = 'billed' WHERE table_id = ? AND status != 'cancelled'").run(billData.tableId);
+      // Mark all unserved/active KOTs for this table as billed and reset Table to Free / Vacant
+      const rawTid = String(billData.tableId || '');
+      const tidNum = rawTid.replace(/\D/g, '');
+      const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
+      const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
 
-      // Reset Table to Free / Vacant
-      db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ?").run(billData.tableId);
+      for (const tid of tidVariants) {
+        db.prepare("UPDATE kots SET status = 'billed' WHERE table_id = ? AND status != 'cancelled'").run(tid);
+        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL WHERE id = ?").run(tid);
+      }
 
       db.exec('COMMIT;');
       return this.getBillById(billId);
@@ -1242,7 +1267,7 @@ module.exports = {
 
       const targetId = match ? match.id : tableId;
       db.prepare("UPDATE kots SET status = 'billed' WHERE (table_id = ? OR table_id = ?) AND status != 'cancelled'").run(targetId, tableId);
-      db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ? OR id = ?").run(targetId, tableId);
+      db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL WHERE id = ? OR id = ?").run(targetId, tableId);
       db.exec('COMMIT;');
       return this.getTables();
     } catch (e) {

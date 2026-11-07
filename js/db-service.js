@@ -1079,26 +1079,36 @@ const DB_SERVICE = {
     }
   },
 
-  async updateTableStatus(tableId, status) {
+  async updateTableStatus(tableId, status, paymentProof = null) {
     let t = this.tables.find(x => x.id === tableId || String(x.id) === String(tableId));
     if (t) {
       t.status = status;
+      if (paymentProof !== null) {
+        t.paymentProof = paymentProof;
+        t.paymentStatus = 'proof_submitted';
+      }
       this.saveLocalTables();
       this.notifyTables();
     }
-    this.broadcastRealtime('TABLE_STATUS_UPDATED', { tableId, status });
+    this.broadcastRealtime('TABLE_STATUS_UPDATED', { tableId, status, paymentProof });
     try {
       if (this.mode === 'supabase_cloud') {
         const client = ONYX_CLOUD_CONFIG.getClient();
         if (client) {
-          await client.from('tables').update({ status, updated_at: new Date().toISOString() }).eq('id', tableId);
+          const upd = { status, updated_at: new Date().toISOString() };
+          if (paymentProof) upd.payment_proof = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : paymentProof;
+          await client.from('tables').update(upd).eq('id', tableId).catch(() => {});
         }
       } else {
-        await this.post('/api/tables/status', { tableId, status });
+        await this.post('/api/tables/status', { tableId, status, paymentProof });
       }
     } catch (e) {
       console.warn('Sync table status error:', e.message);
     }
+  },
+
+  async saveTablePaymentProof(tableId, paymentProof) {
+    return this.updateTableStatus(tableId, 'bill_printed', paymentProof);
   },
 
   async settleBill(billData) {
@@ -1106,13 +1116,16 @@ const DB_SERVICE = {
     const invNo = billData.invoiceNumber || ('INV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Date.now().toString(36).toUpperCase().slice(-4) + Math.floor(100 + Math.random() * 900));
 
     // 0. OPTIMISTIC INSTANT LOCAL UPDATE (0ms)
-    let t = this.tables.find(x => x.id === billData.tableId);
+    const norm = (id) => String(id || '').replace(/^T-0*/i, '').trim();
+    let t = this.tables.find(x => x.id === billData.tableId || norm(x.id) === norm(billData.tableId));
     if (t) {
       t.status = 'vacant';
       t.placedOrders = [];
       t.currentSubtotal = 0;
+      t.paymentProof = null;
+      t.paymentStatus = null;
     }
-    this.kots = this.kots.filter(k => k.table_id !== billData.tableId);
+    this.kots = this.kots.filter(k => k.table_id !== billData.tableId && norm(k.table_id) !== norm(billData.tableId));
     this.saveLocalTables();
     this.notifyTables();
     this.notifyKots();
@@ -1175,20 +1188,19 @@ const DB_SERVICE = {
             await client.from('bill_items').insert(billItems);
           }
 
-          // Mark active KOTs as billed in Supabase
-          await client.from('kots').update({ status: 'billed' }).eq('table_id', billData.tableId).neq('status', 'cancelled');
-          const altTableId = billData.tableId.includes('-0') ? billData.tableId.replace('-0', '-') : billData.tableId.replace(/^T-(\d)$/, 'T-0$1');
-          await client.from('kots').update({ status: 'billed' }).eq('table_id', altTableId).neq('status', 'cancelled');
+          // Mark active KOTs as billed & reset table in Supabase across all ID notations
+          const rawTid = String(billData.tableId || '');
+          const tidNum = rawTid.replace(/\D/g, '');
+          const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
+          const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
 
-          // Mark table vacant in Supabase
-          await client.from('tables').update({
-            status: 'vacant',
-            current_subtotal: 0
-          }).eq('id', billData.tableId);
-          await client.from('tables').update({
-            status: 'vacant',
-            current_subtotal: 0
-          }).eq('id', altTableId);
+          for (const tid of tidVariants) {
+            await client.from('kots').update({ status: 'billed' }).eq('table_id', tid).neq('status', 'cancelled');
+            await client.from('tables').update({
+              status: 'vacant',
+              current_subtotal: 0
+            }).eq('id', tid);
+          }
 
           // Asynchronously notify local server bridge if reachable
           fetch(`${getApiBase()}/api/bills/settle`, {

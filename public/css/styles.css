@@ -107,7 +107,7 @@ body {
   }
 }
 
-/* Mobile Viewport Width & Overflow Hard Limits */
+/* Mobile Viewport Width & Smart Auto-Adjusting Header */
 @media (max-width: 767px) {
   html, body {
     max-width: 100vw !important;
@@ -118,6 +118,47 @@ body {
     max-width: 100vw !important;
     overflow-x: hidden !important;
     box-sizing: border-box !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  #main-app-header > div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    row-gap: 6px !important;
+  }
+  #main-app-header > div > div:nth-child(1) {
+    order: 1 !important;
+    max-width: calc(100% - 130px) !important;
+    flex-shrink: 1 !important;
+  }
+  #main-app-header > div > div:nth-child(2) {
+    order: 2 !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+  }
+  #hdr-viewport-toggle {
+    order: 3 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    padding: 3px !important;
+  }
+  #hdr-viewport-toggle .view-tab-btn {
+    flex: 1 0 auto !important;
+    min-width: 105px !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+  #header-lang-toggle button {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
   }
   #view-app-container,
   #view-web-container,

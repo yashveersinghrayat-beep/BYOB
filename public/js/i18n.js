@@ -124,7 +124,25 @@ const I18N = {
       postPrintLaterBtn: "⏳ Not Yet (Bill Given, Awaiting Payment)",
       postPrintLaterHint: "Table will show as '🧾 BILLED' on Floor Map until payment is settled.",
       postPrintLaterToast: "🧾 Table marked 'Bill Given'. Don't forget to settle when payment arrives!",
-      postPrintViewBillBtn: "➕ View Bill / Add Items"
+      postPrintViewBillBtn: "➕ View Bill / Add Items",
+
+      // Waiter Flow & Customer Payment Proof
+      waiterBillPreview: "🧾 View Bill",
+      waiterCollectPaymentProof: "📱 Show Payment QR & Collect Proof →",
+      viewRunningBillOnly: "🧾 View Running Bill →",
+      paymentProofDesk: "📱 WAITER PAYMENT DESK",
+      collectUpiPaymentTitle: "Collect UPI Payment",
+      paymentProofInstruction: "Show QR to customer & take photo of their phone screen after payment",
+      takeProofPhoto: "📸 Take Photo of Customer's Phone",
+      retakePhoto: "🔄 Retake Photo",
+      submitProof: "✅ Submit Proof to Manager",
+      proofAttachedBadge: "✅ Proof Attached",
+      lockNotice: "🔒 Only Manager can settle bills. Once photo is submitted, show table to Manager.",
+      proofViewerTitle: "Customer Payment Proof",
+      verifiedSettleBtn: "✅ Verified • Proceed to Settle Table →",
+      onlyManagerSettleAlert: "🔒 Access Restricted: Only Manager can settle bills. Please show payment proof to Manager at Counter.",
+      proofSubmittedStatus: "🧾 BILLED (Proof Attached 📸)",
+      proofSubmittedToast: "Payment proof saved! Please show to Manager at Counter."
     },
 
     hi: {
@@ -243,7 +261,25 @@ const I18N = {
       postPrintLaterBtn: "⏳ अभी नहीं (बिल दिया है, पेमेंट बाकी है)",
       postPrintLaterHint: "पेमेंट आने तक फ्लोर मैप पर टेबल '🧾 बिल दिया' दिखेगी।",
       postPrintLaterToast: "🧾 टेबल पर 'बिल दिया' मार्क हुआ। पेमेंट आते ही सेटल करना न भूलें!",
-      postPrintViewBillBtn: "➕ बिल देखें / और ऑर्डर जोड़ें"
+      postPrintViewBillBtn: "➕ बिल देखें / और ऑर्डर जोड़ें",
+
+      // Waiter Flow & Customer Payment Proof
+      waiterBillPreview: "🧾 बिल देखें",
+      waiterCollectPaymentProof: "📱 भुगतान QR दिखाएं व प्रूफ लें →",
+      viewRunningBillOnly: "🧾 चालू बिल देखें →",
+      paymentProofDesk: "📱 वेटर पेमेंट डेस्क",
+      collectUpiPaymentTitle: "UPI भुगतान व प्रूफ सत्यापन",
+      paymentProofInstruction: "ग्राहक को QR दिखाएं व भुगतान के बाद उनके फोन स्क्रीन का फोटो लें",
+      takeProofPhoto: "📸 ग्राहक के फोन का फोटो लें",
+      retakePhoto: "🔄 दोबारा फोटो लें",
+      submitProof: "✅ मैनेजर को प्रूफ भेजें",
+      proofAttachedBadge: "✅ प्रूफ अटैच",
+      lockNotice: "🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। फोटो लेने के बाद टेबल काउंटर पर मैनेजर को दिखाएं।",
+      proofViewerTitle: "ग्राहक भुगतान प्रूफ",
+      verifiedSettleBtn: "✅ सत्यापित • टेबल सेटल करें →",
+      onlyManagerSettleAlert: "🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया काउंटर पर मैनेजर को पेमेंट प्रूफ दिखाएं।",
+      proofSubmittedStatus: "🧾 बिल दिया (प्रूफ अटैच 📸)",
+      proofSubmittedToast: "पेमेंट प्रूफ सेव हो गया! कृपया काउंटर पर मैनेजर को दिखाएं।"
     }
   },
 

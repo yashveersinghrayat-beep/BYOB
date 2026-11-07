@@ -631,20 +631,43 @@ const APP = {
     const billGrandLabel = document.getElementById('bill-label-grandtotal');
     if (billGrandLabel) billGrandLabel.textContent = t('grandTotalLabel', 'Grand Total:');
 
+    const isWaiter = this.state.userRole === 'waiter';
     const billAddMore = document.getElementById('bill-btn-add-more');
     if (billAddMore) billAddMore.innerHTML = `<span>${t('addMoreFoodBtn', '➕ Add More Food / Drinks')}</span>`;
     const billPrint = document.getElementById('bill-btn-print');
-    if (billPrint) billPrint.innerHTML = `<span>${t('printBillBtn', '🖨️ Print Bill')}</span>`;
+    if (billPrint) billPrint.innerHTML = `<span>${isWaiter ? t('waiterBillPreview', '🧾 View Bill') : t('printBillBtn', '🖨️ Print Bill')}</span>`;
     const billSettle = document.getElementById('bill-btn-settle');
-    if (billSettle) billSettle.innerHTML = `<span>${t('settlePaymentBtn', '💳 Settle Payment (Cash / UPI) →')}</span>`;
+    if (billSettle) billSettle.innerHTML = `<span>${isWaiter ? t('waiterCollectPaymentProof', '📱 Show Payment QR & Collect Proof →') : t('settlePaymentBtn', '💳 Settle Payment (Cash / UPI) →')}</span>`;
 
     // 7. Table Action Sheet
     const sheetTakeOrder = document.getElementById('sheet-btn-take-order');
     if (sheetTakeOrder) sheetTakeOrder.innerHTML = `<span>${t('takeOrderOption', '➕ Take Order / Add Items →')}</span>`;
     const sheetViewBill = document.getElementById('sheet-btn-view-bill');
-    if (sheetViewBill) sheetViewBill.innerHTML = `<span>${t('viewBillOption', '🧾 View Running Bill & Settlement →')}</span>`;
+    if (sheetViewBill) sheetViewBill.innerHTML = `<span>${t('viewRunningBillOnly', '🧾 View Running Bill →')}</span>`;
     const sheetQuickSettle = document.getElementById('sheet-btn-settle-label');
-    if (sheetQuickSettle) sheetQuickSettle.textContent = isHi ? '💳 तुरंत टेबल सेटल करें (कैश / UPI) →' : '💳 Quick Settle Table (Cash / UPI) →';
+    if (sheetQuickSettle) {
+      sheetQuickSettle.textContent = isWaiter
+        ? (isHi ? '📱 पेमेंट QR दिखाएं और प्रूफ लें →' : '📱 Show Payment QR & Collect Proof →')
+        : (isHi ? '💳 तुरंत टेबल सेटल करें (कैश / UPI) →' : '💳 Quick Settle Table (Cash / UPI) →');
+    }
+
+    // 7C. Waiter Payment Proof Modal & Viewer Labels
+    const wppDesk = document.getElementById('wpp-desk-badge');
+    if (wppDesk) wppDesk.textContent = t('paymentProofDesk', '📱 WAITER PAYMENT DESK');
+    const wppHeading = document.getElementById('wpp-proof-heading');
+    if (wppHeading) wppHeading.textContent = isHi ? 'ग्राहक के फोन का पेमेंट प्रूफ' : 'Customer Payment Screen Proof';
+    const wppInstruction = document.getElementById('wpp-proof-instruction');
+    if (wppInstruction) wppInstruction.textContent = t('paymentProofInstruction', 'Take a photo of customer\'s phone showing successful payment / UTR before Manager settles the table.');
+    const wppTakePhoto = document.getElementById('wpp-btn-take-photo-label');
+    if (wppTakePhoto) wppTakePhoto.textContent = t('takeProofPhoto', '📸 Take Photo of Customer\'s Phone');
+    const wppRetake = document.getElementById('wpp-btn-retake-label');
+    if (wppRetake) wppRetake.textContent = t('retakePhoto', '🔄 Retake Photo');
+    const wppSubmit = document.getElementById('wpp-btn-submit-label');
+    if (wppSubmit) wppSubmit.textContent = t('submitProof', '✅ Submit Proof');
+    const wppLock = document.getElementById('wpp-lock-notice');
+    if (wppLock) wppLock.textContent = t('lockNotice', 'Settlement is locked for Managers only. Once you submit photo proof, show table to Manager at Counter.');
+    const ppvSettle = document.getElementById('ppv-btn-settle-label');
+    if (ppvSettle) ppvSettle.textContent = t('verifiedSettleBtn', '✅ Verified • Proceed to Settle Table →');
 
     // 7B. Post-Print Settlement Prompt Modal
     const ppsTitle = document.getElementById('pps-modal-title');
@@ -758,6 +781,24 @@ const APP = {
       const auditModal = document.getElementById('bill-audit-logs-modal');
       if (auditModal && !auditModal.classList.contains('hidden')) {
         this.closeBillAuditLogsModal();
+        this.haptic('tick');
+        return;
+      }
+      const proofViewerModal = document.getElementById('payment-proof-viewer-modal');
+      if (proofViewerModal && !proofViewerModal.classList.contains('hidden')) {
+        this.closePaymentProofViewer(false);
+        this.haptic('tick');
+        return;
+      }
+      const waiterProofModal = document.getElementById('waiter-payment-proof-modal');
+      if (waiterProofModal && !waiterProofModal.classList.contains('hidden')) {
+        this.closeWaiterPaymentFlow(false);
+        this.haptic('tick');
+        return;
+      }
+      const ppsModal = document.getElementById('post-print-settle-modal');
+      if (ppsModal && !ppsModal.classList.contains('hidden')) {
+        this.closePostPrintSettleModal();
         this.haptic('tick');
         return;
       }
@@ -963,8 +1004,13 @@ const APP = {
     // STEP-BY-STEP MOBILE WORKFLOW:
     if (this.state.currentView === 'app') {
       if (isBilled) {
-        // Table already has bill printed -> open Post-Print Settle Prompt immediately!
-        this.openPostPrintSettleModal(tableId);
+        // Table already has bill printed ->
+        // Only Manager can see settlement confirmation modal; Waiter opens action sheet/payment proof!
+        if (this.state.userRole === 'manager') {
+          this.openPostPrintSettleModal(tableId);
+        } else {
+          this.openTableActionSheet(tableId);
+        }
         return;
       }
       if (isOccupied) {
@@ -978,7 +1024,11 @@ const APP = {
     }
 
     if (isBilled) {
-      this.openPostPrintSettleModal(tableId);
+      if (this.state.userRole === 'manager') {
+        this.openPostPrintSettleModal(tableId);
+      } else {
+        this.openTableActionSheet(tableId);
+      }
       return;
     }
 
@@ -1282,12 +1332,32 @@ const APP = {
     }
 
     const sheet = document.getElementById('table-action-sheet');
+    const settleLabel = document.getElementById('sheet-btn-settle-label');
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    if (settleLabel) {
+      if (this.state.userRole === 'manager') {
+        settleLabel.textContent = isHi ? '💳 तुरंत टेबल सेटल करें (कैश / UPI) →' : '💳 Quick Settle Table (Cash / UPI) →';
+      } else {
+        settleLabel.textContent = liveTable.paymentProof
+          ? (isHi ? '📸 प्रूफ सबमिट है (अपडेट करें) →' : '📸 Proof Submitted (Tap to Update) →')
+          : (isHi ? '📱 भुगतान QR दिखाएं व प्रूफ लें →' : '📱 Show Payment QR & Collect Proof →');
+      }
+    }
     if (sheet) sheet.classList.remove('hidden');
   },
 
   closeTableActionSheet() {
     const sheet = document.getElementById('table-action-sheet');
     if (sheet) sheet.classList.add('hidden');
+  },
+
+  handleActionSheetSettleClick() {
+    this.closeTableActionSheet();
+    if (this.state.userRole === 'manager') {
+      this.openPostPrintSettleModal(this.state.selectedTableId);
+    } else {
+      this.openWaiterPaymentFlow(this.state.selectedTableId);
+    }
   },
 
   // Update Floor Bottom Dock
@@ -1707,18 +1777,25 @@ const APP = {
         let footerHtml = "";
 
         if (isBilled) {
-          cardClass = isCurrent ? "table-card-selected-billed ring-2 ring-amber-400" : "table-card-billed border-2 border-amber-400/90 bg-[#1f1910]";
-          headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black font-mono animate-pulse">🧾 ${isHi ? 'बिल दिया' : 'BILLED'}</span>`;
+          const hasProof = !!liveTable.paymentProof;
+          cardClass = isCurrent ? "table-card-selected-billed ring-2 ring-amber-400" : (hasProof ? "table-card-billed border-2 border-emerald-400 bg-[#0e1d15]" : "table-card-billed border-2 border-amber-400/90 bg-[#1f1910]");
+          headerBadge = hasProof
+            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-400 text-black font-mono animate-pulse">📸 ${isHi ? 'प्रूफ मिला' : 'PROOF IN'}</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black font-mono animate-pulse">🧾 ${isHi ? 'बिल दिया' : 'BILLED'}</span>`;
           middleHtml = `
             <div class="my-1">
-              <div class="text-sm font-black font-mono text-amber-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
-              <div class="text-[10px] text-amber-400/90 font-bold">${isHi ? '⏳ भुगतान बाकी' : '⏳ Awaiting Settle'}</div>
+              <div class="text-sm font-black font-mono ${hasProof ? 'text-emerald-300' : 'text-amber-300'} leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
+              <div class="text-[10px] ${hasProof ? 'text-emerald-400 font-bold' : 'text-amber-400/90 font-bold'}">${hasProof ? (isHi ? '✅ प्रूफ जमा • मैनेजर सत्यापन' : '✅ Proof In • Mgr Audit') : (isHi ? '⏳ भुगतान बाकी' : '⏳ Awaiting Settle')}</div>
             </div>
           `;
+          const isWaiter = this.state.userRole === 'waiter';
+          const actionText = isWaiter 
+            ? (hasProof ? (isHi ? 'प्रूफ देखें →' : 'VIEW PROOF →') : (isHi ? 'भुगतान / प्रूफ →' : 'PAY / PROOF →'))
+            : (hasProof ? (isHi ? 'प्रूफ / सेटल करें →' : 'INSPECT / SETTLE →') : (isHi ? 'सेटल करें →' : 'SETTLE →'));
           footerHtml = `
-            <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-amber-500/30 text-amber-300 font-bold w-full">
+            <div class="flex items-center justify-between text-[10px] pt-1.5 border-t border-amber-500/30 ${hasProof ? 'text-emerald-300' : 'text-amber-300'} font-bold w-full">
               <span>👥 ${t.seats} ${seatsSuffix}</span>
-              <span class="text-amber-400 font-mono font-black">${isHi ? 'सेटल करें →' : 'SETTLE →'}</span>
+              <span class="${hasProof ? 'text-emerald-400' : 'text-amber-400'} font-mono font-black">${actionText}</span>
             </div>
           `;
         } else if (isOccupied) {
@@ -1784,8 +1861,13 @@ const APP = {
 
         if (isCurrent) {
           if (isBilled) {
-            btnClasses = "bg-amber-500 text-black border-2 border-yellow-200 font-black shadow-[0_0_18px_rgba(245,158,11,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
-            statusBadge = `🧾 ₹${subtotal.toLocaleString('en-IN')} (${isHi ? 'बिल दिया' : 'BILLED'})`;
+            const hasProof = !!liveTable.paymentProof;
+            btnClasses = hasProof
+              ? "bg-emerald-600 text-white border-2 border-emerald-300 font-black shadow-[0_0_18px_rgba(16,185,129,0.9)] scale-105 z-10 ring-2 ring-emerald-400"
+              : "bg-amber-500 text-black border-2 border-yellow-200 font-black shadow-[0_0_18px_rgba(245,158,11,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
+            statusBadge = hasProof
+              ? `📸 ₹${subtotal.toLocaleString('en-IN')} (${isHi ? 'प्रूफ मिला' : 'PROOF'})`
+              : `🧾 ₹${subtotal.toLocaleString('en-IN')} (${isHi ? 'बिल दिया' : 'BILLED'})`;
           } else if (isOccupied) {
             btnClasses = "bg-red-600 text-white border-2 border-yellow-300 font-black shadow-[0_0_16px_rgba(239,68,68,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
             statusBadge = `🔴 ₹${subtotal.toLocaleString('en-IN')}`;
@@ -1794,8 +1876,13 @@ const APP = {
             statusBadge = isHi ? "🟢 खाली" : "🟢 Free";
           }
         } else if (isBilled) {
-          btnClasses = "bg-[#382606] text-amber-200 border-2 border-amber-400 hover:border-amber-300 font-black shadow-[0_3px_10px_rgba(245,158,11,0.4)]";
-          statusBadge = `🧾 ₹${subtotal.toLocaleString('en-IN')}`;
+          const hasProof = !!liveTable.paymentProof;
+          btnClasses = hasProof
+            ? "bg-[#0b291a] text-emerald-200 border-2 border-emerald-400 hover:border-emerald-300 font-black shadow-[0_3px_10px_rgba(16,185,129,0.4)]"
+            : "bg-[#382606] text-amber-200 border-2 border-amber-400 hover:border-amber-300 font-black shadow-[0_3px_10px_rgba(245,158,11,0.4)]";
+          statusBadge = hasProof
+            ? `📸 ₹${subtotal.toLocaleString('en-IN')}`
+            : `🧾 ₹${subtotal.toLocaleString('en-IN')}`;
         } else if (isOccupied) {
           btnClasses = "bg-[#450e17] text-white border-2 border-red-500 hover:border-red-400 font-bold shadow-[0_3px_10px_rgba(239,68,68,0.35)]";
           statusBadge = `🔴 ₹${subtotal.toLocaleString('en-IN')}`;
@@ -2898,6 +2985,23 @@ const APP = {
         }).join('');
       }
     }
+
+    // 4. Waiter Attached Payment Proof Thumbnail in Web POS Cashier Counter
+    const posProofCard = document.getElementById('pos-proof-card');
+    const posProofThumb = document.getElementById('pos-proof-thumb');
+    const posProofMeta = document.getElementById('pos-proof-meta');
+    if (posProofCard) {
+      if (liveTable && liveTable.paymentProof) {
+        posProofCard.classList.remove('hidden');
+        if (posProofThumb) posProofThumb.src = liveTable.paymentProof;
+        if (posProofMeta) {
+          const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+          posProofMeta.textContent = isHi ? 'ग्राहक का फ़ोन स्क्रीनशॉट उपलब्ध' : 'Customer phone screenshot attached';
+        }
+      } else {
+        posProofCard.classList.add('hidden');
+      }
+    }
   },
 
   // ================= 6. PUNCH ORDER (SAVED DIRECTLY TO SQLITE BACKEND) =================
@@ -3100,6 +3204,11 @@ const APP = {
   },
 
   async confirmCardPaymentFromTable() {
+    if (this.state.userRole !== 'manager') {
+      const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+      this.showToast(isHi ? '🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं।' : '🔒 Access Restricted: Only Manager can settle bills.');
+      return false;
+    }
     this.state.payMode = 'card';
     const inputRef = (document.getElementById('table-card-ref')?.value || '').trim();
     const finalRef = inputRef ? `PhonePe Card (Ref: ${inputRef})` : 'PhonePe EDC (Manual Verified)';
@@ -3146,6 +3255,13 @@ const APP = {
   },
 
   async settleFromTableUpiModal() {
+    if (this.state.userRole !== 'manager') {
+      const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+      this.showToast(isHi ? '🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Only Manager can settle bills. Please capture payment proof.');
+      this.closeTableUpiModal();
+      this.openWaiterPaymentFlow();
+      return;
+    }
     this.state.payMode = 'upi';
     await this.settleTable();
     this.closeTableUpiModal();
@@ -3272,6 +3388,12 @@ const APP = {
   },
 
   openBillingPage(push = true) {
+    if (this.state.userRole !== 'manager' && this.state.currentView === 'app') {
+      const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+      this.showToast(isHi ? '🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Access Restricted: Only Manager can settle bills. Please show payment QR & collect proof.');
+      this.openWaiterPaymentFlow();
+      return;
+    }
     const modal = document.getElementById('billing-modal');
     const table = this.getTable();
     const liveTable = this.getLiveTable();
@@ -3566,6 +3688,18 @@ const APP = {
 
   // Settle Table: Complete Payment, Free Table & Archive Settlement
   async settleTable() {
+    // STRICT ROLE GUARD: Waiters can NEVER settle bills under any condition!
+    if (this.state.userRole !== 'manager') {
+      const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+      this.showToast(isHi ? '🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Access Restricted: Only Manager can settle bills. Please submit payment proof.');
+      if (this.state.currentView === 'app') {
+        this.openWaiterPaymentFlow();
+      } else {
+        this.openWelcomeAuthModal();
+      }
+      return false;
+    }
+
     const table = this.getTable();
     const liveTable = this.getLiveTable();
     const placedOrders = liveTable.placedOrders || [];
@@ -3619,13 +3753,20 @@ const APP = {
           grandTotal,
           paymentMode: this.state.payMode,
           paymentRef,
-          splitCount: this.state.splitCount
+          splitCount: this.state.splitCount,
+          paymentProof: liveTable.paymentProof || null
         });
       }
     } catch (e) {
       console.warn('Backend settle failed, clearing local tab:', e);
     }
 
+    liveTable.placedOrders = [];
+    liveTable.currentSubtotal = 0;
+    liveTable.status = 'vacant';
+    liveTable.billPrinted = false;
+    liveTable.paymentProof = null;
+    liveTable.paymentStatus = null;
     this.state.localCarts[this.state.selectedTableId] = [];
     this.saveLocalCarts();
     this.haptic('success');
@@ -3850,6 +3991,19 @@ const APP = {
       }
     }
 
+    // Toggle manager vs waiter action buttons on Epson Receipt modal
+    const mgrActions = document.getElementById('epson-manager-actions');
+    const waiterActions = document.getElementById('epson-waiter-actions');
+    if (mgrActions && waiterActions) {
+      if (this.state.userRole === 'waiter') {
+        mgrActions.classList.add('hidden');
+        waiterActions.classList.remove('hidden');
+      } else {
+        mgrActions.classList.remove('hidden');
+        waiterActions.classList.add('hidden');
+      }
+    }
+
     if (modal) modal.classList.remove('hidden');
 
     if (push && typeof history !== 'undefined') {
@@ -3872,6 +4026,13 @@ const APP = {
     this.playBeep('click');
 
     const targetTableId = this.state.selectedTableId;
+
+    // Strict Waiter Role Protection: Waiter terminal NEVER triggers physical printer or settle modal!
+    if (this.state.userRole === 'waiter') {
+      this.openWaiterBillPreview(targetTableId);
+      return;
+    }
+
     const isPastReprint = document.getElementById('epson-print-wrapper')?.dataset?.isReprint === 'true';
     const epsonModal = document.getElementById('epson-modal');
 
@@ -4098,9 +4259,11 @@ const APP = {
 
     if (hasLiveOrders && !isReprintNow && targetTableId) {
       this.markTableAsBillPrinted(targetTableId);
-      setTimeout(() => {
-        this.openPostPrintSettleModal(targetTableId);
-      }, 700);
+      if (this.state.userRole === 'manager') {
+        setTimeout(() => {
+          this.openPostPrintSettleModal(targetTableId);
+        }, 700);
+      }
     }
   },
 
@@ -4141,6 +4304,15 @@ const APP = {
   openPostPrintSettleModal(tableId, customTotal = null) {
     const tId = tableId || this.state.selectedTableId;
     if (!tId) return;
+
+    // Strict Waiter Role Protection: Waiters can NEVER settle bills!
+    if (this.state.userRole !== 'manager') {
+      const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+      this.showToast(isHi ? '🔒 केवल मैनेजर ही टेबल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Only Manager can settle tables. Please collect payment proof.');
+      this.openWaiterPaymentFlow(tId);
+      return;
+    }
+
     this.state.selectedTableId = tId;
     const table = this.getTable();
     const liveTable = this.getLiveTable(tId);
@@ -4160,6 +4332,23 @@ const APP = {
     const laterBtnLabel = document.getElementById('pps-btn-later-label');
     const viewBillBtnLabel = document.getElementById('pps-btn-view-bill-label');
     const hintEl = document.getElementById('pps-later-hint');
+
+    // Waiter Payment Proof Preview Container in Manager Settle Modal
+    const ppsProofContainer = document.getElementById('pps-proof-container');
+    const ppsProofThumb = document.getElementById('pps-proof-thumb');
+    const ppsProofMeta = document.getElementById('pps-proof-meta');
+    if (ppsProofContainer) {
+      if (liveTable && liveTable.paymentProof) {
+        ppsProofContainer.classList.remove('hidden');
+        if (ppsProofThumb) ppsProofThumb.src = liveTable.paymentProof;
+        if (ppsProofMeta) {
+          const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+          ppsProofMeta.textContent = isHi ? '📸 वेटर द्वारा ग्राहक का पेमेंट स्क्रीनशॉट संलग्न' : '📸 Customer payment screenshot attached by waiter';
+        }
+      } else {
+        ppsProofContainer.classList.add('hidden');
+      }
+    }
 
     const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
     const t = (k, fb) => (typeof I18N !== 'undefined') ? I18N.t(k, fb) : (fb || k);
@@ -4210,6 +4399,212 @@ const APP = {
     this.showToast(toastMsg);
     if (this.state.currentView === 'app') {
       this.goToTables();
+    }
+  },
+
+  // ================= 8F. WAITER BILL PREVIEW & PAYMENT PROOF SUBMISSION =================
+  openWaiterBillPreview(tableId) {
+    const tId = tableId || this.state.selectedTableId;
+    if (tId) this.state.selectedTableId = tId;
+    this.openEpsonReceiptModal(true);
+  },
+
+  openWaiterPaymentFlow(tableId) {
+    const tId = tableId || this.state.selectedTableId;
+    if (tId) this.state.selectedTableId = tId;
+    const table = this.getTable();
+    const liveTable = this.getLiveTable(tId);
+    if (!liveTable || (!liveTable.placedOrders?.length && !(liveTable.currentSubtotal > 0))) {
+      this.showToast('⚠️ No active orders on ' + (table?.name || 'Table'));
+      return;
+    }
+    const totals = this.calculateTotalBill(tId, true);
+    const store = (window.DB && window.DB.storeSettings) || {};
+    const upiId = store.upi_vpa || 'Q676029996@ybl';
+    const storeName = store.store_name || 'BYOB Restaurant';
+
+    const modal = document.getElementById('waiter-payment-proof-modal');
+    const titleEl = document.getElementById('wpp-table-title');
+    const totalEl = document.getElementById('wpp-grand-total');
+    const taxEl = document.getElementById('wpp-tax-breakdown');
+    const upiChipEl = document.getElementById('wpp-upi-id-chip');
+    const qrImg = document.getElementById('wpp-qr-image');
+
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const t = (k, fb) => (typeof I18N !== 'undefined') ? I18N.t(k, fb) : (fb || k);
+
+    if (titleEl) titleEl.textContent = `${table.name} • ${t('collectUpiPaymentTitle', 'Collect UPI Payment')}`;
+    if (totalEl) totalEl.textContent = `₹${Math.round(totals.grandTotal).toLocaleString('en-IN')}`;
+    if (taxEl) taxEl.textContent = `GST ₹${(totals.cgst + totals.sgst).toFixed(2)} • Net ₹${totals.subtotal.toFixed(0)}`;
+    if (upiChipEl) upiChipEl.textContent = upiId;
+
+    // Dynamic UPI QR with exact table total & ref
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(storeName)}&am=${totals.grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + table.name)}`;
+    if (qrImg) {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
+      qrImg.onerror = () => { qrImg.src = '/icons/payment-qr.png'; };
+    }
+
+    // Set existing proof state if already attached
+    this._tempPaymentProof = liveTable.paymentProof || null;
+    this.renderPaymentProofModalState(liveTable.paymentProof);
+
+    if (modal) {
+      modal.classList.remove('hidden');
+      if (typeof history !== 'undefined' && window.location.hash !== '#waiter-payment-proof') {
+        history.pushState({ screen: 'waiter-payment-proof' }, '', '#waiter-payment-proof');
+      }
+    }
+    this.haptic('selection');
+  },
+
+  closeWaiterPaymentFlow(updateHistory = true) {
+    const modal = document.getElementById('waiter-payment-proof-modal');
+    if (modal) modal.classList.add('hidden');
+    const input = document.getElementById('waiter-proof-camera-input');
+    if (input) input.value = '';
+    if (updateHistory && typeof history !== 'undefined' && window.location.hash === '#waiter-payment-proof') {
+      history.back();
+    }
+  },
+
+  renderPaymentProofModalState(proofDataUrl) {
+    const emptyBox = document.getElementById('wpp-empty-photo-box');
+    const capturedBox = document.getElementById('wpp-captured-photo-box');
+    const previewImg = document.getElementById('wpp-captured-preview-img');
+    const statusBadge = document.getElementById('wpp-proof-status-badge');
+    const timeEl = document.getElementById('wpp-photo-timestamp');
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+
+    if (proofDataUrl) {
+      if (emptyBox) emptyBox.classList.add('hidden');
+      if (capturedBox) capturedBox.classList.remove('hidden');
+      if (previewImg) previewImg.src = proofDataUrl;
+      if (statusBadge) {
+        statusBadge.textContent = isHi ? 'संलग्न (Ready)' : 'Attached';
+        statusBadge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30';
+      }
+      if (timeEl) timeEl.textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      if (emptyBox) emptyBox.classList.remove('hidden');
+      if (capturedBox) capturedBox.classList.add('hidden');
+      if (previewImg) previewImg.src = '';
+      if (statusBadge) {
+        statusBadge.textContent = isHi ? 'आवश्यक (Required)' : 'Required';
+        statusBadge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-bold';
+      }
+    }
+  },
+
+  onPaymentProofPhotoSelected(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rawDataUrl = e.target.result;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1000;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.82);
+        this._tempPaymentProof = compressed;
+        this.renderPaymentProofModalState(compressed);
+        this.showToast('📸 Photo proof attached! Click Submit Proof.');
+      };
+      img.onerror = () => {
+        this._tempPaymentProof = rawDataUrl;
+        this.renderPaymentProofModalState(rawDataUrl);
+      };
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+  },
+
+  async submitPaymentProof() {
+    if (!this._tempPaymentProof) {
+      this.showToast('⚠️ Please take a photo of customer\'s phone first!');
+      return;
+    }
+    const tId = this.state.selectedTableId;
+    const table = this.getTable();
+    const liveTable = this.getLiveTable(tId);
+    if (liveTable) {
+      liveTable.paymentProof = this._tempPaymentProof;
+      liveTable.status = 'bill_printed';
+      liveTable.billPrinted = true;
+    }
+
+    if (window.DB && typeof window.DB.saveTablePaymentProof === 'function') {
+      await window.DB.saveTablePaymentProof(tId, this._tempPaymentProof);
+    } else if (window.DB && typeof window.DB.updateTableStatus === 'function') {
+      await window.DB.updateTableStatus(tId, 'bill_printed', this._tempPaymentProof);
+    }
+
+    this.renderFloorTables();
+    this.updateTableHeaderBadges();
+    this.updateFloorBottomDock();
+    if (this.state.currentView === 'web') {
+      this.updateCartUI();
+    }
+
+    this.closeWaiterPaymentFlow();
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const toastMsg = (typeof I18N !== 'undefined')
+      ? I18N.t('proofSubmittedToast', `✅ Payment proof submitted for ${table.name}! Manager notified for settlement.`)
+      : `✅ Payment proof submitted for ${table.name}! Manager notified for settlement.`;
+    this.showToast(toastMsg);
+    this.playBeep('kot');
+  },
+
+  viewFullPaymentProof(tableId) {
+    const tId = tableId || this.state.selectedTableId;
+    const liveTable = this.getLiveTable(tId);
+    const table = (window.DB && window.DB.tables) ? window.DB.tables.find(t => this.isSameTableId(t.id, tId)) : null;
+    const proof = (liveTable && liveTable.paymentProof) || (table && table.paymentProof);
+    if (!proof) {
+      this.showToast('⚠️ No payment proof attached for this table');
+      return;
+    }
+    const modal = document.getElementById('payment-proof-viewer-modal');
+    const img = document.getElementById('ppv-full-image');
+    const titleEl = document.getElementById('ppv-table-name');
+    const metaEl = document.getElementById('ppv-meta-info');
+
+    if (img) img.src = proof;
+    if (titleEl) titleEl.textContent = `${(table && table.name) || 'Table ' + tId} • Payment Proof`;
+    if (metaEl) {
+      const dt = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      metaEl.textContent = `Captured by Staff • ${dt} • Ready for Audit`;
+    }
+    if (modal) {
+      modal.classList.remove('hidden');
+      if (typeof history !== 'undefined' && window.location.hash !== '#proof-viewer') {
+        history.pushState({ screen: 'proof-viewer' }, '', '#proof-viewer');
+      }
+    }
+  },
+
+  closePaymentProofViewer(updateHistory = true) {
+    const modal = document.getElementById('payment-proof-viewer-modal');
+    if (modal) modal.classList.add('hidden');
+    if (updateHistory && typeof history !== 'undefined' && window.location.hash === '#proof-viewer') {
+      history.back();
     }
   },
 
