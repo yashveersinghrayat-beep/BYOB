@@ -62,6 +62,9 @@ copyRecursive(path.join(ROOT_DIR, 'js'), path.join(assetsDir, 'js'));
 copyRecursive(path.join(ROOT_DIR, 'icons'), path.join(assetsDir, 'icons'));
 copyRecursive(path.join(ROOT_DIR, 'images'), path.join(assetsDir, 'images'));
 copyRecursive(path.join(ROOT_DIR, 'manifest.json'), path.join(assetsDir, 'manifest.json'));
+if (fs.existsSync(path.join(ROOT_DIR, 'sw.js'))) {
+  fs.copyFileSync(path.join(ROOT_DIR, 'sw.js'), path.join(assetsDir, 'sw.js'));
+}
 
 // 2. Android Resources
 fs.writeFileSync(path.join(valuesDir, 'strings.xml'), `<?xml version="1.0" encoding="utf-8"?>
@@ -96,8 +99,8 @@ fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), `<?xml versio
 const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.onyx.pos"
-    android:versionCode="7"
-    android:versionName="3.8">
+    android:versionCode="8"
+    android:versionName="4.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -106,7 +109,11 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:label="@string/app_name"
@@ -146,6 +153,7 @@ import android.os.Environment;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.DownloadListener;
+import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -191,6 +199,34 @@ public class MainActivity extends Activity {
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (request != null && request.isForMainFrame()) {
                 view.loadUrl(LOCAL_FALLBACK);
+            }
+        }
+    }
+
+    private static class PosWebChromeClient extends WebChromeClient {
+        private final Activity activity;
+
+        public PosWebChromeClient(Activity activity) {
+            this.activity = activity;
+        }
+
+        @Override
+        public void onPermissionRequest(final PermissionRequest request) {
+            activity.runOnUiThread(new PermissionGranter(request));
+        }
+    }
+
+    private static class PermissionGranter implements Runnable {
+        private final PermissionRequest request;
+
+        public PermissionGranter(PermissionRequest request) {
+            this.request = request;
+        }
+
+        @Override
+        public void run() {
+            if (request != null) {
+                request.grant(request.getResources());
             }
         }
     }
@@ -264,8 +300,15 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
+        // Auto-request Camera Permission at runtime (Android 6.0+ / API 23+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 101);
+            }
+        }
+
         webView.setBackgroundColor(0xFF090A0E);
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new PosWebChromeClient(this));
         webView.setWebViewClient(new PosWebViewClient());
         webView.setDownloadListener(new PosDownloadListener(this));
 
