@@ -72,26 +72,26 @@
       visibility: hidden !important;
     }
 
-    /* Continuous 80mm Roll Epson Thermal Print Standards (Valid Chromium Syntax - Zero Paper Waste) */
+    /* Continuous 80mm Roll Epson Thermal Print Standards (Exact 80x294mm Driver Preset - Zero Paper Waste) */
     @page {
-      size: 80mm auto;
-      margin: 0mm;
+      size: 80mm 294mm !important;
+      margin: 0mm !important;
     }
     @media print {
       @page {
-        size: 80mm auto;
-        margin: 0mm;
+        size: 80mm 294mm !important;
+        margin: 0mm !important;
       }
       html, body {
         width: 80mm !important;
         max-width: 80mm !important;
         height: auto !important;
-        max-height: 100% !important;
+        max-height: 294mm !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
         color: #000000 !important;
-        overflow: visible !important;
+        overflow: hidden !important;
         font-family: 'JetBrains Mono', 'Courier New', Courier, monospace !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -99,19 +99,29 @@
       body > *:not(#epson-modal) {
         display: none !important;
       }
-      #epson-modal {
+      #epson-modal,
+      #epson-modal.hidden {
         display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         position: absolute !important;
         left: 0 !important;
         top: 0 !important;
         width: 80mm !important;
         max-width: 80mm !important;
+        height: auto !important;
+        max-height: 294mm !important;
+        overflow: hidden !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
         box-shadow: none !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-before: avoid !important;
       }
       #epson-modal > div {
         width: 80mm !important;
@@ -129,6 +139,10 @@
         background: #ffffff !important;
         color: #000000 !important;
         box-sizing: border-box !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
       .epson-receipt {
         width: 72mm !important;
@@ -142,6 +156,10 @@
         border: none !important;
         font-size: 9.5px !important;
         line-height: 1.2 !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
       .epson-receipt * {
         color: #000000 !important;
@@ -974,24 +992,28 @@
     </div>
   </aside>
 
-  <!-- ================= VIEW 3: MANAGER COMMAND CENTER (ALL-IN-ONE SINGLE PAGE) ================= -->
+  <!-- ================= VIEW 3: OPERATIONS CONSOLE (EXECUTIVE MANAGEMENT SUITE) ================= -->
   <div id="view-manager-container" class="max-w-7xl mx-auto px-3 sm:px-6 py-4 hidden">
     
     <!-- MANAGER TOP BAR -->
     <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-4 sm:p-5 mb-5 shadow-xl flex flex-wrap items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-3">
-          <button onclick="APP.toggleManagerSidebar()" id="mgr-nav-sidebar-btn" class="px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-black flex items-center gap-1.5 transition-all shadow active:scale-95" title="Open Manager Navigation Sidebar (or hover cursor to left edge)">
+          <button onclick="APP.toggleManagerSidebar()" id="mgr-nav-sidebar-btn" class="px-3 py-2 rounded-xl bg-[#181f30] hover:bg-[#20293f] border border-[#2e3a54] text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow active:scale-95" title="Manager Navigation">
             <span>☰</span>
             <span class="hidden sm:inline">SECTIONS</span>
           </button>
-          <span class="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-2xl shadow-inner">👑</span>
+          <div class="w-10 h-10 rounded-xl bg-[#181e2b] border border-[#2b354a] text-amber-400 flex items-center justify-center shadow-inner flex-shrink-0">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6"/>
+            </svg>
+          </div>
           <div>
-            <h1 class="text-lg sm:text-2xl font-black text-white tracking-wide flex items-center gap-2">
-              <span>ONYX MANAGER COMMAND CENTER</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">ALL-IN-ONE</span>
+            <h1 class="text-base sm:text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+              <span id="mgr-hdr-title">ONYX OPERATIONS CONSOLE</span>
+              <span id="mgr-hdr-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#1a2133] text-neutral-300 border border-[#3b4764] uppercase tracking-widest font-mono">EXECUTIVE</span>
             </h1>
-            <p class="text-xs text-neutral-400">Live 3-Floor Operations, Instant Menu Pricing, Revenue Analytics & Anti-Theft Audits</p>
+            <p id="mgr-hdr-subtitle" class="text-xs text-neutral-400 font-normal mt-0.5">Hospitality Management • Revenue Audit & Multi-Floor Governance</p>
           </div>
         </div>
       </div>
@@ -1999,7 +2021,7 @@
           <span>🛡️</span> <span>How Onyx Security Architecture Protects Restaurant Operations:</span>
         </div>
         <ul class="list-disc list-inside space-y-1 text-[11px] text-neutral-400 ml-1">
-          <li><strong>Console Protection:</strong> When Master PIN is set, accessing Manager Command Center requires entering the PIN.</li>
+          <li><strong>Console Protection:</strong> When Master PIN is set, accessing the Executive Operations Console requires entering the PIN.</li>
           <li><strong>Anti-Theft Void Authorization:</strong> Waiters cannot remove or void items from punched KOTs without the Manager PIN.</li>
           <li><strong>Recovery Protocol:</strong> If you forget the PIN, the security question is ONLY asked upon clicking "Forgot PIN?" on the Manager Dashboard gate.</li>
         </ul>

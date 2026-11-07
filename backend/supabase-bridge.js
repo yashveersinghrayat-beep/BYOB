@@ -12,9 +12,10 @@ const HEADERS = {
 };
 
 class SupabaseBridge {
-  constructor(db, broadcastFn) {
+  constructor(db, broadcastFn, printerAddon = null) {
     this.db = db;
     this.broadcast = broadcastFn;
+    this.printer = printerAddon;
     this.pollInterval = null;
     this.isPolling = false;
     this.syncedKotIds = new Set();
@@ -192,6 +193,17 @@ class SupabaseBridge {
           waiterName: payload.waiterName || 'Remote Staff',
           items: normalizedItems
         });
+
+        // Trigger Wireless Kitchen Printer Add-on (if enabled)
+        if (this.printer) {
+          this.printer.printKot({
+            id: kotId,
+            tableId: cleanTableId,
+            tableName: payload.tableName || ('Table ' + cleanTableId),
+            waiterName: payload.waiterName || 'Remote Staff',
+            items: normalizedItems
+          }).catch(() => {});
+        }
       }
       if (kotId) this.syncedKotIds.add(kotId);
 
@@ -554,6 +566,17 @@ class SupabaseBridge {
           waiterName: kot.waiter_name,
           items
         });
+
+        // Catch-up print for orders received while offline/sleeping
+        if (this.printer) {
+          this.printer.printKot({
+            id: kot.id,
+            tableId: kot.table_id,
+            tableName: kot.table_name,
+            waiterName: kot.waiter_name,
+            items
+          }).catch(() => {});
+        }
         this.syncedKotIds.add(kot.id);
         hasNewOrder = true;
       }

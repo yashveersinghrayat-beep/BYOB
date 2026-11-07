@@ -8,6 +8,7 @@ const url = require('url');
 const os = require('os');
 const DB = require('./backend/database.js');
 const SupabaseBridge = require('./backend/supabase-bridge.js');
+const { KitchenPrinterAddon, KITCHEN_PRINTER_CONFIG } = require('./backend/kitchen-printer-addon.js');
 
 const PORT = process.env.PORT || 3000;
 
@@ -37,8 +38,11 @@ function broadcastEvent(eventType, payload) {
   }
 }
 
-// 24/7 Supabase Cloud Sync Bridge
-const bridge = new SupabaseBridge(DB, broadcastEvent);
+// Modular Wireless Kitchen Printer Addon (TN260 / POS-80 over Wi-Fi Port 9100)
+const kitchenPrinter = new KitchenPrinterAddon(broadcastEvent);
+
+// 24/7 Supabase Cloud Sync Bridge (passes kitchen printer for remote mobile orders)
+const bridge = new SupabaseBridge(DB, broadcastEvent, kitchenPrinter);
 
 // JSON Response Helper
 function sendJSON(res, statusCode, data) {
@@ -337,7 +341,24 @@ async function handleRequest(req, res) {
       const activeKots = DB.getAllActiveKOTs();
       broadcastEvent('KOT_PUNCHED', { kot, tables, activeKots });
       bridge.pushKotToCloud(body.tableId, body.tableName, body.items, body.waiterName, kot.id);
+      // Auto Wireless Print to Kitchen Printer Addon (if enabled)
+      kitchenPrinter.printKot(kot).catch(() => {});
       return sendJSON(res, 200, { success: true, kot, tables });
+    }
+
+    // --- Kitchen Printer Add-on Control Routes ---
+    if (pathname === '/api/printer/status' && method === 'GET') {
+      return sendJSON(res, 200, {
+        success: true,
+        enabled: kitchenPrinter.isEnabled(),
+        online: kitchenPrinter.isOnline,
+        printerIp: KITCHEN_PRINTER_CONFIG.printerIp,
+        pendingCount: kitchenPrinter.pendingQueue.length
+      });
+    }
+    if (pathname === '/api/printer/retry' && method === 'POST') {
+      const result = await kitchenPrinter.retryPending();
+      return sendJSON(res, 200, { success: true, ...result });
     }
 
     // --- Kitchen KDS ---
@@ -674,6 +695,7 @@ if (require.main === module) {
     console.log('------------------------------------------------------');
     console.log('   📦 Database: Native SQLite WAL (onyx_restaurant.db)');
     console.log('   ⚡ Realtime Sync: Server-Sent Events (SSE) Active');
+    console.log(`   🖨️ Kitchen Printer Addon: ${KITCHEN_PRINTER_CONFIG.enabled ? 'ACTIVE (' + KITCHEN_PRINTER_CONFIG.printerIp + ':9100)' : 'DISABLED'}`);
     console.log('======================================================\n');
   });
 }

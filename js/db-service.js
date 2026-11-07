@@ -873,6 +873,15 @@ const DB_SERVICE = {
         } catch (err) {}
       });
 
+      this.sse.addEventListener('KITCHEN_PRINTER_STATUS', (e) => {
+        try {
+          const status = JSON.parse(e.data);
+          if (window.APP && typeof window.APP.handlePrinterStatus === 'function') {
+            window.APP.handlePrinterStatus(status);
+          }
+        } catch (err) {}
+      });
+
       this.sse.onopen = () => {
         this.mode = 'sqlite_server';
         this.emitStatus();

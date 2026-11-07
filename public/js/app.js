@@ -525,13 +525,20 @@ const APP = {
       }
     }
 
-    // 2. Viewport Header Buttons
+    // 2. Viewport Header Buttons & Manager Header
     const vApp = document.getElementById('btn-view-app');
     const vWeb = document.getElementById('btn-view-web');
     const vMgr = document.getElementById('btn-view-manager');
     if (vApp) vApp.innerHTML = `<span>${t('waiterTerminal', '📱 Waiter Terminal')}</span>`;
     if (vWeb) vWeb.innerHTML = `<span>${t('cashierCounter', '🖥️ Cashier Counter')}</span>`;
     if (vMgr) vMgr.innerHTML = `<span>${t('operationsConsole', '👑 Operations Console')}</span>`;
+
+    const mgrTitle = document.getElementById('mgr-hdr-title');
+    if (mgrTitle) mgrTitle.textContent = t('mgrConsoleTitle', 'ONYX OPERATIONS CONSOLE');
+    const mgrSubtitle = document.getElementById('mgr-hdr-subtitle');
+    if (mgrSubtitle) mgrSubtitle.textContent = t('mgrConsoleSubtitle', 'Hospitality Management • Revenue Audit & Multi-Floor Governance');
+    const mgrBadge = document.getElementById('mgr-hdr-badge');
+    if (mgrBadge) mgrBadge.textContent = t('mgrBadge', 'EXECUTIVE');
 
     // 3. Screen 1: Floor & Tables
     const floorHdr = document.getElementById('floor-header-title');
@@ -831,17 +838,35 @@ const APP = {
       }
     });
 
-    // Native browser print trigger (e.g. Chrome File -> Print) zero waste continuous roll
+    // Native browser print trigger (e.g. Chrome File -> Print) exact 80x294mm thermal roll preset
     window.addEventListener('beforeprint', () => {
-      const receiptEl = document.getElementById('epson-print-wrapper');
-      const hMm = receiptEl ? Math.max(50, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 280) * 0.264583) + 4) : 120;
+      // 1. Force dynamic page styles for continuous 80x294mm single page roll
       let dynStyle = document.getElementById('dynamic-epson-page-style');
       if (!dynStyle) {
         dynStyle = document.createElement('style');
         dynStyle.id = 'dynamic-epson-page-style';
         document.head.appendChild(dynStyle);
       }
-      dynStyle.textContent = `@page { size: 80mm ${hMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${hMm}mm !important; margin: 0mm !important; } html, body { width: 80mm !important; max-width: 80mm !important; height: ${hMm}mm !important; max-height: ${hMm}mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; } }`;
+      dynStyle.textContent = `@page { size: 80mm 294mm !important; margin: 0mm !important; } @media print { @page { size: 80mm 294mm !important; margin: 0mm !important; } html, body { width: 80mm !important; max-width: 80mm !important; height: auto !important; max-height: 294mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; } .epson-receipt, #epson-print-wrapper { page-break-after: avoid !important; break-after: avoid !important; page-break-inside: avoid !important; break-inside: avoid !important; page-break-before: avoid !important; break-before: avoid !important; } }`;
+
+      // 2. Hide all non-printable UI containers (overriding any inline style="display: ... !important")
+      const vApp = document.getElementById('view-app-container');
+      const vWeb = document.getElementById('view-web-container');
+      const vMgr = document.getElementById('view-manager-container');
+      const hdr = document.getElementById('main-app-header');
+      const modal = document.getElementById('epson-modal');
+      if (vApp) vApp.style.setProperty('display', 'none', 'important');
+      if (vWeb) vWeb.style.setProperty('display', 'none', 'important');
+      if (vMgr) vMgr.style.setProperty('display', 'none', 'important');
+      if (hdr) hdr.style.setProperty('display', 'none', 'important');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.setProperty('display', 'block', 'important');
+      }
+    });
+
+    window.addEventListener('afterprint', () => {
+      this.setView(this.state.currentView || 'app');
     });
   },
 
@@ -3866,17 +3891,14 @@ const APP = {
       return;
     }
 
-    // Dynamic continuous roll height calculation: 1px = 0.264583mm @ 96 DPI, + 4mm tear margin (ultra-compact, zero waste)
-    const computedHeightMm = Math.max(50, Math.ceil((receiptEl.scrollHeight || receiptEl.offsetHeight || 280) * 0.264583) + 4);
-
-    // Update dynamic @page style on main document (auto roll size, zero blank feed)
+    // Enforce exact 80x294mm thermal roll preset (matches Windows POS & Epson Roll 80 x 294mm driver preset with zero paper waste)
     let dynStyle = document.getElementById('dynamic-epson-page-style');
     if (!dynStyle) {
       dynStyle = document.createElement('style');
       dynStyle.id = 'dynamic-epson-page-style';
       document.head.appendChild(dynStyle);
     }
-    dynStyle.textContent = `@page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } @media print { @page { size: 80mm ${computedHeightMm}mm !important; margin: 0mm !important; } html, body { width: 80mm !important; max-width: 80mm !important; height: ${computedHeightMm}mm !important; max-height: ${computedHeightMm}mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; } }`;
+    dynStyle.textContent = `@page { size: 80mm 294mm !important; margin: 0mm !important; } @media print { @page { size: 80mm 294mm !important; margin: 0mm !important; } html, body { width: 80mm !important; max-width: 80mm !important; height: auto !important; max-height: 294mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; } .epson-receipt, #epson-print-wrapper { page-break-after: avoid !important; break-after: avoid !important; page-break-inside: avoid !important; break-inside: avoid !important; page-break-before: avoid !important; break-before: avoid !important; } }`;
 
     const receiptHtml = receiptEl.innerHTML;
     const invNo = document.getElementById('epson-inv-no')?.textContent || 'RECEIPT';
@@ -3888,19 +3910,19 @@ const APP = {
   <title>${invNo} - BYOB Indirapuram</title>
   <style>
     @page {
-      size: 80mm ${computedHeightMm}mm !important;
+      size: 80mm 294mm !important;
       margin: 0mm !important;
     }
     @media print {
       @page {
-        size: 80mm ${computedHeightMm}mm !important;
+        size: 80mm 294mm !important;
         margin: 0mm !important;
       }
       html, body {
         width: 80mm !important;
         max-width: 80mm !important;
-        height: ${computedHeightMm}mm !important;
-        max-height: ${computedHeightMm}mm !important;
+        height: auto !important;
+        max-height: 294mm !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
@@ -3919,13 +3941,14 @@ const APP = {
       width: 80mm;
       max-width: 80mm;
       margin: 0 auto;
-      padding: 0mm 0mm 1mm 0mm;
+      padding: 0mm 0mm 0mm 0mm;
       background: #ffffff;
       color: #000000;
       font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
       font-size: 9.5px;
       line-height: 1.2;
       font-weight: 600;
+      overflow: hidden;
     }
     .epson-receipt {
       width: 72mm;
@@ -3935,6 +3958,12 @@ const APP = {
       color: #000000;
       padding: 1mm 1mm;
       box-shadow: none;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      page-break-before: avoid !important;
+      break-before: avoid !important;
     }
     .epson-receipt * {
       color: #000000 !important;
@@ -5594,7 +5623,7 @@ const APP = {
         localStorage.setItem('onyx_staff_name', this.state.currentStaffName);
         this.closeManagerPinGate();
         this.setView('manager');
-        this.showToast('👑 Welcome to Manager Command Center');
+        this.showToast('💼 Executive Operations Console Authenticated');
         this.haptic('success');
       } else {
         if (pinErr) {
@@ -7744,6 +7773,64 @@ const APP = {
     el.textContent = msg;
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 2000);
+  },
+
+  // ================= 9. MODULAR KITCHEN PRINTER ADDON UI =================
+  handlePrinterStatus(status) {
+    let alertEl = document.getElementById('kitchen-printer-sticky-alert');
+    if (!status || status.online) {
+      if (alertEl) alertEl.remove();
+      return;
+    }
+
+    if (!alertEl) {
+      alertEl = document.createElement('div');
+      alertEl.id = 'kitchen-printer-sticky-alert';
+      alertEl.className = 'fixed top-4 right-4 z-[99999] bg-gradient-to-r from-red-950 via-red-900 to-red-800 text-white px-4 py-3 rounded-2xl shadow-2xl border-2 border-red-500 flex items-center gap-3.5 max-w-md select-none transition-all duration-300';
+      document.body.appendChild(alertEl);
+    }
+
+    const failedInfo = status.failedKot ? ` (Table: ${status.failedKot.tableName || 'N/A'})` : '';
+    const pendingText = (status.pendingCount && status.pendingCount > 0) ? `${status.pendingCount} KOT Pending` : 'KOT Dispatch Pending';
+
+    alertEl.innerHTML = `
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl flex-shrink-0 animate-pulse">🔴</span>
+        <div>
+          <div class="font-extrabold text-[11px] uppercase tracking-wider text-red-300 flex items-center gap-1.5">
+            <span>Kitchen Printer Offline</span>
+            <span class="text-[9px] px-1.5 py-0.2 bg-red-800 rounded font-mono">${status.printerIp || '192.168.1.222'}</span>
+          </div>
+          <div class="text-xs font-bold text-white mt-0.5 leading-tight">${pendingText}${failedInfo}</div>
+          <div class="text-[10px] text-red-200/80 mt-0.5">${status.error || 'Paper out or printer unreachable over Wi-Fi'}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 ml-auto flex-shrink-0">
+        <button onclick="APP.retryKitchenPrinter()" class="px-2.5 py-1.5 bg-white text-red-900 hover:bg-red-50 active:scale-95 font-black text-xs rounded-lg shadow-md transition-all">Retry</button>
+        <button onclick="APP.dismissKitchenPrinterAlert()" title="Acknowledge & Close" class="w-7 h-7 flex items-center justify-center bg-red-950/80 hover:bg-black text-red-200 hover:text-white rounded-lg font-bold text-sm transition-all border border-red-700/50">✕</button>
+      </div>
+    `;
+  },
+
+  dismissKitchenPrinterAlert() {
+    const alertEl = document.getElementById('kitchen-printer-sticky-alert');
+    if (alertEl) alertEl.remove();
+  },
+
+  async retryKitchenPrinter() {
+    try {
+      this.showToast('🔄 Retrying Kitchen Printer...');
+      const res = await fetch('/api/printer/retry', { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.remaining === 0) {
+        this.dismissKitchenPrinterAlert();
+        this.showToast('✅ Kitchen Printer connected & all pending KOTs printed!');
+      } else {
+        this.showToast(`⚠️ Printer still offline (${data.remaining || 1} KOTs pending)`);
+      }
+    } catch (e) {
+      this.showToast('⚠️ Could not connect to server');
+    }
   }
 };
 
