@@ -4,7 +4,7 @@
 // ==============================================================================
 
 const I18N = {
-  currentLang: localStorage.getItem('onyx_lang') || 'en',
+  currentLang: (typeof localStorage !== 'undefined' ? localStorage.getItem('onyx_lang') : null) || 'en',
 
   // UI Strings Dictionary
   strings: {
