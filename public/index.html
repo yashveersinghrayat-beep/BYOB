@@ -474,13 +474,13 @@
             id="app-bar-review-btn"
             onclick="APP.openReviewOrderScreen()" 
             class="py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-black font-black text-xs uppercase tracking-wide rounded-xl shadow-lg transition-all flex items-center gap-1.5">
-            <span>Review Order →</span>
+            <span>Confirm Order →</span>
           </button>
         </div>
 
       </div>
 
-      <!-- ================= SCREEN 3: REVIEW ORDER & KOT PUNCH (TASK: VERIFY & SEND TO KITCHEN) ================= -->
+      <!-- ================= SCREEN 3: ORDER SUMMARY & CONFIRMATION (TASK: VERIFY & SAVE ORDER) ================= -->
       <div id="app-screen-review" class="flex-1 flex flex-col overflow-hidden hidden bg-[#0c0e15]">
         <!-- Top Header: Back to Menu + Step Indicator -->
         <div class="px-3.5 py-2.5 bg-[#141722] border-b border-[#23293a] flex items-center justify-between">
@@ -488,8 +488,8 @@
             <span class="text-amber-400 font-black">←</span> Back to Menu
           </button>
           <div class="text-right">
-            <div id="review-screen-table-title" class="text-xs font-black text-white">Table 1 • Round 1</div>
-            <div class="text-[9px] text-amber-400 font-mono font-bold">STEP 3: KITCHEN CONFIRMATION</div>
+            <div id="review-screen-table-title" class="text-xs font-black text-white">Table 1 • Order Summary</div>
+            <div class="text-[9px] text-amber-400 font-mono font-bold">STEP 3: ORDER SUMMARY</div>
           </div>
         </div>
 
@@ -498,22 +498,22 @@
           <!-- Items List Card -->
           <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
             <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center justify-between">
-              <span>📋 Items in this Round</span>
+              <span>📋 Order Items</span>
               <span id="review-items-badge" class="text-[10px] font-mono text-amber-400 font-bold">0 Items</span>
             </div>
             <div id="review-items-list" class="space-y-2">
               <!-- Rendered dynamically -->
             </div>
             <div class="mt-3 pt-2.5 border-t border-[#232a3c] flex items-center justify-between text-xs font-black">
-              <span class="text-neutral-300">Round Subtotal:</span>
+              <span class="text-neutral-300">Order Subtotal:</span>
               <span id="review-round-subtotal" class="font-mono text-amber-400 text-sm">₹0</span>
             </div>
           </div>
 
-          <!-- Special Kitchen Cooking Instructions -->
+          <!-- Special Instructions / Notes -->
           <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
             <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center gap-1.5">
-              <span>👨‍🍳 Kitchen Cooking Notes</span>
+              <span>📝 Special Instructions / Notes</span>
             </div>
             
             <!-- Quick Instruction 1-Tap Chips -->
@@ -526,22 +526,22 @@
               <button type="button" onclick="APP.toggleKitchenNoteChip(this, '🧊 Extra Ice')" class="kitchen-note-chip px-2.5 py-1 rounded-xl bg-[#191e2b] hover:bg-[#242b3d] text-[10px] font-bold text-neutral-300 border border-[#2d364b] transition-all">🧊 Extra Ice</button>
             </div>
 
-            <!-- Custom Kitchen Instruction Input -->
+            <!-- Custom Note Input -->
             <input 
               id="review-kitchen-custom-note"
               type="text" 
-              placeholder="Custom instructions for chef (e.g. deliver drinks before food)..."
+              placeholder="Custom instructions (e.g. deliver drinks before food, extra glasses)..."
               class="w-full bg-[#181c28] border border-[#2b3347] rounded-xl px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400">
           </div>
         </div>
 
-        <!-- Bottom Action: Huge Send to Kitchen Button -->
+        <!-- Bottom Action: Huge Confirm & Save Order Button -->
         <div class="p-3 bg-[#131722] border-t-2 border-amber-500/50 shadow-2xl">
           <button 
             id="review-punch-kot-btn"
             onclick="APP.punchOrderFromReview()" 
             class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-black font-black text-sm uppercase tracking-wider rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2">
-            <span>🔥 SEND TO KITCHEN (PUNCH KOT)</span>
+            <span>✅ CONFIRM & SAVE ORDER</span>
           </button>
         </div>
       </div>
@@ -561,11 +561,11 @@
 
         <!-- Bill Content (Scrollable) -->
         <div class="flex-1 overflow-y-auto p-3 space-y-3">
-          <!-- Active KOTs Breakdown -->
+          <!-- Active Orders Breakdown -->
           <div class="bg-[#131722] border border-[#252c3e] rounded-2xl p-3 shadow">
             <div class="text-xs font-black uppercase tracking-wider text-neutral-400 mb-2 flex items-center justify-between">
-              <span>🔥 Running Kitchen Orders (KOTs)</span>
-              <span id="bill-kots-count" class="text-[10px] font-mono text-amber-400 font-bold">0 KOTs</span>
+              <span>📋 Placed Order Details</span>
+              <span id="bill-kots-count" class="text-[10px] font-mono text-amber-400 font-bold">0 Items</span>
             </div>
             <div id="bill-running-kots-list" class="space-y-2">
               <!-- Rendered dynamically -->

@@ -810,8 +810,7 @@ const APP = {
 
     const titleEl = document.getElementById('review-screen-table-title');
     if (titleEl) {
-      const placedKots = (liveTable.placedOrders || []).length;
-      titleEl.textContent = `${table.name} • ${placedKots > 0 ? 'Next Round' : 'Round 1'}`;
+      titleEl.textContent = `${table.name} • Order Summary`;
     }
 
     const badgeEl = document.getElementById('review-items-badge');
@@ -2575,7 +2574,7 @@ const APP = {
     this.renderFloorTables();
     this.updateFloorBottomDock();
     this.updateTableHeaderBadges();
-    this.showToast(`🔥 ${count} item(s) punched to ${tableName}! Saved to Database.`);
+    this.showToast(`✅ ${count} item(s) saved for ${tableName}!`);
 
     // Automated Step-by-Step Flow: Return to Floor Screen ready for next table!
     if (this.state.currentView === 'app') {
