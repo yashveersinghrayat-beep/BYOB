@@ -8,7 +8,24 @@ const url = require('url');
 const os = require('os');
 const DB = require('./backend/database.js');
 const SupabaseBridge = require('./backend/supabase-bridge.js');
-const { KitchenPrinterAddon, KITCHEN_PRINTER_CONFIG } = require('./backend/kitchen-printer-addon.js');
+
+// Modular Kitchen Thermal Printer Add-on with Safe Cloud Fallback
+let KitchenPrinterAddon;
+let KITCHEN_PRINTER_CONFIG = { enabled: false, printerIp: '192.168.1.222', printerPort: 9100 };
+try {
+  const mod = require('./backend/kitchen-printer-addon.js');
+  KitchenPrinterAddon = mod.KitchenPrinterAddon;
+  KITCHEN_PRINTER_CONFIG = mod.KITCHEN_PRINTER_CONFIG;
+} catch (e) {
+  KitchenPrinterAddon = class {
+    constructor(broadcast) { this.broadcast = broadcast || (() => {}); this.isOnline = false; this.pendingQueue = []; }
+    isEnabled() { return false; }
+    async printKot() {}
+    async printTransferSlip() {}
+    async printVoidSlip() {}
+    async retryPending() { return { success: true, count: 0, remaining: 0 }; }
+  };
+}
 
 const PORT = process.env.PORT || 3000;
 
