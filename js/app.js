@@ -5,6 +5,7 @@ const APP = {
   CURRENT_VERSION: "2.4",
 
   state: {
+    lang: localStorage.getItem('onyx_lang') || 'en',
     currentView: "app", // 'app' (Handheld Waiter) | 'web' (Billing Counter POS)
     appScreen: "tables", // 'tables' (Default: Floor Map) | 'menu' (Order Taking)
     subMode: "speed", // 'speed' (High-speed 1-tap waiter grid) | 'visual' (Photos)
@@ -471,6 +472,158 @@ const APP = {
     }
   },
 
+  // ================= 0B. BILINGUAL LANGUAGE ENGINE (ENGLISH / हिंदी) =================
+  setLanguage(lang) {
+    this.haptic('selection');
+    if (lang !== 'en' && lang !== 'hi') lang = 'en';
+    this.state.lang = lang;
+    if (typeof I18N !== 'undefined') {
+      I18N.setLanguage(lang);
+    } else {
+      try { localStorage.setItem('onyx_lang', lang); } catch (e) {}
+    }
+    this.updateLanguageUI();
+    this.showToast(lang === 'hi' ? '🇮🇳 भाषा बदलकर हिंदी कर दी गई है' : '🇬🇧 Language switched to English');
+  },
+
+  updateLanguageUI() {
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const t = (k, fb) => (typeof I18N !== 'undefined') ? I18N.t(k, fb) : (fb || k);
+
+    // 1. Header Language Switcher Buttons
+    const btnEn = document.getElementById('btn-lang-en');
+    const btnHi = document.getElementById('btn-lang-hi');
+    if (btnEn && btnHi) {
+      if (isHi) {
+        btnEn.className = 'px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all';
+        btnHi.className = 'px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black shadow';
+      } else {
+        btnEn.className = 'px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black shadow';
+        btnHi.className = 'px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all';
+      }
+    }
+
+    // 2. Viewport Header Buttons
+    const vApp = document.getElementById('btn-view-app');
+    const vWeb = document.getElementById('btn-view-web');
+    const vMgr = document.getElementById('btn-view-manager');
+    if (vApp) vApp.innerHTML = `<span>${t('waiterTerminal', '📱 Waiter Terminal')}</span>`;
+    if (vWeb) vWeb.innerHTML = `<span>${t('cashierCounter', '🖥️ Cashier Counter')}</span>`;
+    if (vMgr) vMgr.innerHTML = `<span>${t('operationsConsole', '👑 Operations Console')}</span>`;
+
+    // 3. Screen 1: Floor & Tables
+    const floorHdr = document.getElementById('floor-header-title');
+    if (floorHdr) floorHdr.textContent = t('floorTables', '🪑 Floor Tables');
+    const legFree = document.getElementById('legend-label-free');
+    if (legFree) legFree.textContent = t('free', 'Free');
+    const legOcc = document.getElementById('legend-label-occ');
+    if (legOcc) legOcc.textContent = t('occupied', 'Occupied');
+
+    const tabGf = document.getElementById('tab-label-gf');
+    if (tabGf) tabGf.textContent = t('groundFloor', 'Ground Floor (18)');
+    const tabF1 = document.getElementById('tab-label-f1');
+    if (tabF1) tabF1.textContent = t('firstFloor', '1st Floor (7)');
+    const tabF2 = document.getElementById('tab-label-f2');
+    if (tabF2) tabF2.textContent = t('secondFloor', '2nd Floor (17)');
+    const tabAll = document.getElementById('tab-label-all');
+    if (tabAll) tabAll.textContent = t('allFloors', 'All (42)');
+
+    const actionNotice = document.getElementById('floor-action-notice');
+    if (actionNotice) actionNotice.textContent = t('touchTableNotice', '⚡ Touch any table to take order');
+    const wfLabel = document.getElementById('floor-workflow-label');
+    if (wfLabel) wfLabel.textContent = t('oneTapWorkflow', '1-Tap Workflow');
+
+    // 4. Screen 2: Menu & Items
+    const subLandmark = document.getElementById('app-sub-landmark');
+    if (subLandmark) subLandmark.textContent = t('changeTable', 'Change Table');
+    const menuBillLabel = document.getElementById('menu-header-bill-label');
+    if (menuBillLabel) menuBillLabel.textContent = t('runningBillHeader', '🧾 Running:');
+
+    const searchInput = document.getElementById('app-search-input');
+    if (searchInput) searchInput.placeholder = t('searchPlaceholder', "Search dishes & drinks (e.g. 'naan', 'tikka', 'ice')...");
+    const webSearchInput = document.getElementById('web-search-input');
+    if (webSearchInput) webSearchInput.placeholder = t('searchPlaceholder', "Search dishes & drinks (e.g. 'naan', 'tikka', 'ice')...");
+
+    const dietAll = document.getElementById('app-diet-all');
+    if (dietAll) dietAll.textContent = t('dietAll', 'All');
+    const dietVeg = document.getElementById('app-diet-veg');
+    if (dietVeg) dietVeg.textContent = t('dietVeg', '🟢 Veg');
+    const dietNonveg = document.getElementById('app-diet-nonveg');
+    if (dietNonveg) dietNonveg.textContent = t('dietNonveg', '🔴 Non');
+
+    const barTrayHint = document.getElementById('app-bar-tray-hint');
+    if (barTrayHint) barTrayHint.textContent = t('roundNotSent', 'Current round items');
+    const barReviewLabel = document.getElementById('app-bar-review-label');
+    if (barReviewLabel) barReviewLabel.textContent = t('confirmOrderBtn', 'Confirm Order →');
+
+    // 5. Screen 3: Order Summary & Review
+    const revBackBtn = document.getElementById('review-back-btn');
+    if (revBackBtn) revBackBtn.innerHTML = `<span class="text-amber-400 font-black">←</span> <span>${t('backToMenu', 'Back to Menu')}</span>`;
+    const revStepLabel = document.getElementById('review-step-label');
+    if (revStepLabel) revStepLabel.textContent = t('orderSummaryStep', 'STEP 3: ORDER SUMMARY');
+    const revItemsHdr = document.getElementById('review-items-heading');
+    if (revItemsHdr) revItemsHdr.textContent = t('orderItemsHeading', '📋 Order Items');
+    const revSubLabel = document.getElementById('review-subtotal-label');
+    if (revSubLabel) revSubLabel.textContent = t('orderSubtotal', 'Order Subtotal:');
+    const revNotesHdr = document.getElementById('review-notes-heading');
+    if (revNotesHdr) revNotesHdr.textContent = t('specialInstructionsHeading', '📝 Special Instructions / Notes');
+
+    const chipLessSpicy = document.getElementById('note-chip-less-spicy');
+    if (chipLessSpicy) chipLessSpicy.textContent = t('lessSpicy', '🌶️ Less Spicy');
+    const chipExtraSpicy = document.getElementById('note-chip-extra-spicy');
+    if (chipExtraSpicy) chipExtraSpicy.textContent = t('extraSpicy', '🌶️ Extra Spicy');
+    const chipLessOil = document.getElementById('note-chip-less-oil');
+    if (chipLessOil) chipLessOil.textContent = t('lessOil', '🍃 Less Oil');
+    const chipJain = document.getElementById('note-chip-jain');
+    if (chipJain) chipJain.textContent = t('jainNote', '🧄 Jain (No Onion/Garlic)');
+    const chipStarters = document.getElementById('note-chip-starters-first');
+    if (chipStarters) chipStarters.textContent = t('startersFirst', '🕒 Starters First');
+    const chipIce = document.getElementById('note-chip-extra-ice');
+    if (chipIce) chipIce.textContent = t('extraIce', '🧊 Extra Ice');
+
+    const revCustomInput = document.getElementById('review-kitchen-custom-note');
+    if (revCustomInput) revCustomInput.placeholder = t('customNotesPlaceholder', 'Custom instructions...');
+    const revPunchLabel = document.getElementById('review-punch-btn-label');
+    if (revPunchLabel) revPunchLabel.textContent = t('confirmSaveOrderBtn', '✅ CONFIRM & SAVE ORDER');
+
+    // 6. Screen 4: Running Bill & Settle
+    const billBackBtn = document.getElementById('bill-back-btn');
+    if (billBackBtn) billBackBtn.innerHTML = `<span class="text-amber-400 font-black">←</span> <span>${t('backToTables', 'Floor Tables')}</span>`;
+    const billDetailsHdr = document.getElementById('bill-details-heading');
+    if (billDetailsHdr) billDetailsHdr.textContent = t('placedOrderDetailsHeading', '📋 Placed Order Details');
+    const billSummaryHdr = document.getElementById('bill-summary-heading');
+    if (billSummaryHdr) billSummaryHdr.textContent = t('paymentSummaryHeading', '🧾 Payment Summary');
+    const billSubLabel = document.getElementById('bill-label-subtotal');
+    if (billSubLabel) billSubLabel.textContent = t('itemsSubtotalLabel', 'Items Subtotal:');
+    const billGstLabel = document.getElementById('bill-label-gst');
+    if (billGstLabel) billGstLabel.textContent = t('gstLabel', 'GST (5%):');
+    const billRoundLabel = document.getElementById('bill-label-roundoff');
+    if (billRoundLabel) billRoundLabel.textContent = t('roundOffLabel', 'Round Off:');
+    const billGrandLabel = document.getElementById('bill-label-grandtotal');
+    if (billGrandLabel) billGrandLabel.textContent = t('grandTotalLabel', 'Grand Total:');
+
+    const billAddMore = document.getElementById('bill-btn-add-more');
+    if (billAddMore) billAddMore.innerHTML = `<span>${t('addMoreFoodBtn', '➕ Add More Food / Drinks')}</span>`;
+    const billPrint = document.getElementById('bill-btn-print');
+    if (billPrint) billPrint.innerHTML = `<span>${t('printBillBtn', '🖨️ Print Bill')}</span>`;
+    const billSettle = document.getElementById('bill-btn-settle');
+    if (billSettle) billSettle.innerHTML = `<span>${t('settlePaymentBtn', '💳 Settle Payment (Cash / UPI) →')}</span>`;
+
+    // 7. Table Action Sheet
+    const sheetTakeOrder = document.getElementById('sheet-btn-take-order');
+    if (sheetTakeOrder) sheetTakeOrder.innerHTML = `<span>${t('takeOrderOption', '➕ Take Order / Add Items →')}</span>`;
+    const sheetViewBill = document.getElementById('sheet-btn-view-bill');
+    if (sheetViewBill) sheetViewBill.innerHTML = `<span>${t('viewBillOption', '🧾 View Running Bill & Settlement →')}</span>`;
+
+    // 8. Re-render dynamic active parts
+    this.renderCategories();
+    this.renderMenuItems();
+    this.renderFloorTables();
+    if (this.state.appScreen === 'review') this.renderReviewScreen();
+    if (this.state.appScreen === 'bill') this.renderRunningBillScreen();
+    this.updateCartUI();
+  },
+
   init() {
     this.checkFreshStartReset();
     this.loadLocalCarts(); // Restore draft carts on reload (Item 9)
@@ -482,6 +635,10 @@ const APP = {
     this.setupPhoneFeatures();
     this.setView(this.state.currentView || 'app');
     this.setFloorFilter('all');
+    if (typeof I18N !== 'undefined') {
+      I18N.setLanguage(this.state.lang || 'en');
+    }
+    this.updateLanguageUI();
     this.renderAll();
     this.updateCartUI();
     this.updateTableHeaderBadges();
@@ -810,11 +967,15 @@ const APP = {
 
     const titleEl = document.getElementById('review-screen-table-title');
     if (titleEl) {
-      titleEl.textContent = `${table.name} • Order Summary`;
+      const summaryTitle = (typeof I18N !== 'undefined') ? I18N.t('orderSummaryTitle', 'Order Summary') : 'Order Summary';
+      titleEl.textContent = `${table.name} • ${summaryTitle}`;
     }
 
     const badgeEl = document.getElementById('review-items-badge');
-    if (badgeEl) badgeEl.textContent = `${count} Items`;
+    if (badgeEl) {
+      const itemLabel = (typeof I18N !== 'undefined') ? (count === 1 ? I18N.t('itemCountSingular', 'Item') : I18N.t('itemsCountSuffix', 'Items')) : 'Items';
+      badgeEl.textContent = `${count} ${itemLabel}`;
+    }
 
     const subtotalEl = document.getElementById('review-round-subtotal');
     if (subtotalEl) subtotalEl.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
@@ -822,13 +983,16 @@ const APP = {
     const listEl = document.getElementById('review-items-list');
     if (listEl) {
       if (cart.length === 0) {
-        listEl.innerHTML = `<div class="py-6 text-center text-neutral-500 text-xs font-medium">Round is empty. Tap 'Back to Menu' to add items.</div>`;
+        const emptyMsg = (typeof I18N !== 'undefined') ? I18N.t('cartEmptyWarning', 'Round is empty. Tap Back to Menu to add items.') : 'Round is empty. Tap Back to Menu to add items.';
+        listEl.innerHTML = `<div class="py-6 text-center text-neutral-500 text-xs font-medium">${emptyMsg}</div>`;
       } else {
-        listEl.innerHTML = cart.map(item => `
+        listEl.innerHTML = cart.map(item => {
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
+          return `
           <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#0b0e15] border border-[#232b3d]">
             <div class="flex-1 min-w-0 pr-2">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-bold text-white truncate">${item.name}</span>
+                <span class="text-xs font-bold text-white truncate">${displayName}</span>
               </div>
               <div class="text-[11px] text-amber-400 font-mono font-bold mt-0.5">
                 ₹${item.price} × ${item.qty} = ₹${(item.price * item.qty).toLocaleString('en-IN')}
@@ -847,7 +1011,8 @@ const APP = {
               </button>
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
     }
   },
@@ -933,21 +1098,29 @@ const APP = {
     const roundOff = Math.round((grandTotal - rawTotal) * 100) / 100;
 
     const titleEl = document.getElementById('bill-screen-table-title');
-    if (titleEl) titleEl.textContent = `${table.name} • Running Bill`;
+    if (titleEl) {
+      const runningText = (typeof I18N !== 'undefined') ? I18N.t('runningBillTitle', 'Running Bill') : 'Running Bill';
+      titleEl.textContent = `${table.name} • ${runningText}`;
+    }
 
     const badgeEl = document.getElementById('bill-screen-status-badge');
     if (badgeEl) {
       if (subtotal > 0 || liveTable.status === 'occupied') {
+        const occText = (typeof I18N !== 'undefined') ? I18N.t('occupied', 'OCCUPIED') : 'OCCUPIED';
         badgeEl.className = "text-[9px] text-red-400 font-mono font-bold";
-        badgeEl.textContent = "🔴 OCCUPIED";
+        badgeEl.textContent = `🔴 ${occText.toUpperCase()}`;
       } else {
+        const freeText = (typeof I18N !== 'undefined') ? I18N.t('free', 'FREE') : 'FREE';
         badgeEl.className = "text-[9px] text-emerald-400 font-mono font-bold";
-        badgeEl.textContent = "🟢 FREE";
+        badgeEl.textContent = `🟢 ${freeText.toUpperCase()}`;
       }
     }
 
     const countEl = document.getElementById('bill-kots-count');
-    if (countEl) countEl.textContent = `${placedOrders.length} Items`;
+    if (countEl) {
+      const itemsWord = (typeof I18N !== 'undefined') ? I18N.t('itemsCountSuffix', 'Items') : 'Items';
+      countEl.textContent = `${placedOrders.length} ${itemsWord}`;
+    }
 
     const subtotalEl = document.getElementById('bill-screen-subtotal');
     if (subtotalEl) subtotalEl.textContent = `₹${subtotal.toLocaleString('en-IN')}`;
@@ -964,19 +1137,23 @@ const APP = {
     const listEl = document.getElementById('bill-running-kots-list');
     if (listEl) {
       if (placedOrders.length === 0) {
-        listEl.innerHTML = `<div class="py-6 text-center text-neutral-500 text-xs font-medium">No placed orders on this table yet. Tap 'Add More Food / Drinks' to take order.</div>`;
+        const noOrdersMsg = (typeof I18N !== 'undefined') ? I18N.t('noOrdersPlaced', 'No placed orders on this table yet. Tap Add More Food / Drinks to take order.') : 'No placed orders on this table yet. Tap Add More Food / Drinks to take order.';
+        listEl.innerHTML = `<div class="py-6 text-center text-neutral-500 text-xs font-medium">${noOrdersMsg}</div>`;
       } else {
-        listEl.innerHTML = placedOrders.map((item, idx) => `
+        listEl.innerHTML = placedOrders.map((item, idx) => {
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
+          return `
           <div class="flex items-center justify-between py-2 border-b border-[#232a3c] text-xs">
             <div class="flex-1 min-w-0 pr-2">
-              <div class="text-neutral-200 font-bold truncate">${item.name}</div>
+              <div class="text-neutral-200 font-bold truncate">${displayName}</div>
               <div class="text-[10px] text-neutral-400 font-mono">${item.qty} × ₹${item.price} ${item.notes ? `• <span class="text-amber-300">📝 ${item.notes}</span>` : ''}</div>
             </div>
             <div class="font-mono font-bold text-white text-right">
               ₹${(item.price * item.qty).toLocaleString('en-IN')}
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
     }
   },
@@ -987,14 +1164,19 @@ const APP = {
     this.state.selectedTableId = tableId;
     const table = this.getTable();
     const liveTable = this.getLiveTable();
-    const subtotal = liveTable.currentSubtotal || (liveTable.placedOrders || []).reduce((s, i) => s + (i.price * i.qty), 0);
+    const placed = liveTable.placedOrders || [];
+    const subtotal = liveTable.currentSubtotal || placed.reduce((s, i) => s + (i.price * i.qty), 0);
 
     const nameEl = document.getElementById('sheet-table-name');
     if (nameEl) nameEl.textContent = `${table.name} (${table.position})`;
 
     const statusEl = document.getElementById('sheet-table-status');
     if (statusEl) {
-      statusEl.textContent = `🔴 Occupied • Active Bill: ₹${subtotal.toLocaleString('en-IN')} (${(liveTable.placedOrders || []).length} items)`;
+      if (typeof I18N !== 'undefined' && I18N.currentLang === 'hi') {
+        statusEl.textContent = `🔴 व्यस्त • चालू बिल: ₹${subtotal.toLocaleString('en-IN')} (${placed.length} आइटम)`;
+      } else {
+        statusEl.textContent = `🔴 Occupied • Active Bill: ₹${subtotal.toLocaleString('en-IN')} (${placed.length} items)`;
+      }
     }
 
     const sheet = document.getElementById('table-action-sheet');
@@ -1381,11 +1563,20 @@ const APP = {
       ? RESTAURANT_TABLES 
       : RESTAURANT_TABLES.filter(t => t.floor === currentFloor);
 
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const freeBadge = isHi ? 'खाली' : 'FREE';
+    const occBadge = isHi ? 'व्यस्त' : 'OCC';
+    const availText = isHi ? 'उपलब्ध' : 'Available';
+    const seatsSuffix = isHi ? 'सीट' : 's';
+    const ordersWord = isHi ? 'ऑर्डर' : 'KOT';
+
     const summaryBadge = document.getElementById('floor-summary-badge');
     if (summaryBadge) {
+      const tablesWord = isHi ? 'टेबल' : 'Tables';
+      const floorDisp = (typeof I18N !== 'undefined') ? I18N.getFloorName(currentFloor) : currentFloor;
       summaryBadge.textContent = currentFloor === 'all' 
-        ? '42 Tables (All Floors)' 
-        : `${filteredTables.length} Tables (${currentFloor})`;
+        ? `42 ${tablesWord} (${floorDisp})` 
+        : `${filteredTables.length} ${tablesWord} (${floorDisp})`;
     }
 
     // 1. Mobile Floor Grid (Used in app-screen-tables)
@@ -1408,7 +1599,7 @@ const APP = {
 
         if (isOccupied) {
           cardClass = isCurrent ? "table-card-selected-occupied ring-2 ring-amber-400" : "table-card-occupied";
-          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white font-mono">OCC</span>`;
+          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white font-mono">${occBadge}</span>`;
           middleHtml = `
             <div class="my-0.5">
               <div class="text-xs font-black font-mono text-red-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
@@ -1416,21 +1607,21 @@ const APP = {
           `;
           footerHtml = `
             <div class="flex items-center justify-between text-[9px] pt-1 border-t border-red-500/30 text-neutral-300 font-medium w-full">
-              <span>👥 ${t.seats}s</span>
-              <span class="text-amber-300 font-mono font-bold">${placedOrders.length} KOT</span>
+              <span>👥 ${t.seats} ${seatsSuffix}</span>
+              <span class="text-amber-300 font-mono font-bold">${placedOrders.length} ${ordersWord}</span>
             </div>
           `;
         } else {
           cardClass = isCurrent ? "table-card-selected-free ring-2 ring-amber-400" : (draftCount > 0 ? "table-card-free border border-amber-400/80" : "table-card-free");
-          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-black">FREE</span>`;
+          headerBadge = `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-black">${freeBadge}</span>`;
           middleHtml = `
             <div class="my-0.5">
-              <div class="text-[11px] font-bold text-emerald-400/90 leading-tight">${draftCount > 0 ? `🟡 +${draftCount}` : 'Available'}</div>
+              <div class="text-[11px] font-bold text-emerald-400/90 leading-tight">${draftCount > 0 ? `🟡 +${draftCount}` : availText}</div>
             </div>
           `;
           footerHtml = `
             <div class="flex items-center justify-between text-[9px] pt-1 border-t border-emerald-500/30 text-neutral-400 font-medium w-full">
-              <span>👥 ${t.seats}s</span>
+              <span>👥 ${t.seats} ${seatsSuffix}</span>
               <span class="truncate font-mono">${cleanPosition}</span>
             </div>
           `;
@@ -1471,7 +1662,7 @@ const APP = {
             statusBadge = `🔴 ₹${subtotal.toLocaleString('en-IN')}`;
           } else {
             btnClasses = "bg-emerald-600 text-white border-2 border-yellow-300 font-black shadow-[0_0_16px_rgba(16,185,129,0.9)] scale-105 z-10 ring-2 ring-yellow-400";
-            statusBadge = "🟢 Free";
+            statusBadge = isHi ? "🟢 खाली" : "🟢 Free";
           }
         } else if (isOccupied) {
           btnClasses = "bg-[#450e17] text-white border-2 border-red-500 hover:border-red-400 font-bold shadow-[0_3px_10px_rgba(239,68,68,0.35)]";
@@ -1480,7 +1671,7 @@ const APP = {
           btnClasses = draftCount > 0 
             ? "bg-[#251e08] text-amber-200 border-2 border-amber-400 font-bold shadow-[0_3px_10px_rgba(245,158,11,0.3)]"
             : "bg-[#083822] text-emerald-100 border-2 border-emerald-500 hover:border-emerald-400 font-bold shadow-[0_3px_10px_rgba(16,185,129,0.25)]";
-          statusBadge = "🟢 Free";
+          statusBadge = isHi ? "🟢 खाली" : "🟢 Free";
         }
 
         if (draftCount > 0) {
@@ -1516,6 +1707,7 @@ const APP = {
     if (categoryPills) {
       categoryPills.innerHTML = CATEGORIES.map(c => {
         const active = this.state.activeCategory === c.id;
+        const catName = (typeof I18N !== 'undefined') ? I18N.getCategoryName(c) : c.name;
         return `
           <button 
             type="button"
@@ -1526,7 +1718,7 @@ const APP = {
                 : 'bg-[#161a25] text-neutral-300 border border-[#273042] hover:text-white'
             }">
             <span>${c.icon}</span>
-            <span>${c.name}</span>
+            <span>${catName}</span>
           </button>
         `;
       }).join('');
@@ -1537,12 +1729,13 @@ const APP = {
     if (appRail) {
       appRail.innerHTML = CATEGORIES.map(c => {
         const active = this.state.activeCategory === c.id;
+        const catName = (typeof I18N !== 'undefined') ? I18N.getCategoryName(c) : c.name;
         return `
           <button 
             onclick="APP.setCategory('${c.id}')"
             class="rail-btn ${active ? 'active' : ''}">
             <span class="text-base mb-0.5">${c.icon}</span>
-            <span>${c.name}</span>
+            <span>${catName}</span>
           </button>
         `;
       }).join('');
@@ -1553,6 +1746,7 @@ const APP = {
     if (webBar) {
       webBar.innerHTML = CATEGORIES.map(c => {
         const active = this.state.activeCategory === c.id;
+        const catName = (typeof I18N !== 'undefined') ? I18N.getCategoryName(c) : c.name;
         return `
           <button 
             onclick="APP.setCategory('${c.id}')"
@@ -1561,7 +1755,7 @@ const APP = {
                 ? 'bg-amber-500 text-black shadow-md' 
                 : 'bg-[#181c28] text-neutral-300 hover:text-white border border-[#2b3347]'
             }">
-            <span>${c.icon}</span> <span class="ml-1">${c.name}</span>
+            <span>${c.icon}</span> <span class="ml-1">${catName}</span>
           </button>
         `;
       }).join('');
@@ -1665,7 +1859,8 @@ const APP = {
 
       items = items.filter(i => {
         const name = i.name.toLowerCase();
-        if (name.includes(q)) return true;
+        const hindiName = (typeof I18N !== 'undefined' && I18N.dishes[i.id]) ? I18N.dishes[i.id].toLowerCase() : '';
+        if (name.includes(q) || hindiName.includes(q)) return true;
         const acronym = name.split(/\s+/).map(w => w[0]).join('');
         if (acronym.startsWith(q) || acronym.includes(q)) return true;
         if (matchedAliases.some(al => name.includes(al))) return true;
@@ -1701,6 +1896,8 @@ const APP = {
           const isVeg = this.isItemVeg(item);
           const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
+          const addBtnLabel = (typeof I18N !== 'undefined') ? I18N.t('addBtn', '+ Add') : '+ Add';
 
           return `
             <div class="speed-tile ${qty > 0 ? 'has-qty' : ''}">
@@ -1708,12 +1905,12 @@ const APP = {
                 
                 <!-- Crisp Food Thumbnail (Recognizable at a glance in small tile) -->
                 <div class="w-12 h-12 rounded-xl overflow-hidden bg-neutral-900 border border-[#2b3447] flex-shrink-0 relative shadow-sm cursor-pointer group" onclick="event.stopPropagation(); APP.openPhotoModal('${item.id}')" title="Tap to preview dish">
-                  <img src="${item.image}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-200">
+                  <img src="${item.image}" alt="${displayName}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-200">
                   <span class="${isVeg ? 'badge-veg' : 'badge-nonveg'} absolute top-1 left-1 ring-1 ring-black shadow"></span>
                 </div>
 
                 <div class="truncate flex-1 min-w-0">
-                  <div class="text-xs font-black text-white truncate leading-tight">${item.name}</div>
+                  <div class="text-xs font-black text-white truncate leading-tight">${displayName}</div>
                   <div class="text-xs font-bold text-amber-400 font-mono mt-0.5">₹${item.price}</div>
                   ${noteText ? `<div class="text-[10px] text-amber-300 font-semibold truncate flex items-center gap-1 mt-0.5"><span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">📝 ${noteText}</span></div>` : ''}
 
@@ -1756,7 +1953,7 @@ const APP = {
                   <button 
                     onclick="APP.addItem('${item.id}')"
                     class="h-7 px-3 bg-[#1a1f2e] hover:bg-amber-400 hover:text-black text-amber-300 font-extrabold text-xs rounded-xl border border-amber-400/50 transition-all flex items-center gap-1 active:scale-90 shadow-sm">
-                    <span>+ Add</span>
+                    <span>${addBtnLabel}</span>
                   </button>
                 `}
               </div>
@@ -1771,13 +1968,15 @@ const APP = {
           const isVeg = this.isItemVeg(item);
           const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
+          const addBtnLabel = (typeof I18N !== 'undefined') ? I18N.t('addBtn', '+ Add') : '+ Add';
 
           return `
             <div class="menu-card p-3 flex gap-3 items-center justify-between">
               <div class="flex-1 pr-2">
                 <div class="flex items-center gap-1.5 mb-1">
                   <span class="${isVeg ? 'badge-veg' : 'badge-nonveg'}"></span>
-                  <h3 class="text-xs font-bold text-white leading-snug">${item.name}</h3>
+                  <h3 class="text-xs font-bold text-white leading-snug">${displayName}</h3>
                 </div>
                 <div class="text-xs font-bold text-amber-400 font-mono mb-1">₹${item.price}</div>
                 <p class="text-[10px] text-neutral-400 line-clamp-2">${item.desc || item.description || ''}</p>
@@ -1798,7 +1997,7 @@ const APP = {
 
               <div class="flex flex-col items-center flex-shrink-0 w-20">
                 <div class="w-16 h-16 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800 mb-1.5 cursor-pointer group relative shadow-md" onclick="APP.openPhotoModal('${item.id}')" title="Tap to preview dish">
-                  <img src="${item.image}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-200">
+                  <img src="${item.image}" alt="${displayName}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-200">
                   <span class="absolute bottom-0.5 right-0.5 px-1 py-0.2 rounded bg-black/60 text-[8px] text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">🔍</span>
                 </div>
                 ${qty > 0 ? `
@@ -1818,7 +2017,7 @@ const APP = {
                       📝
                     </button>
                     <button onclick="APP.addItem('${item.id}')" class="flex-1 py-1 bg-amber-500/10 hover:bg-amber-500 hover:text-black text-amber-400 border border-amber-500/50 text-[10px] font-extrabold rounded">
-                      + ADD
+                      ${addBtnLabel}
                     </button>
                   </div>
                 `}
@@ -1844,6 +2043,8 @@ const APP = {
           const isVeg = this.isItemVeg(item);
           const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
+          const addBtnLabel = (typeof I18N !== 'undefined') ? I18N.t('addBtn', '+ ADD') : '+ ADD';
 
           return `
             <div class="menu-card p-3.5 flex gap-3 items-center justify-between rounded-2xl transition-all ${
@@ -1852,7 +2053,7 @@ const APP = {
               <div class="flex-1 pr-2">
                 <div class="flex items-center gap-1.5 mb-1">
                   <span class="${isVeg ? 'badge-veg' : 'badge-nonveg'}"></span>
-                  <h3 class="text-sm font-bold text-white leading-snug">${item.name}</h3>
+                  <h3 class="text-sm font-bold text-white leading-snug">${displayName}</h3>
                 </div>
                 <div class="text-sm font-bold text-amber-400 font-mono mb-1">₹${item.price}</div>
                 <p class="text-xs text-neutral-400 line-clamp-2">${item.desc || item.description || ''}</p>
@@ -1874,7 +2075,7 @@ const APP = {
 
               <div class="flex flex-col items-center flex-shrink-0 w-24">
                 <div class="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 mb-2 cursor-pointer group relative shadow-md" onclick="APP.openPhotoModal('${item.id}')" title="Tap to preview dish">
-                  <img src="${item.image}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-200">
+                  <img src="${item.image}" alt="${displayName}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-200">
                   <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/75 text-[9px] text-amber-300 font-bold backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">🔍 View</span>
                 </div>
 
@@ -1900,7 +2101,7 @@ const APP = {
                     <button 
                       onclick="APP.addItem('${item.id}')"
                       class="flex-1 py-1.5 bg-[#1e222e] border border-amber-400/60 hover:bg-amber-400 hover:text-black text-amber-300 text-xs uppercase font-extrabold rounded-xl transition-all shadow-sm">
-                      + ADD
+                      ${addBtnLabel}
                     </button>
                   </div>
                 `}
@@ -2421,9 +2622,11 @@ const APP = {
       if (count > 0) {
         menuBottomBar.classList.remove('hidden');
         menuBottomBar.style.setProperty('display', 'flex', 'important');
-        if (barItemsCount) barItemsCount.textContent = `${count} Item${count > 1 ? 's' : ''}`;
+        const suffix = (typeof I18N !== 'undefined') ? (count === 1 ? I18N.t('itemCountSingular', 'Item') : I18N.t('itemsCountSuffix', 'Items')) : 'Items';
+        if (barItemsCount) barItemsCount.textContent = `${count} ${suffix}`;
         if (barRoundTotal) barRoundTotal.textContent = `₹${roundTotal.toLocaleString('en-IN')}`;
-        if (barReviewBtn) barReviewBtn.innerHTML = `<span>Review Order (${count}) →</span>`;
+        const btnText = (typeof I18N !== 'undefined') ? I18N.t('confirmOrderBtn', 'Confirm Order →') : 'Confirm Order →';
+        if (barReviewBtn) barReviewBtn.innerHTML = `<span id="app-bar-review-label">${btnText}</span>`;
       } else {
         menuBottomBar.classList.add('hidden');
         menuBottomBar.style.setProperty('display', 'none', 'important');
@@ -2440,11 +2643,13 @@ const APP = {
       if (cart.length === 0) {
         trayDrawerItems.innerHTML = `<div class="py-2.5 text-center text-neutral-500 text-[11px] font-medium">Round tray is empty. Tap '+ Add' on any dish to take order.</div>`;
       } else {
-        trayDrawerItems.innerHTML = cart.map(c => `
+        trayDrawerItems.innerHTML = cart.map(c => {
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(c) : c.name;
+          return `
           <div class="flex items-center justify-between p-2 rounded-xl bg-[#0b0e15] border border-[#232b3d]">
             <div class="flex-1 min-w-0 pr-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-white truncate">${c.name}</span>
+                <span class="text-xs font-bold text-white truncate">${displayName}</span>
                 <span class="text-xs font-mono font-bold text-amber-400">₹${c.price * c.qty}</span>
               </div>
               ${c.notes ? `<div class="text-[10px] text-amber-300 font-semibold truncate flex items-center gap-1 mt-0.5"><span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">📝 ${c.notes}</span></div>` : ''}
@@ -2469,7 +2674,8 @@ const APP = {
               </div>
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
     }
 
@@ -2485,12 +2691,13 @@ const APP = {
     const posStatusPill = document.getElementById('pos-table-status-pill');
 
     if (posStatusPill) {
+      const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
       if (liveTable.status === 'occupied' || placedOrders.length > 0) {
         posStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30";
-        posStatusPill.textContent = "Occupied";
+        posStatusPill.textContent = isHi ? "व्यस्त" : "Occupied";
       } else {
         posStatusPill.className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-        posStatusPill.textContent = "Free";
+        posStatusPill.textContent = isHi ? "खाली" : "Free";
       }
     }
 
@@ -2501,10 +2708,12 @@ const APP = {
         posTrayList.innerHTML = `<div class="text-xs text-neutral-500 py-1.5">Round empty. Tap '+ Add' to take order.</div>`;
         if (posFireBtn) posFireBtn.disabled = true;
       } else {
-        posTrayList.innerHTML = cart.map(i => `
+        posTrayList.innerHTML = cart.map(i => {
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(i) : i.name;
+          return `
           <div class="py-1.5 border-b border-[#23293a]">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold text-white truncate max-w-[150px]">${i.name}</span>
+              <span class="font-bold text-white truncate max-w-[150px]">${displayName}</span>
               <div class="flex items-center gap-1.5">
                 <button onclick="APP.openItemNoteModal('${i.id}')" title="Cooking note" class="px-1.5 py-0.5 rounded text-[10px] ${i.notes ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50' : 'text-neutral-500 hover:text-neutral-300'}">
                   📝
@@ -2515,7 +2724,8 @@ const APP = {
             </div>
             ${i.notes ? `<div class="text-[10px] text-amber-300/90 pl-1 pt-0.5 flex items-center gap-1 font-medium"><span>↳</span> <span>${i.notes}</span></div>` : ''}
           </div>
-        `).join('');
+        `;
+        }).join('');
         if (posFireBtn) posFireBtn.disabled = false;
       }
     }
@@ -2524,10 +2734,12 @@ const APP = {
       if (placedOrders.length === 0) {
         posPlacedList.innerHTML = `<div class="text-xs text-neutral-500 py-1.5">No orders punched on this table yet.</div>`;
       } else {
-        posPlacedList.innerHTML = placedOrders.map(i => `
+        posPlacedList.innerHTML = placedOrders.map(i => {
+          const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(i) : i.name;
+          return `
           <div class="py-1.5 border-b border-[#23293a] text-xs">
             <div class="flex items-center justify-between">
-              <span class="text-neutral-300 truncate max-w-[140px]">${i.name} <span class="text-amber-400 font-mono">x${i.qty}</span></span>
+              <span class="text-neutral-300 truncate max-w-[140px]">${displayName} <span class="text-amber-400 font-mono">x${i.qty}</span></span>
               <div class="flex items-center gap-1.5">
                 <span class="font-mono font-bold text-white">₹${i.price * i.qty}</span>
                 <button 
@@ -2541,7 +2753,8 @@ const APP = {
             </div>
             ${i.notes ? `<div class="text-[10px] text-amber-300/90 pl-1 pt-0.5 flex items-center gap-1 font-medium"><span>↳</span> <span>${i.notes}</span></div>` : ''}
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
     }
   },
@@ -2574,7 +2787,9 @@ const APP = {
     this.renderFloorTables();
     this.updateFloorBottomDock();
     this.updateTableHeaderBadges();
-    this.showToast(`✅ ${count} item(s) saved for ${tableName}!`);
+    const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
+    const toastMsg = isHi ? `✅ ${count} आइटम ${tableName} के लिए सुरक्षित किए गए!` : `✅ ${count} item(s) saved for ${tableName}!`;
+    this.showToast(toastMsg);
 
     // Automated Step-by-Step Flow: Return to Floor Screen ready for next table!
     if (this.state.currentView === 'app') {
