@@ -212,10 +212,11 @@ async function run() {
         // Add 2 items if empty
         const live = APP.getLiveTable('1');
         if (!live.placedOrders || live.placedOrders.length === 0) {
-          const item1 = DB.menu[0];
-          const item2 = DB.menu[1];
-          APP.addToCart(item1.id);
-          APP.addToCart(item2.id);
+          const items = DB.menuItems || DB.menu || [];
+          const item1 = items[0];
+          const item2 = items[1] || items[0];
+          if (item1) APP.addItem(item1.id);
+          if (item2) APP.addItem(item2.id);
           await APP.sendOrder();
         }
 

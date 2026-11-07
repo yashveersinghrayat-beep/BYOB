@@ -4456,15 +4456,152 @@ const APP = {
       }
     }
     this.haptic('selection');
+
+    // Auto-start live glare-free camera if no proof attached yet
+    if (!this._tempPaymentProof) {
+      this.switchPaymentCaptureMode('live');
+    }
   },
 
   closeWaiterPaymentFlow(updateHistory = true) {
+    this.stopLiveCamera();
     const modal = document.getElementById('waiter-payment-proof-modal');
     if (modal) modal.classList.add('hidden');
     const input = document.getElementById('waiter-proof-camera-input');
     if (input) input.value = '';
     if (updateHistory && typeof history !== 'undefined' && window.location.hash === '#waiter-payment-proof') {
       history.back();
+    }
+  },
+
+  async startLiveCamera() {
+    const video = document.getElementById('wpp-camera-video');
+    const loading = document.getElementById('wpp-camera-loading');
+    const snapBtn = document.getElementById('wpp-btn-live-snap');
+    const statusTxt = document.getElementById('wpp-camera-status-text');
+    if (!video) return;
+
+    this.stopLiveCamera();
+
+    if (loading) loading.classList.remove('hidden');
+    if (statusTxt) statusTxt.textContent = 'Starting Camera (Flash strictly OFF)...';
+    if (snapBtn) snapBtn.disabled = true;
+
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices camera API not supported in this browser context');
+      }
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 960 }
+        },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this._liveCameraStream = stream;
+      video.srcObject = stream;
+
+      // STRICT FLASHLIGHT OFF: verify and enforce torch is disabled
+      try {
+        const track = stream.getVideoTracks()[0];
+        if (track && track.getCapabilities) {
+          const caps = track.getCapabilities();
+          if (caps.torch) {
+            await track.applyConstraints({ advanced: [{ torch: false }] });
+          }
+        }
+      } catch (e) {
+        console.warn('Torch constraint check notice:', e.message);
+      }
+
+      await video.play().catch(e => console.warn('Video play warning:', e));
+      if (loading) loading.classList.add('hidden');
+      if (snapBtn) snapBtn.disabled = false;
+    } catch (err) {
+      console.warn('Live camera access error, falling back to upload:', err.message);
+      if (loading) {
+        if (statusTxt) statusTxt.textContent = 'Live camera unavailable. Use file upload.';
+      }
+      this.switchPaymentCaptureMode('upload');
+    }
+  },
+
+  stopLiveCamera() {
+    if (this._liveCameraStream) {
+      try {
+        this._liveCameraStream.getTracks().forEach(track => track.stop());
+      } catch (e) {}
+      this._liveCameraStream = null;
+    }
+    const video = document.getElementById('wpp-camera-video');
+    if (video) {
+      video.srcObject = null;
+    }
+  },
+
+  captureLivePhoto() {
+    const video = document.getElementById('wpp-camera-video');
+    if (!video || !video.videoWidth) {
+      // Fallback to native input if video stream is not emitting frames
+      document.getElementById('waiter-proof-camera-input')?.click();
+      return;
+    }
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const maxDim = 1000;
+    let w = vw;
+    let h = vh;
+    if (w > maxDim || h > maxDim) {
+      if (w > h) {
+        h = Math.round((h * maxDim) / w);
+        w = maxDim;
+      } else {
+        w = Math.round((w * maxDim) / h);
+        h = maxDim;
+      }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+    const compressed = canvas.toDataURL('image/jpeg', 0.82);
+    this._tempPaymentProof = compressed;
+
+    // Shut down camera hardware immediately after capture to save phone battery
+    this.stopLiveCamera();
+
+    this.renderPaymentProofModalState(compressed);
+    this.showToast('📸 Photo proof captured! Click Submit Proof.');
+    this.haptic('impactLight');
+  },
+
+  retakePaymentProofPhoto() {
+    this._tempPaymentProof = null;
+    this.renderPaymentProofModalState(null);
+    this.switchPaymentCaptureMode('live');
+  },
+
+  switchPaymentCaptureMode(mode) {
+    const liveBox = document.getElementById('wpp-live-camera-box');
+    const uploadBox = document.getElementById('wpp-upload-box');
+    const tabLive = document.getElementById('wpp-tab-live');
+    const tabUpload = document.getElementById('wpp-tab-upload');
+
+    if (mode === 'live') {
+      if (liveBox) liveBox.classList.remove('hidden');
+      if (uploadBox) uploadBox.classList.add('hidden');
+      if (tabLive) tabLive.className = 'flex-1 py-1.5 rounded-md font-bold text-black bg-amber-500 shadow transition-all';
+      if (tabUpload) tabUpload.className = 'flex-1 py-1.5 rounded-md font-medium text-neutral-400 hover:text-white transition-all';
+      this.startLiveCamera();
+    } else {
+      this.stopLiveCamera();
+      if (liveBox) liveBox.classList.add('hidden');
+      if (uploadBox) uploadBox.classList.remove('hidden');
+      if (tabLive) tabLive.className = 'flex-1 py-1.5 rounded-md font-medium text-neutral-400 hover:text-white transition-all';
+      if (tabUpload) tabUpload.className = 'flex-1 py-1.5 rounded-md font-bold text-black bg-amber-500 shadow transition-all';
     }
   },
 
@@ -4477,6 +4614,7 @@ const APP = {
     const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
 
     if (proofDataUrl) {
+      this.stopLiveCamera();
       if (emptyBox) emptyBox.classList.add('hidden');
       if (capturedBox) capturedBox.classList.remove('hidden');
       if (previewImg) previewImg.src = proofDataUrl;
@@ -4541,6 +4679,12 @@ const APP = {
       this.showToast('⚠️ Please take a photo of customer\'s phone first!');
       return;
     }
+    const submitBtn = document.getElementById('wpp-btn-submit');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>⏳ Submitting...</span>';
+    }
+
     const tId = this.state.selectedTableId;
     const table = this.getTable();
     const liveTable = this.getLiveTable(tId);
@@ -4550,10 +4694,19 @@ const APP = {
       liveTable.billPrinted = true;
     }
 
-    if (window.DB && typeof window.DB.saveTablePaymentProof === 'function') {
-      await window.DB.saveTablePaymentProof(tId, this._tempPaymentProof);
-    } else if (window.DB && typeof window.DB.updateTableStatus === 'function') {
-      await window.DB.updateTableStatus(tId, 'bill_printed', this._tempPaymentProof);
+    try {
+      if (window.DB && typeof window.DB.saveTablePaymentProof === 'function') {
+        await window.DB.saveTablePaymentProof(tId, this._tempPaymentProof);
+      } else if (window.DB && typeof window.DB.updateTableStatus === 'function') {
+        await window.DB.updateTableStatus(tId, 'bill_printed', this._tempPaymentProof);
+      }
+    } catch (e) {
+      console.warn('Sync payment proof error:', e.message);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span id="wpp-btn-submit-label">✅ Submit Proof</span>';
+      }
     }
 
     this.renderFloorTables();
@@ -4605,6 +4758,31 @@ const APP = {
     if (modal) modal.classList.add('hidden');
     if (updateHistory && typeof history !== 'undefined' && window.location.hash === '#proof-viewer') {
       history.back();
+    }
+  },
+
+  viewPastBillProof(billId) {
+    const bill = (this.state.recentBillsMap && this.state.recentBillsMap[billId]) || (window.DB && window.DB.pastBills && window.DB.pastBills.find(b => b.id == billId));
+    if (!bill || !bill.payment_proof) {
+      this.showToast('⚠️ No payment proof attached for this bill');
+      return;
+    }
+    const modal = document.getElementById('payment-proof-viewer-modal');
+    const img = document.getElementById('ppv-full-image');
+    const titleEl = document.getElementById('ppv-table-name');
+    const metaEl = document.getElementById('ppv-meta-info');
+
+    if (img) img.src = bill.payment_proof;
+    if (titleEl) titleEl.textContent = `${bill.table_name || ('Table ' + bill.table_id)} • Bill #${bill.invoice_number || bill.id}`;
+    if (metaEl) {
+      const dt = new Date(bill.created_at || Date.now()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      metaEl.textContent = `UPI Proof • ₹${bill.grand_total} • Settled at ${dt}`;
+    }
+    if (modal) {
+      modal.classList.remove('hidden');
+      if (typeof history !== 'undefined' && window.location.hash !== '#proof-viewer') {
+        history.pushState({ screen: 'proof-viewer' }, '', '#proof-viewer');
+      }
     }
   },
 
@@ -4932,6 +5110,14 @@ const APP = {
               </div>
               <div class="flex items-center gap-2">
                 <span class="font-mono font-black text-sm text-emerald-400">₹${b.grand_total}</span>
+                ${b.payment_proof ? `
+                  <button 
+                    onclick="APP.viewPastBillProof('${b.id}')"
+                    class="px-2 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs flex items-center gap-1 shadow transition-all" title="View Customer Payment Proof">
+                    <span>📸</span>
+                    <span>Proof</span>
+                  </button>
+                ` : ''}
                 <button 
                   onclick="APP.reprintBill('${b.id}')"
                   class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs flex items-center gap-1 shadow">

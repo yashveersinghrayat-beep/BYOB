@@ -3260,6 +3260,13 @@
             </span>
             <span id="wpp-proof-status-badge" class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 font-bold">Required</span>
           </div>
+
+          <!-- Flashlight OFF Notice Banner -->
+          <div class="flex items-center gap-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] leading-tight">
+            <span class="text-base shrink-0">🚫⚡</span>
+            <span id="wpp-flash-notice"><strong>Flashlight strictly OFF:</strong> Eliminates phone screen reflection & glare so UTR is 100% visible.</span>
+          </div>
+
           <p id="wpp-proof-instruction" class="text-[11px] text-neutral-300 leading-tight">
             Take a photo of customer's phone showing successful payment / UTR before Manager settles the table.
           </p>
@@ -3274,20 +3281,58 @@
             onchange="APP.onPaymentProofPhotoSelected(event)"
           >
 
-          <!-- Pre-Capture Button -->
+          <!-- Pre-Capture Viewfinder & Controls Box -->
           <div id="wpp-empty-photo-box" class="space-y-2">
-            <button 
-              type="button" 
-              onclick="document.getElementById('waiter-proof-camera-input').click()" 
-              class="w-full py-3 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-black font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg transition-all">
-              <span id="wpp-btn-take-photo-label">📸 Take Photo of Customer's Phone</span>
-            </button>
+            <!-- Mode Switch Tabs -->
+            <div class="flex rounded-lg bg-[#0c0e15] p-1 border border-[#23293a] text-xs">
+              <button type="button" id="wpp-tab-live" onclick="APP.switchPaymentCaptureMode('live')" class="flex-1 py-1.5 rounded-md font-bold text-black bg-amber-500 shadow transition-all">
+                📹 <span id="wpp-tab-live-txt">Live Camera (No Flash)</span>
+              </button>
+              <button type="button" id="wpp-tab-upload" onclick="APP.switchPaymentCaptureMode('upload')" class="flex-1 py-1.5 rounded-md font-medium text-neutral-400 hover:text-white transition-all">
+                📁 <span id="wpp-tab-upload-txt">Upload / File</span>
+              </button>
+            </div>
+
+            <!-- Live Camera Box -->
+            <div id="wpp-live-camera-box" class="space-y-2">
+              <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-black border-2 border-neutral-700 flex items-center justify-center">
+                <video id="wpp-camera-video" playsinline autoplay muted class="w-full h-full object-cover"></video>
+                <!-- Screen Framing Overlay -->
+                <div class="absolute inset-3 border-2 border-dashed border-amber-400/60 rounded-lg pointer-events-none flex flex-col justify-between p-2">
+                  <span id="wpp-overlay-align" class="text-[9px] font-mono text-amber-300 bg-black/60 px-1.5 py-0.5 rounded self-start">📱 Align Phone Screen</span>
+                  <span class="text-[9px] font-mono text-emerald-400 bg-black/60 px-1.5 py-0.5 rounded self-end">🚫 Flash OFF</span>
+                </div>
+                <!-- Loading / Camera starting indicator -->
+                <div id="wpp-camera-loading" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-neutral-400 gap-2">
+                  <div class="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span class="text-xs font-mono" id="wpp-camera-status-text">Starting Camera...</span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                id="wpp-btn-live-snap"
+                onclick="APP.captureLivePhoto()" 
+                class="w-full py-3 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-black font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg transition-all">
+                <span>⚪</span>
+                <span id="wpp-btn-capture-label">Capture Photo (Glare-Free)</span>
+              </button>
+            </div>
+
+            <!-- Native Upload / File Fallback Box -->
+            <div id="wpp-upload-box" class="hidden space-y-2">
+              <button 
+                type="button" 
+                onclick="document.getElementById('waiter-proof-camera-input').click()" 
+                class="w-full py-3 px-3 rounded-xl bg-gradient-to-r from-neutral-800 to-neutral-700 hover:from-neutral-700 hover:to-neutral-600 active:scale-98 text-amber-400 font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 border border-neutral-600 shadow-lg transition-all">
+                <span id="wpp-btn-take-photo-label">📂 Choose Image / Gallery</span>
+              </button>
+            </div>
           </div>
 
           <!-- Post-Capture Thumbnail & Action Box -->
           <div id="wpp-captured-photo-box" class="hidden space-y-2.5">
             <div class="relative rounded-xl overflow-hidden border-2 border-emerald-500 shadow-md">
-              <img id="wpp-captured-preview-img" src="" alt="Payment Proof" class="w-full h-40 object-cover bg-black">
+              <img id="wpp-captured-preview-img" src="" alt="Payment Proof" class="w-full h-44 object-contain bg-black">
               <div class="absolute bottom-0 inset-x-0 bg-black/75 backdrop-blur-sm p-1.5 text-center flex items-center justify-between text-[10px] text-emerald-300 font-mono px-2">
                 <span>✅ Photo Ready</span>
                 <span id="wpp-photo-timestamp">Just now</span>
@@ -3297,12 +3342,13 @@
             <div class="flex gap-2">
               <button 
                 type="button" 
-                onclick="document.getElementById('waiter-proof-camera-input').click()" 
+                onclick="APP.retakePaymentProofPhoto()" 
                 class="flex-1 py-2 rounded-xl bg-[#1a2130] hover:bg-[#242c40] text-neutral-300 hover:text-white font-bold text-xs border border-[#2e374f] transition-all">
                 <span id="wpp-btn-retake-label">🔄 Retake Photo</span>
               </button>
               <button 
                 type="button" 
+                id="wpp-btn-submit"
                 onclick="APP.submitPaymentProof()" 
                 class="flex-1 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-black font-black text-xs uppercase tracking-wide shadow-lg transition-all">
                 <span id="wpp-btn-submit-label">✅ Submit Proof</span>

@@ -675,11 +675,18 @@ module.exports = {
   },
 
   updateTableStatus(tableId, status, paymentProof = null) {
-    if (paymentProof !== null && paymentProof !== undefined) {
-      const proofStr = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : String(paymentProof);
-      db.prepare('UPDATE tables SET status = ?, payment_proof = ? WHERE id = ?').run(status, proofStr, tableId);
-    } else {
-      db.prepare('UPDATE tables SET status = ? WHERE id = ?').run(status, tableId);
+    const rawTid = String(tableId || '');
+    const tidNum = rawTid.replace(/\D/g, '');
+    const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
+    const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
+
+    for (const tid of tidVariants) {
+      if (paymentProof !== null && paymentProof !== undefined) {
+        const proofStr = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : String(paymentProof);
+        db.prepare('UPDATE tables SET status = ?, payment_proof = ? WHERE id = ?').run(status, proofStr, tid);
+      } else {
+        db.prepare('UPDATE tables SET status = ? WHERE id = ?').run(status, tid);
+      }
     }
     return this.getTables();
   },

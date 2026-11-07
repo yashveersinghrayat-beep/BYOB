@@ -449,18 +449,30 @@ class SupabaseBridge {
   }
 
   // 3A. Mirror Table Status (e.g. bill_printed / vacant / occupied) to Supabase Cloud
-  async pushTableStatusToCloud(tableId, status) {
+  async pushTableStatusToCloud(tableId, status, paymentProof = null) {
     try {
       if (!tableId || !status) return;
-      await fetch(`${SUPABASE_URL}/rest/v1/tables?id=eq.${encodeURIComponent(tableId)}`, {
-        method: 'PATCH',
-        headers: HEADERS,
-        body: JSON.stringify({
-          status,
-          updated_at: new Date().toISOString()
-        }),
-        signal: AbortSignal.timeout(5000)
-      });
+      const rawTid = String(tableId || '');
+      const tidNum = rawTid.replace(/\D/g, '');
+      const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
+      const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
+
+      const bodyObj = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+      if (paymentProof !== null && paymentProof !== undefined) {
+        bodyObj.payment_proof = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : String(paymentProof);
+      }
+
+      for (const tid of tidVariants) {
+        await fetch(`${SUPABASE_URL}/rest/v1/tables?id=eq.${encodeURIComponent(tid)}`, {
+          method: 'PATCH',
+          headers: HEADERS,
+          body: JSON.stringify(bodyObj),
+          signal: AbortSignal.timeout(5000)
+        }).catch(() => {});
+      }
     } catch (e) {
       console.warn('[Supabase Bridge] Failed to mirror table status to cloud:', e.message);
     }

@@ -142,7 +142,13 @@ const I18N = {
       verifiedSettleBtn: "✅ Verified • Proceed to Settle Table →",
       onlyManagerSettleAlert: "🔒 Access Restricted: Only Manager can settle bills. Please show payment proof to Manager at Counter.",
       proofSubmittedStatus: "🧾 BILLED (Proof Attached 📸)",
-      proofSubmittedToast: "Payment proof saved! Please show to Manager at Counter."
+      proofSubmittedToast: "Payment proof saved! Please show to Manager at Counter.",
+      wppFlashNotice: "🚫⚡ Flashlight strictly OFF: Glare-free capture to read phone screen clearly",
+      wppLiveCameraTab: "📹 Live Camera (No Flash)",
+      wppUploadTab: "📁 Upload / File",
+      wppCaptureBtn: "⚪ Capture Photo (Glare-Free)",
+      wppAlignGuide: "📱 Align Customer Phone Screen",
+      wppProofBtn: "📸 Proof"
     },
 
     hi: {
@@ -279,7 +285,13 @@ const I18N = {
       verifiedSettleBtn: "✅ सत्यापित • टेबल सेटल करें →",
       onlyManagerSettleAlert: "🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया काउंटर पर मैनेजर को पेमेंट प्रूफ दिखाएं।",
       proofSubmittedStatus: "🧾 बिल दिया (प्रूफ अटैच 📸)",
-      proofSubmittedToast: "पेमेंट प्रूफ सेव हो गया! कृपया काउंटर पर मैनेजर को दिखाएं।"
+      proofSubmittedToast: "पेमेंट प्रूफ सेव हो गया! कृपया काउंटर पर मैनेजर को दिखाएं।",
+      wppFlashNotice: "🚫⚡ फ्लैशलाइट बंद: फोन स्क्रीन पर चमक (glare) न पड़े ताकि UTR साफ दिखे",
+      wppLiveCameraTab: "📹 लाइव कैमरा (नो फ्लैश)",
+      wppUploadTab: "📁 गैलरी / अपलोड",
+      wppCaptureBtn: "⚪ फोटो खींचें (चमक-मुक्त)",
+      wppAlignGuide: "📱 ग्राहक का फोन स्क्रीन फ्रेम में रखें",
+      wppProofBtn: "📸 प्रमाण"
     }
   },
 

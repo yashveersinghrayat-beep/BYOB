@@ -1080,7 +1080,8 @@ const DB_SERVICE = {
   },
 
   async updateTableStatus(tableId, status, paymentProof = null) {
-    let t = this.tables.find(x => x.id === tableId || String(x.id) === String(tableId));
+    const norm = (id) => String(id || '').replace(/^T-0*/i, '').trim();
+    let t = this.tables.find(x => x.id === tableId || norm(x.id) === norm(tableId));
     if (t) {
       t.status = status;
       if (paymentProof !== null) {
@@ -1097,7 +1098,15 @@ const DB_SERVICE = {
         if (client) {
           const upd = { status, updated_at: new Date().toISOString() };
           if (paymentProof) upd.payment_proof = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : paymentProof;
-          await client.from('tables').update(upd).eq('id', tableId).catch(() => {});
+          
+          const rawTid = String(tableId || '');
+          const tidNum = rawTid.replace(/\D/g, '');
+          const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
+          const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
+
+          for (const tid of tidVariants) {
+            await client.from('tables').update(upd).eq('id', tid).catch(() => {});
+          }
         }
       } else {
         await this.post('/api/tables/status', { tableId, status, paymentProof });
@@ -1325,6 +1334,18 @@ const DB_SERVICE = {
 
   // Fetch Recent Settled Bills (For Reprinting & Manager Adjustments)
   async getRecentBills(limit = 30) {
+    // 1. Authoritative Local SQLite / REST API First (contains full payment_proof blobs & KOT items)
+    try {
+      const res = await fetch(`${getApiBase()}/api/bills/recent?limit=${limit}`);
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.bills) && data.bills.length > 0) {
+        return data.bills;
+      }
+    } catch (e) {
+      // Fallback to Supabase Cloud if local server is unreachable
+    }
+
+    // 2. Cloud Fallback
     if (this.mode === 'supabase_cloud') {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
@@ -1347,14 +1368,7 @@ const DB_SERVICE = {
       }
     }
 
-    try {
-      const res = await fetch(`${getApiBase()}/api/bills/recent?limit=${limit}`);
-      const data = await res.json();
-      return data.success ? data.bills : [];
-    } catch (e) {
-      console.warn('Failed to fetch recent bills:', e);
-      return [];
-    }
+    return [];
   },
 
   // Fetch Bill Modification Audit Logs
