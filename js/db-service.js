@@ -899,7 +899,8 @@ const DB_SERVICE = {
     const assignedWaiter = waiterName || this.currentUser.name || 'Floor Staff';
 
     // 0. OPTIMISTIC INSTANT LOCAL UPDATE (0ms)
-    let t = this.tables.find(x => x.id === tableId);
+    const norm = (id) => String(id || '').replace(/^T-0?/, '');
+    let t = this.tables.find(x => x.id === tableId || (norm(x.id) && norm(x.id) === norm(tableId)));
     if (!t) {
       t = { id: tableId, name: tableName, status: 'occupied', placedOrders: [], currentSubtotal: 0 };
       this.tables.push(t);

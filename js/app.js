@@ -1159,13 +1159,12 @@ const APP = {
   renderRunningBillScreen() {
     const table = this.getTable();
     const liveTable = this.getLiveTable();
-    const placedOrders = liveTable.placedOrders || [];
-    const subtotal = liveTable.currentSubtotal || placedOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const gstRate = 0.05; // 5% GST
-    const gstAmount = Math.round(subtotal * gstRate * 100) / 100;
-    const rawTotal = subtotal + gstAmount;
-    const grandTotal = Math.round(rawTotal);
-    const roundOff = Math.round((grandTotal - rawTotal) * 100) / 100;
+    const items = this.getTableBillItems(null, true);
+    const billTotals = this.calculateTotalBill(null, true);
+    const subtotal = billTotals.subtotal;
+    const gstAmount = billTotals.cgst + billTotals.sgst;
+    const grandTotal = billTotals.grandTotal;
+    const roundOff = billTotals.roundOff;
 
     const titleEl = document.getElementById('bill-screen-table-title');
     if (titleEl) {
@@ -1189,7 +1188,7 @@ const APP = {
     const countEl = document.getElementById('bill-kots-count');
     if (countEl) {
       const itemsWord = (typeof I18N !== 'undefined') ? I18N.t('itemsCountSuffix', 'Items') : 'Items';
-      countEl.textContent = `${placedOrders.length} ${itemsWord}`;
+      countEl.textContent = `${items.length} ${itemsWord}`;
     }
 
     const subtotalEl = document.getElementById('bill-screen-subtotal');
@@ -1206,19 +1205,19 @@ const APP = {
 
     const listEl = document.getElementById('bill-running-kots-list');
     if (listEl) {
-      if (placedOrders.length === 0) {
+      if (items.length === 0) {
         const noOrdersMsg = (typeof I18N !== 'undefined') ? I18N.t('noOrdersPlaced', 'No placed orders on this table yet. Tap Add More Food / Drinks to take order.') : 'No placed orders on this table yet. Tap Add More Food / Drinks to take order.';
         listEl.innerHTML = `<div class="py-6 text-center text-neutral-500 text-xs font-medium">${noOrdersMsg}</div>`;
       } else {
-        listEl.innerHTML = placedOrders.map((item, idx) => {
+        listEl.innerHTML = items.map((item, idx) => {
           const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
           return `
-          <div class="flex items-center justify-between py-2 border-b border-[#232a3c] text-xs">
+          <div class="flex items-center justify-between py-2.5 border-b border-[#232a3c] text-xs">
             <div class="flex-1 min-w-0 pr-2">
               <div class="text-neutral-200 font-bold truncate">${displayName}</div>
-              <div class="text-[10px] text-neutral-400 font-mono">${item.qty} × ₹${item.price} ${item.notes ? `• <span class="text-amber-300">📝 ${item.notes}</span>` : ''}</div>
+              <div class="text-[10px] text-neutral-400 font-mono">${item.qty} × ₹${item.price} ${item.notes ? `• <span class="text-amber-300">📝 ${item.notes}</span>` : ''} ${item.isDraft ? '<span class="text-amber-400 font-semibold">(Draft)</span>' : ''}</div>
             </div>
-            <div class="font-mono font-bold text-white text-right">
+            <div class="font-mono font-bold text-amber-400 text-right">
               ₹${(item.price * item.qty).toLocaleString('en-IN')}
             </div>
           </div>
@@ -2686,7 +2685,7 @@ const APP = {
 
     const count = cart.reduce((s, i) => s + i.qty, 0);
     const roundTotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-    const { grandTotal } = this.calculateTotalBill();
+    const { grandTotal } = this.calculateTotalBill(null, false);
 
     // 1. Mobile Handheld Glanceable Bottom Bar (Inline Preview - Zero Click)
     const inlineItems = document.getElementById('app-tray-inline-items');
@@ -2915,10 +2914,33 @@ const APP = {
     }
   },
 
-  calculateTotalBill() {
-    const liveTable = this.getLiveTable();
-    const placedOrders = liveTable.placedOrders || [];
-    const subtotal = placedOrders.reduce((s, i) => s + (i.price * i.qty), 0);
+  getTableBillItems(targetTableId = null, includeDraft = true) {
+    const tId = targetTableId || this.state.selectedTableId;
+    const liveTable = this.getLiveTable(tId);
+    const placed = (liveTable && Array.isArray(liveTable.placedOrders)) ? [...liveTable.placedOrders] : [];
+    
+    if (!includeDraft) return placed;
+
+    const draftCart = this.getLocalCart(tId) || [];
+    if (draftCart.length === 0) return placed;
+
+    // Combine placed orders with any unpunched draft items for this table
+    const combined = [...placed];
+    draftCart.forEach(c => {
+      const existing = combined.find(i => (i.id === c.id || i.name === c.name) && (i.notes || '') === (c.notes || ''));
+      if (existing) {
+        existing.qty = Number(existing.qty || 1) + Number(c.qty || 1);
+      } else {
+        combined.push({ ...c, isDraft: true });
+      }
+    });
+    return combined;
+  },
+
+  calculateTotalBill(targetTableId = null, includeDraft = true) {
+    const tId = targetTableId || this.state.selectedTableId;
+    const items = this.getTableBillItems(tId, includeDraft);
+    const subtotal = items.reduce((s, i) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0);
 
     let discountAmount = 0;
     if (this.state.discountType === 'percent') {
@@ -2953,7 +2975,7 @@ const APP = {
     }
 
     const perPerson = Math.round(grandTotal / (this.state.splitCount || 1));
-    return { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct, servFixed, serviceChargeFixed: fixedServAmount };
+    return { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct, servFixed, serviceChargeFixed: fixedServAmount, items };
   },
 
   // ================= 7. DETAILED BILLING & SETTLEMENT =================
@@ -3256,8 +3278,8 @@ const APP = {
 
   refreshBillingModalData() {
     const liveTable = this.getLiveTable();
-    const placedOrders = liveTable.placedOrders || [];
-    const { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct } = this.calculateTotalBill();
+    const items = this.getTableBillItems(null, true);
+    const { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct } = this.calculateTotalBill(null, true);
     const payUpiLiveAmt = document.getElementById('pay-upi-live-amount');
     if (payUpiLiveAmt) payUpiLiveAmt.textContent = '₹' + grandTotal.toLocaleString('en-IN');
 
@@ -3271,20 +3293,20 @@ const APP = {
 
     const itemsContainer = document.getElementById('bill-detailed-items');
     const roundsCountEl = document.getElementById('bill-rounds-count');
-    if (roundsCountEl) roundsCountEl.textContent = `${placedOrders.length} round items`;
+    if (roundsCountEl) roundsCountEl.textContent = `${items.length} items`;
 
     if (itemsContainer) {
-      if (placedOrders.length === 0) {
-        itemsContainer.innerHTML = `<div class="py-8 text-center text-neutral-400">No orders punched on this table yet. Add items and tap 'Punch Order'.</div>`;
+      if (items.length === 0) {
+        itemsContainer.innerHTML = `<div class="py-8 text-center text-neutral-400">No orders on this table yet. Add items to take order.</div>`;
       } else {
-        itemsContainer.innerHTML = placedOrders.map((i, idx) => `
+        itemsContainer.innerHTML = items.map((i, idx) => `
           <div class="flex items-center justify-between py-2 border-b border-[#252b3b]">
             <div class="flex items-center gap-2">
               <span class="text-neutral-500 font-mono text-[10px]">#${idx + 1}</span>
               <div>
                 <div class="font-bold text-white text-xs">${i.name}</div>
                 <div class="text-[10px] text-neutral-400 flex items-center gap-2">
-                  <span>🕒 Order Round</span>
+                  <span>🕒 ${i.isDraft ? 'Pending Draft' : 'Order Round'}</span>
                   ${i.notes ? `<span class="text-amber-300 font-medium">📝 ${i.notes}</span>` : ''}
                 </div>
               </div>
@@ -3651,9 +3673,8 @@ const APP = {
       custName = customBill.customer_name || '';
       custPhone = customBill.customer_phone || '';
     } else {
-      const placedOrders = liveTable.placedOrders || [];
-      billTotals = this.calculateTotalBill();
-      items = placedOrders;
+      items = this.getTableBillItems(null, true);
+      billTotals = this.calculateTotalBill(null, true);
       subtotal = billTotals.subtotal;
       discountAmount = billTotals.discountAmount;
       cgst = billTotals.cgst;
@@ -3823,6 +3844,22 @@ const APP = {
   // ================= 8E. HIGH-PRECISION 80MM EPSON THERMAL ROLL ENGINE =================
   printThermalReceipt(forceNewWindow = false) {
     this.playBeep('click');
+
+    const targetTableId = this.state.selectedTableId;
+    const isPastReprint = document.getElementById('epson-print-wrapper')?.dataset?.isReprint === 'true';
+    const epsonModal = document.getElementById('epson-modal');
+
+    // 1. ALWAYS populate receipt data for current table first so DOM elements are never ₹0 placeholder
+    if (!isPastReprint || !epsonModal || epsonModal.classList.contains('hidden')) {
+      this.openEpsonReceiptModal(false);
+    }
+
+    // 2. If table has pending unpunched cart items, auto-punch them so backend & live state have them officially
+    const draft = this.getLocalCart(targetTableId);
+    if (draft && draft.length > 0) {
+      this.sendOrder().catch(() => {});
+    }
+
     const receiptEl = document.getElementById('epson-print-wrapper');
     if (!receiptEl) {
       window.print();
@@ -4024,12 +4061,12 @@ const APP = {
     }
 
     // Trigger Post-Print Settlement Prompt for live running bills
-    const targetTableId = this.state.selectedTableId;
     const liveTable = this.getLiveTable(targetTableId);
-    const hasLiveOrders = liveTable && ((liveTable.placedOrders && liveTable.placedOrders.length > 0) || (liveTable.currentSubtotal || 0) > 0);
-    const isPastReprint = receiptEl?.dataset?.isReprint === 'true' || (document.getElementById('epson-inv-no')?.textContent || '').includes('REPRINT');
+    const allBillItems = this.getTableBillItems(targetTableId, true);
+    const hasLiveOrders = allBillItems.length > 0 || (liveTable && (liveTable.currentSubtotal || 0) > 0);
+    const isReprintNow = receiptEl?.dataset?.isReprint === 'true' || (document.getElementById('epson-inv-no')?.textContent || '').includes('REPRINT') || isPastReprint;
 
-    if (hasLiveOrders && !isPastReprint && targetTableId) {
+    if (hasLiveOrders && !isReprintNow && targetTableId) {
       this.markTableAsBillPrinted(targetTableId);
       setTimeout(() => {
         this.openPostPrintSettleModal(targetTableId);
