@@ -2146,9 +2146,12 @@ const APP = {
             ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-400 text-black font-mono animate-pulse">📸 ${isHi ? 'प्रूफ मिला' : 'PROOF IN'}</span>`
             : `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black font-mono animate-pulse">🧾 ${isHi ? 'बिल दिया' : 'BILLED'}</span>`;
           middleHtml = `
-            <div class="my-1">
-              <div class="text-sm font-black font-mono ${hasProof ? 'text-emerald-300' : 'text-amber-300'} leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
-              <div class="text-[10px] ${hasProof ? 'text-emerald-400 font-bold' : 'text-amber-400/90 font-bold'}">${hasProof ? (isHi ? '✅ प्रूफ जमा • मैनेजर सत्यापन' : '✅ Proof In • Mgr Audit') : (isHi ? '⏳ भुगतान बाकी' : '⏳ Awaiting Settle')}</div>
+            <div class="my-1 flex items-center justify-between gap-1">
+              <div>
+                <div class="text-sm font-black font-mono ${hasProof ? 'text-emerald-300' : 'text-amber-300'} leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
+                <div class="text-[10px] ${hasProof ? 'text-emerald-400 font-bold' : 'text-amber-400/90 font-bold'}">${hasProof ? (isHi ? '✅ प्रूफ जमा' : '✅ Proof In') : (isHi ? '⏳ भुगतान बाकी' : '⏳ Awaiting Settle')}</div>
+              </div>
+              ${timerBadge}
             </div>
           `;
           const isWaiter = this.state.userRole === 'waiter';
@@ -2165,9 +2168,12 @@ const APP = {
           cardClass = isCurrent ? "table-card-selected-occupied ring-2 ring-rose-400" : "table-card-occupied";
           headerBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white font-mono">${occBadge}</span>`;
           middleHtml = `
-            <div class="my-1">
-              <div class="text-sm font-black font-mono text-rose-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
-              <div class="text-[10px] text-neutral-400 font-medium">${placedOrders.length} ${ordersWord}</div>
+            <div class="my-1 flex items-center justify-between gap-1">
+              <div>
+                <div class="text-sm font-black font-mono text-rose-300 leading-tight">₹${subtotal.toLocaleString('en-IN')}</div>
+                <div class="text-[10px] text-neutral-400 font-medium">${placedOrders.length} ${ordersWord}</div>
+              </div>
+              ${timerBadge}
             </div>
           `;
           footerHtml = `
@@ -2197,14 +2203,9 @@ const APP = {
             type="button"
             onclick="APP.selectTable('${t.id}')"
             class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between shadow-lg group overflow-hidden active:scale-95">
-            <div class="flex items-center justify-between w-full gap-1">
-              <div class="flex items-center gap-1.5 min-w-0">
-                <span class="text-sm font-black text-white group-hover:text-amber-300 transition-colors truncate">${t.name}</span>
-                ${timerBadge}
-              </div>
-              <div class="shrink-0">
-                ${headerBadge}
-              </div>
+            <div class="flex items-center justify-between w-full">
+              <span class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">${t.name}</span>
+              ${headerBadge}
             </div>
             ${middleHtml}
             ${footerHtml}
