@@ -995,6 +995,14 @@
         </div>
       </button>
 
+      <button onclick="APP.selectManagerNavTab('printers')" id="mgr-nav-printers" class="mgr-nav-item w-full text-left">
+        <span class="text-base">🖨️</span>
+        <div class="flex-1">
+          <div class="text-xs font-bold text-neutral-300">Dual Printers (Bill & KOT)</div>
+          <div class="text-[10px] text-neutral-400">Counter Bill & Kitchen Wi-Fi Printers</div>
+        </div>
+      </button>
+
       <button onclick="APP.selectManagerNavTab('ota')" id="mgr-nav-ota" class="mgr-nav-item w-full text-left">
         <span class="text-base">📲</span>
         <div class="flex-1">
@@ -2115,6 +2123,156 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- ================= PANE: DUAL PRINTERS SETUP (BILL & KITCHEN WI-FI) ================= -->
+    <div id="mgr-content-printers" class="mgr-content-pane hidden space-y-5 max-w-4xl mx-auto">
+      
+      <!-- Isolation Architecture Banner -->
+      <div class="bg-gradient-to-r from-[#161f33] to-[#121624] border border-[#2b354f] rounded-2xl p-4 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xl flex-shrink-0">
+            🛡️
+          </div>
+          <div>
+            <h3 class="text-sm font-black text-white">Strict Two-Printer Route Isolation</h3>
+            <p class="text-xs text-neutral-300">
+              <strong>Bills</strong> print ONLY at Cashier Counter. <strong>KOTs</strong> print ONLY at Kitchen over Wi-Fi.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="APP.refreshPrinterStatusUI()" type="button" class="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs font-bold text-neutral-200 border border-neutral-700 active:scale-95 transition flex items-center gap-1.5">
+            <span>🔄</span>
+            <span>Check Status</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        
+        <!-- PRINTER 1: CASHIER COUNTER BILL PRINTER -->
+        <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between border-b border-[#242b3b] pb-3 mb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl">🧾</span>
+                <div>
+                  <h4 class="text-sm font-black text-white">1. Counter BILL Printer</h4>
+                  <div class="text-[10px] text-amber-400 font-mono">Customer Invoices & 80mm Receipts</div>
+                </div>
+              </div>
+              <span id="mgr-bill-status-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold">
+                🟢 READY
+              </span>
+            </div>
+
+            <p class="text-xs text-neutral-400 mb-3">
+              Receives <strong>ONLY Customer Bills</strong>. Does NOT receive kitchen orders.
+            </p>
+
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block font-bold text-neutral-300 mb-1">Print Output Mode:</label>
+                <select id="mgr-bill-printer-mode" onchange="APP.toggleBillPrinterModeUI()" class="w-full px-3 py-2 rounded-xl bg-[#0c0e15] border border-[#2e374d] text-white font-medium outline-none focus:border-amber-400">
+                  <option value="browser">🖥️ Windows USB / System Default Driver (Recommended for Counter PC)</option>
+                  <option value="network">🌐 Direct Wi-Fi / Ethernet RAW Socket (Port 9100)</option>
+                </select>
+              </div>
+
+              <div id="mgr-bill-network-box" class="hidden space-y-2 p-3 bg-[#0a0d14] rounded-xl border border-[#242d40]">
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="col-span-2">
+                    <label class="block font-bold text-neutral-400 text-[11px] mb-1">Bill Printer IP:</label>
+                    <input type="text" id="mgr-bill-printer-ip" placeholder="192.168.1.250" class="w-full px-2.5 py-1.5 rounded-lg bg-[#141824] border border-[#2e374d] text-amber-300 font-mono text-xs outline-none focus:border-amber-400">
+                  </div>
+                  <div>
+                    <label class="block font-bold text-neutral-400 text-[11px] mb-1">Port:</label>
+                    <input type="number" id="mgr-bill-printer-port" value="9100" class="w-full px-2.5 py-1.5 rounded-lg bg-[#141824] border border-[#2e374d] text-white font-mono text-xs outline-none focus:border-amber-400">
+                  </div>
+                </div>
+                <div class="text-[10px] text-neutral-500 font-mono">Direct RAW TCP ESC/POS socket connection.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-[#23293a] flex flex-wrap items-center gap-2">
+            <button onclick="APP.testBillPrinter()" type="button" class="flex-1 py-2 px-3 rounded-xl bg-[#1e2538] hover:bg-[#28324a] text-white font-bold text-xs border border-[#374464] active:scale-95 transition flex items-center justify-center gap-1.5">
+              <span>🧪</span>
+              <span>Test Bill Printer</span>
+            </button>
+            <button onclick="APP.savePrinterConfig()" type="button" class="py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1">
+              <span>💾 Save</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- PRINTER 2: KITCHEN KOT PRINTER (WI-FI) -->
+        <div class="bg-[#121622] border border-[#23293a] rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between border-b border-[#242b3b] pb-3 mb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl">🍳</span>
+                <div>
+                  <h4 class="text-sm font-black text-white">2. Kitchen KOT Printer (Wi-Fi)</h4>
+                  <div class="text-[10px] text-emerald-400 font-mono">Kitchen Order Tickets & Chef Slips</div>
+                </div>
+              </div>
+              <span id="mgr-kot-status-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold">
+                🟢 ONLINE
+              </span>
+            </div>
+
+            <p class="text-xs text-neutral-400 mb-3">
+              Receives <strong>ONLY Kitchen Orders (KOT)</strong>. Punched by Waiters & Counter.
+            </p>
+
+            <div class="space-y-3 text-xs">
+              <div class="flex items-center justify-between p-2.5 bg-[#0e121b] rounded-xl border border-[#232c3f]">
+                <div>
+                  <div class="font-bold text-white text-xs">Auto-Print on KOT Punch</div>
+                  <div class="text-[10px] text-neutral-400">Instantly print ticket when order is sent</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="mgr-kot-printer-enabled" checked class="sr-only peer">
+                  <div class="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div class="col-span-2">
+                  <label class="block font-bold text-neutral-300 text-[11px] mb-1">Wi-Fi Printer IP Address:</label>
+                  <input type="text" id="mgr-kot-printer-ip" value="192.168.1.252" placeholder="192.168.1.252" class="w-full px-2.5 py-2 rounded-xl bg-[#0c0e15] border border-[#2e374d] text-emerald-400 font-mono text-xs font-bold outline-none focus:border-emerald-400">
+                </div>
+                <div>
+                  <label class="block font-bold text-neutral-300 text-[11px] mb-1">Port:</label>
+                  <input type="number" id="mgr-kot-printer-port" value="9100" class="w-full px-2.5 py-2 rounded-xl bg-[#0c0e15] border border-[#2e374d] text-white font-mono text-xs outline-none focus:border-emerald-400">
+                </div>
+              </div>
+
+              <div id="mgr-kot-queue-info" class="p-2 rounded-lg bg-[#0e131e] border border-[#222b3d] text-[11px] text-neutral-400 flex items-center justify-between">
+                <span>Pending Queue: <strong id="mgr-kot-pending-count" class="text-white">0 KOTs</strong></span>
+                <span class="text-[10px] text-neutral-500 font-mono">Concurrency Mutex: Active</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-[#23293a] flex flex-wrap items-center gap-2">
+            <button onclick="APP.testKitchenPrinter()" type="button" class="flex-1 py-2 px-3 rounded-xl bg-[#182a20] hover:bg-[#203629] text-emerald-300 font-bold text-xs border border-emerald-500/40 active:scale-95 transition flex items-center justify-center gap-1.5">
+              <span>🧪</span>
+              <span>Test Wi-Fi KOT</span>
+            </button>
+            <button onclick="APP.retryKitchenPrinter()" type="button" title="Retry pending KOTs in queue" class="py-2 px-3 rounded-xl bg-[#1e2538] hover:bg-[#28324a] text-neutral-200 font-bold text-xs border border-[#374464] active:scale-95 transition flex items-center justify-center gap-1">
+              <span>🔄 Retry</span>
+            </button>
+            <button onclick="APP.savePrinterConfig()" type="button" class="py-2 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1">
+              <span>💾 Save</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
     </div>
 
     <!-- ================= PANE 8: APK & OTA UPDATES ================= -->

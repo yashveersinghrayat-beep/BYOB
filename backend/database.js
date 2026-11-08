@@ -291,6 +291,15 @@ function initDatabase() {
   const countRow = db.prepare('SELECT COUNT(*) as count FROM store_settings').get();
   if (countRow.count === 0) {
     seedDefaultStoreData();
+  } else {
+    // Ensure default printer settings exist
+    const ins = db.prepare('INSERT OR IGNORE INTO store_settings (key, value) VALUES (?, ?)');
+    ins.run('kitchen_printer_enabled', '1');
+    ins.run('kitchen_printer_ip', '192.168.1.252');
+    ins.run('kitchen_printer_port', '9100');
+    ins.run('bill_printer_mode', 'browser');
+    ins.run('bill_printer_ip', '192.168.1.250');
+    ins.run('bill_printer_port', '9100');
   }
 }
 
@@ -311,7 +320,13 @@ function seedDefaultStoreData() {
     service_charge_fixed: '0',
     service_charge: '0',
     service_charge_percent: '0',
-    bill_footer: 'Thank you for visiting! Guests are welcome to Bring Their Own Bottle.'
+    bill_footer: 'Thank you for visiting! Guests are welcome to Bring Their Own Bottle.',
+    kitchen_printer_enabled: '1',
+    kitchen_printer_ip: '192.168.1.252',
+    kitchen_printer_port: '9100',
+    bill_printer_mode: 'browser',
+    bill_printer_ip: '192.168.1.250',
+    bill_printer_port: '9100'
   };
 
   for (const [k, v] of Object.entries(defaultSettings)) {

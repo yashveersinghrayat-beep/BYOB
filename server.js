@@ -9,13 +9,17 @@ const os = require('os');
 const DB = require('./backend/database.js');
 const SupabaseBridge = require('./backend/supabase-bridge.js');
 
-// Modular Kitchen Thermal Printer Add-on with Safe Cloud Fallback
-let KitchenPrinterAddon;
-let KITCHEN_PRINTER_CONFIG = { enabled: false, printerIp: '192.168.1.222', printerPort: 9100 };
+// Modular Dual Thermal Printer Add-on with Safe Cloud Fallback
+let KitchenPrinterAddon, BillPrinterAddon, updatePrinterConfig;
+let KITCHEN_PRINTER_CONFIG = { enabled: false, printerIp: '192.168.1.252', printerPort: 9100 };
+let BILL_PRINTER_CONFIG = { enabled: true, mode: 'browser', printerIp: '192.168.1.250', printerPort: 9100 };
 try {
   const mod = require('./backend/kitchen-printer-addon.js');
   KitchenPrinterAddon = mod.KitchenPrinterAddon;
+  BillPrinterAddon = mod.BillPrinterAddon;
   KITCHEN_PRINTER_CONFIG = mod.KITCHEN_PRINTER_CONFIG;
+  BILL_PRINTER_CONFIG = mod.BILL_PRINTER_CONFIG;
+  updatePrinterConfig = mod.updatePrinterConfig;
 } catch (e) {
   KitchenPrinterAddon = class {
     constructor(broadcast) { this.broadcast = broadcast || (() => {}); this.isOnline = false; this.pendingQueue = []; }
@@ -23,8 +27,15 @@ try {
     async printKot() {}
     async printTransferSlip() {}
     async printVoidSlip() {}
+    async testPrint() { return { success: false, disabled: true }; }
     async retryPending() { return { success: true, count: 0, remaining: 0 }; }
   };
+  BillPrinterAddon = class {
+    constructor() { this.isOnline = true; }
+    async printBill() { return { success: false, mode: 'browser' }; }
+    async testPrint() { return { success: false, mode: 'browser' }; }
+  };
+  updatePrinterConfig = () => ({ kitchen: KITCHEN_PRINTER_CONFIG, bill: BILL_PRINTER_CONFIG });
 }
 
 const PORT = process.env.PORT || 3000;
@@ -55,8 +66,9 @@ function broadcastEvent(eventType, payload) {
   }
 }
 
-// Modular Wireless Kitchen Printer Addon (TN260 / POS-80 over Wi-Fi Port 9100)
-const kitchenPrinter = new KitchenPrinterAddon(broadcastEvent);
+// Modular Wireless Kitchen Printer Addon (Wi-Fi Port 9100) & Counter Bill Printer Addon
+const kitchenPrinter = new KitchenPrinterAddon(broadcastEvent, DB);
+const billPrinter = new BillPrinterAddon(broadcastEvent, DB);
 
 // 24/7 Supabase Cloud Sync Bridge (passes kitchen printer for remote mobile orders)
 const bridge = new SupabaseBridge(DB, broadcastEvent, kitchenPrinter);
@@ -377,15 +389,48 @@ async function handleRequest(req, res) {
       return sendJSON(res, 200, { success: true, kot, tables });
     }
 
-    // --- Kitchen Printer Add-on Control Routes ---
+    // --- Dual Thermal Printer Add-on Control Routes ---
     if (pathname === '/api/printer/status' && method === 'GET') {
       return sendJSON(res, 200, {
         success: true,
+        kitchen: {
+          enabled: kitchenPrinter.isEnabled(),
+          online: kitchenPrinter.isOnline,
+          printerIp: KITCHEN_PRINTER_CONFIG.printerIp,
+          printerPort: KITCHEN_PRINTER_CONFIG.printerPort,
+          pendingCount: kitchenPrinter.pendingQueue.length
+        },
+        bill: {
+          enabled: BILL_PRINTER_CONFIG.enabled,
+          mode: BILL_PRINTER_CONFIG.mode,
+          printerIp: BILL_PRINTER_CONFIG.printerIp,
+          printerPort: BILL_PRINTER_CONFIG.printerPort
+        },
+        // Backward compatibility
         enabled: kitchenPrinter.isEnabled(),
         online: kitchenPrinter.isOnline,
         printerIp: KITCHEN_PRINTER_CONFIG.printerIp,
         pendingCount: kitchenPrinter.pendingQueue.length
       });
+    }
+    if (pathname === '/api/printer/config' && method === 'POST') {
+      const body = await parseBody(req);
+      const updated = updatePrinterConfig(body, DB);
+      broadcastEvent('PRINTER_CONFIG_UPDATED', updated);
+      return sendJSON(res, 200, { success: true, config: updated });
+    }
+    if (pathname === '/api/printer/test-kot' && method === 'POST') {
+      const result = await kitchenPrinter.testPrint();
+      return sendJSON(res, 200, { success: true, result });
+    }
+    if (pathname === '/api/printer/test-bill' && method === 'POST') {
+      const result = await billPrinter.testPrint();
+      return sendJSON(res, 200, { success: true, result });
+    }
+    if (pathname === '/api/printer/print-bill' && method === 'POST') {
+      const body = await parseBody(req);
+      const result = await billPrinter.printBill(body);
+      return sendJSON(res, 200, { success: true, result });
     }
     if (pathname === '/api/printer/retry' && method === 'POST') {
       const result = await kitchenPrinter.retryPending();

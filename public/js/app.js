@@ -4168,6 +4168,47 @@ const APP = {
       return;
     }
 
+    // Direct Network Socket Dispatch (if Cashier configured Network Bill Printer)
+    const store = (window.DB && window.DB.storeSettings) || {};
+    if (store.bill_printer_mode === 'network') {
+      try {
+        const billItems = this.getTableBillItems(targetTableId, false);
+        const totals = this.calculateTotalBill(targetTableId, false);
+        const payload = {
+          restaurantName: store.restaurant_name || 'BYOB INDIRAPURAM',
+          tagline: store.tagline || '',
+          address: store.address || '',
+          gstin: store.gstin || '',
+          phone: store.phone || '',
+          invNo: document.getElementById('epson-inv-no')?.textContent || 'RECEIPT',
+          dateTime: new Date().toLocaleString('en-IN'),
+          tableName: this.getTable(targetTableId)?.name || 'Table',
+          waiterName: this.getStaffName(),
+          customerName: this.state.customerName || 'Guest',
+          items: billItems,
+          subtotal: totals.subtotal,
+          discountAmount: totals.discountAmount,
+          cgst: totals.cgst,
+          sgst: totals.sgst,
+          serviceCharge: totals.serviceCharge,
+          roundOff: totals.roundOff,
+          grandTotal: totals.grandTotal,
+          payMode: this.state.payMode || 'UPI',
+          footer: store.receipt_footer || store.bill_footer || ''
+        };
+        const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
+        fetch(`${apiBase}/api/printer/print-bill`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(r => r.json()).then(res => {
+          if (res.success && res.result && res.result.success) {
+            this.showToast('🖨️ 80mm Bill Sent to Network Bill Printer!');
+          }
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
     // Enforce exact 80x294mm thermal roll preset (matches Windows POS & Epson Roll 80 x 294mm driver preset with zero paper waste)
     let dynStyle = document.getElementById('dynamic-epson-page-style');
     if (!dynStyle) {
@@ -6667,7 +6708,7 @@ const APP = {
 
   setManagerTab(tab) {
     this.state.mgrActiveTab = tab;
-    const tabs = ['sales', 'tables', 'menu', 'invoices', 'voids', 'staff', 'security', 'store', 'ota'];
+    const tabs = ['sales', 'tables', 'menu', 'invoices', 'voids', 'staff', 'security', 'store', 'printers', 'ota'];
     
     const tabTitles = {
       sales: 'Sales & Z-Report',
@@ -6678,6 +6719,7 @@ const APP = {
       staff: 'Staff & Waiter PINs',
       security: 'Manager PIN & Security',
       store: 'Store Profile & GST Tax',
+      printers: 'Dual Printers (Counter Bill & Kitchen Wi-Fi)',
       ota: 'APK & OTA Updates'
     };
 
@@ -6722,6 +6764,7 @@ const APP = {
     else if (tab === 'staff') this.loadManagerStaff();
     else if (tab === 'security') this.loadManagerSecurity();
     else if (tab === 'store') this.loadManagerStoreSettings();
+    else if (tab === 'printers') this.loadPrinterSettings();
     else if (tab === 'ota') this.loadManagerOTAInfo();
   },
 
@@ -8599,15 +8642,20 @@ const APP = {
     setTimeout(() => el.classList.add('hidden'), 2000);
   },
 
-  // ================= 9. MODULAR KITCHEN PRINTER ADDON UI =================
+  // ================= 9. DUAL THERMAL PRINTER SYSTEM (BILL & KITCHEN WI-FI) =================
   async checkKitchenPrinterStatus() {
     try {
       const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
       const res = await fetch(`${apiBase}/api/printer/status`);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && !data.online && data.pendingCount > 0) {
-          this.handlePrinterStatus(data);
+        if (data.success) {
+          const kStatus = data.kitchen || data;
+          if (!kStatus.online && kStatus.pendingCount > 0) {
+            this.handlePrinterStatus(kStatus);
+          } else {
+            this.dismissKitchenPrinterAlert();
+          }
         }
       }
     } catch (e) {}
@@ -8635,11 +8683,11 @@ const APP = {
         <span class="text-2xl flex-shrink-0 animate-pulse">🔴</span>
         <div>
           <div class="font-extrabold text-[11px] uppercase tracking-wider text-red-300 flex items-center gap-1.5">
-            <span>Kitchen Printer Offline</span>
-            <span class="text-[9px] px-1.5 py-0.2 bg-red-800 rounded font-mono">${status.printerIp || '192.168.1.222'}</span>
+            <span>Kitchen Wi-Fi Printer Offline</span>
+            <span class="text-[9px] px-1.5 py-0.2 bg-red-800 rounded font-mono">${status.printerIp || '192.168.1.252'}</span>
           </div>
           <div class="text-xs font-bold text-white mt-0.5 leading-tight">${pendingText}${failedInfo}</div>
-          <div class="text-[10px] text-red-200/80 mt-0.5">${status.error || 'Paper out or printer unreachable over Wi-Fi'}</div>
+          <div class="text-[10px] text-red-200/80 mt-0.5">${status.error || 'Check power or Wi-Fi connectivity'}</div>
         </div>
       </div>
       <div class="flex items-center gap-1.5 ml-auto flex-shrink-0">
@@ -8656,18 +8704,186 @@ const APP = {
 
   async retryKitchenPrinter() {
     try {
-      this.showToast('🔄 Retrying Kitchen Printer...');
+      this.showToast('🔄 Retrying Kitchen Wi-Fi Printer...');
       const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
       const res = await fetch(`${apiBase}/api/printer/retry`, { method: 'POST' });
       const data = await res.json();
       if (data.success && data.remaining === 0) {
         this.dismissKitchenPrinterAlert();
-        this.showToast('✅ Kitchen Printer connected & all pending KOTs printed!');
+        this.showToast('✅ Kitchen Printer re-connected & all pending KOTs printed!');
+        this.refreshPrinterStatusUI();
       } else {
-        this.showToast(`⚠️ Printer still offline (${data.remaining || 1} KOTs pending)`);
+        this.showToast(`⚠️ Printer still unreachable (${data.remaining || 1} KOTs pending)`);
       }
     } catch (e) {
       this.showToast('⚠️ Could not connect to server');
+    }
+  },
+
+  async loadPrinterSettings() {
+    try {
+      const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
+      const res = await fetch(`${apiBase}/api/printer/status`);
+      if (res.ok) {
+        const data = await res.json();
+        const k = data.kitchen || {};
+        const b = data.bill || {};
+
+        const kotIp = document.getElementById('mgr-kot-printer-ip');
+        const kotPort = document.getElementById('mgr-kot-printer-port');
+        const kotEnabled = document.getElementById('mgr-kot-printer-enabled');
+        const kotPending = document.getElementById('mgr-kot-pending-count');
+        const kotBadge = document.getElementById('mgr-kot-status-badge');
+
+        const billMode = document.getElementById('mgr-bill-printer-mode');
+        const billIp = document.getElementById('mgr-bill-printer-ip');
+        const billPort = document.getElementById('mgr-bill-printer-port');
+        const billBadge = document.getElementById('mgr-bill-status-badge');
+
+        if (kotIp && k.printerIp) kotIp.value = k.printerIp;
+        if (kotPort && k.printerPort) kotPort.value = k.printerPort;
+        if (kotEnabled) kotEnabled.checked = Boolean(k.enabled);
+        if (kotPending) kotPending.textContent = `${k.pendingCount || 0} KOTs`;
+
+        if (kotBadge) {
+          if (k.online) {
+            kotBadge.className = "px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold";
+            kotBadge.textContent = "🟢 ONLINE";
+          } else {
+            kotBadge.className = "px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 text-[10px] font-mono font-bold animate-pulse";
+            kotBadge.textContent = "🔴 OFFLINE / UNREACHABLE";
+          }
+        }
+
+        if (billMode && b.mode) {
+          billMode.value = b.mode;
+          this.toggleBillPrinterModeUI();
+        }
+        if (billIp && b.printerIp) billIp.value = b.printerIp;
+        if (billPort && b.printerPort) billPort.value = b.printerPort;
+        if (billBadge) {
+          billBadge.className = "px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold";
+          billBadge.textContent = b.mode === 'network' ? "🟢 NETWORK (Port 9100)" : "🟢 WINDOWS POS READY";
+        }
+      }
+    } catch (e) {
+      console.warn('Load printer settings notice:', e.message);
+    }
+  },
+
+  toggleBillPrinterModeUI() {
+    const billMode = document.getElementById('mgr-bill-printer-mode');
+    const netBox = document.getElementById('mgr-bill-network-box');
+    const isNet = billMode && billMode.value === 'network';
+    if (netBox) {
+      if (isNet) netBox.classList.remove('hidden');
+      else netBox.classList.add('hidden');
+    }
+  },
+
+  async savePrinterConfig() {
+    try {
+      const kotIp = document.getElementById('mgr-kot-printer-ip')?.value || '192.168.1.252';
+      const kotPort = document.getElementById('mgr-kot-printer-port')?.value || '9100';
+      const kotEnabled = document.getElementById('mgr-kot-printer-enabled')?.checked ? '1' : '0';
+
+      const billMode = document.getElementById('mgr-bill-printer-mode')?.value || 'browser';
+      const billIp = document.getElementById('mgr-bill-printer-ip')?.value || '192.168.1.250';
+      const billPort = document.getElementById('mgr-bill-printer-port')?.value || '9100';
+
+      const payload = {
+        kitchen_printer_ip: kotIp.trim(),
+        kitchen_printer_port: kotPort.trim(),
+        kitchen_printer_enabled: kotEnabled,
+        bill_printer_mode: billMode,
+        bill_printer_ip: billIp.trim(),
+        bill_printer_port: billPort.trim()
+      };
+
+      const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
+      const res = await fetch(`${apiBase}/api/printer/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast('✅ Dual Printer Configuration Saved & Activated Live!');
+        this.loadPrinterSettings();
+      } else {
+        this.showToast('⚠️ Could not save settings: ' + (data.error || 'Server error'));
+      }
+    } catch (e) {
+      this.showToast('⚠️ Failed to save printer settings');
+    }
+  },
+
+  async refreshPrinterStatusUI() {
+    this.showToast('🔄 Checking Dual Printer Health...');
+    await this.loadPrinterSettings();
+    this.showToast('✅ Printer Status Refreshed');
+  },
+
+  async testKitchenPrinter() {
+    try {
+      this.showToast('🧪 Sending Test KOT Ticket to Kitchen Wi-Fi Printer...');
+      const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
+      const res = await fetch(`${apiBase}/api/printer/test-kot`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.result && data.result.success) {
+        this.showToast(`✅ Test KOT successfully printed to Kitchen Wi-Fi Printer!`);
+        this.playBeep('punch');
+      } else {
+        const err = (data.result && data.result.error) || 'Printer unreachable or powered off';
+        this.showToast(`⚠️ Kitchen Printer Warning: ${err}`);
+      }
+      this.loadPrinterSettings();
+    } catch (e) {
+      this.showToast('⚠️ Network error communicating with server');
+    }
+  },
+
+  async testBillPrinter() {
+    const billMode = document.getElementById('mgr-bill-printer-mode')?.value || 'browser';
+    if (billMode === 'network') {
+      try {
+        this.showToast('🧪 Sending Test Bill to Network Bill Printer...');
+        const apiBase = (window.DB && typeof window.DB.getApiBase === 'function') ? window.DB.getApiBase() : '';
+        const res = await fetch(`${apiBase}/api/printer/test-bill`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success && data.result && data.result.success) {
+          this.showToast('✅ Test Bill printed to Network Printer!');
+          this.playBeep('settle');
+        } else {
+          const err = (data.result && data.result.error) || 'Bill printer unreachable';
+          this.showToast(`⚠️ Bill Printer Warning: ${err}`);
+        }
+      } catch (e) {
+        this.showToast('⚠️ Network error connecting to Bill Printer');
+      }
+    } else {
+      // Windows USB / Browser print
+      this.showToast('🖨️ Opening 80mm Bill Printer Test Page...');
+      const dummyBill = {
+        invoiceNumber: 'TEST-BILL-' + Math.floor(100 + Math.random() * 900),
+        table_name: 'Counter Test',
+        customer_name: 'Test Customer',
+        waiter_name: this.getStaffName(),
+        items: [
+          { name: 'TEST PRINT: Butter Naan', qty: 1, price: 40 },
+          { name: 'TEST PRINT: Paneer Tikka', qty: 2, price: 260 }
+        ],
+        subtotal: 560,
+        discount_amount: 0,
+        cgst: 14,
+        sgst: 14,
+        grand_total: 588,
+        payment_mode: 'CASH'
+      };
+      this.openEpsonReceiptModal(false, dummyBill);
+      setTimeout(() => {
+        this.printThermalReceipt();
+      }, 300);
     }
   }
 };
