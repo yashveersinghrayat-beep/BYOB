@@ -10,7 +10,7 @@ const net = require('net');
 
 const KITCHEN_PRINTER_CONFIG = {
   enabled: true,               // Switch: true (Auto-print ON) | false (OFF)
-  printerIp: '192.168.1.252',  // Static IP configured on Kitchen Wi-Fi Printer (Port 9100)
+  printerIp: '192.168.225.4',  // Kitchen Thermal Printer IP on Ground Floor (Port 9100)
   printerPort: 9100,           // Standard ESC/POS RAW Port
   timeoutMs: 2500,             // 2.5s connection timeout (never blocks server)
   restaurantName: 'BYOB INDIRAPURAM',
@@ -564,6 +564,13 @@ class BillPrinterAddon {
       return { success: false, mode: 'browser', message: 'Bill printer configured for Windows Browser print' };
     }
     const buffer = this.buildEscPosBillBuffer(billData);
+    this._printLock = this._printLock.catch(() => {}).then(() => {
+      return this._doSocketBillPrint(buffer);
+    });
+    return this._printLock;
+  }
+
+  _doSocketBillPrint(buffer) {
     return new Promise((resolve) => {
       const socket = new net.Socket();
       let finished = false;

@@ -358,6 +358,12 @@ INSERT INTO store_settings (key, value) VALUES
   ('cgst_percent', '2.5'),
   ('sgst_percent', '2.5'),
   ('service_charge_percent', '0'),
+  ('kitchen_printer_ip', '192.168.225.4'),
+  ('kitchen_printer_port', '9100'),
+  ('kitchen_printer_enabled', '1'),
+  ('bill_printer_mode', 'browser'),
+  ('bill_printer_ip', '192.168.1.250'),
+  ('bill_printer_port', '9100'),
   ('bill_footer', 'Thank you for visiting! Guests are welcome to Bring Their Own Bottle.')
 ON CONFLICT (key) DO NOTHING;
 

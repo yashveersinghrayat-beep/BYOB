@@ -1456,10 +1456,13 @@ const DB_SERVICE = {
     // 1. Instant Realtime Broadcast (<25ms)
     this.broadcastRealtime('ITEM_VOIDED', {
       tableId,
+      tableName: tableName || (t ? t.name : tableId),
       kotItemId,
       itemName,
+      qty: qty || 1,
       reason,
-      staffName: cleanStaff
+      staffName: cleanStaff,
+      authorizedBy: managerPin === '1234' ? 'Manager (PIN: 1234)' : `Admin/Manager (PIN: ${managerPin})`
     });
 
     if (this.mode === 'supabase_cloud') {

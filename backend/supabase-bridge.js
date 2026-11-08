@@ -30,6 +30,17 @@ class SupabaseBridge {
     
     // Seed already known KOT IDs from SQLite (avoids duplicate reprints on server restart)
     try {
+      if (this.db && this.db.db) {
+        const pastKots = this.db.db.prepare("SELECT id FROM kots ORDER BY created_at DESC LIMIT 1000").all();
+        if (Array.isArray(pastKots)) {
+          pastKots.forEach(k => {
+            this.syncedKotIds.add(k.id);
+            if (this.printer && this.printer.printedKotIds) {
+              this.printer.printedKotIds.add(k.id);
+            }
+          });
+        }
+      }
       const activeKots = this.db.getAllActiveKOTs();
       if (Array.isArray(activeKots)) {
         activeKots.forEach(k => {
@@ -39,6 +50,23 @@ class SupabaseBridge {
           }
         });
       }
+
+      // Seed past KOT IDs directly from Supabase Cloud to guarantee no duplicate reprints
+      fetch(`${SUPABASE_URL}/rest/v1/kots?select=id&order=created_at.desc&limit=500`, { 
+        headers: HEADERS,
+        signal: AbortSignal.timeout(5000)
+      })
+        .then(r => r.json())
+        .then(kots => {
+          if (Array.isArray(kots)) {
+            kots.forEach(k => {
+              this.syncedKotIds.add(k.id);
+              if (this.printer && this.printer.printedKotIds) {
+                this.printer.printedKotIds.add(k.id);
+              }
+            });
+          }
+        }).catch(() => {});
     } catch (e) {}
 
     // 1. Native High-Speed Realtime WebSocket (<25ms instant push/pull)
@@ -108,6 +136,10 @@ class SupabaseBridge {
             } else if (ev === 'ITEM_VOIDED') {
               if (this.printer && payload) {
                 this.printer.printVoidSlip(payload).catch(() => {});
+              }
+            } else if (ev === 'TABLE_TRANSFERRED') {
+              if (this.printer && payload) {
+                this.printer.printTransferSlip(payload).catch(() => {});
               }
             } else if (ev === 'BILL_SETTLED') {
               this.handleRemoteBillSettledBroadcast(payload);
@@ -197,6 +229,7 @@ class SupabaseBridge {
       console.log(`⚡ [Supabase Bridge] Instant Remote KOT Broadcast received: Table ${cleanTableId} (${payload.tableName})`);
       if (normalizedItems.length > 0) {
         this.db.punchKOT({
+          id: kotId,
           tableId: cleanTableId,
           tableName: payload.tableName || ('Table ' + cleanTableId),
           waiterName: payload.waiterName || 'Remote Staff',
@@ -589,6 +622,7 @@ class SupabaseBridge {
 
         console.log(`☁️ [Supabase Bridge] Pulling Remote Phone Order into Local SQLite: ${kot.id} (${kot.table_name})`);
         this.db.punchKOT({
+          id: kot.id,
           tableId: kot.table_id,
           tableName: kot.table_name,
           waiterName: kot.waiter_name,
@@ -606,6 +640,17 @@ class SupabaseBridge {
           }).catch(() => {});
         }
         this.syncedKotIds.add(kot.id);
+        if (this.printer && this.printer.printedKotIds) {
+          this.printer.printedKotIds.add(kot.id);
+        }
+
+        // Mark as active in Supabase cloud immediately so it is never pulled again
+        fetch(`${SUPABASE_URL}/rest/v1/kots?id=eq.${encodeURIComponent(kot.id)}`, {
+          method: 'PATCH',
+          headers: HEADERS,
+          body: JSON.stringify({ status: 'active', updated_at: new Date().toISOString() })
+        }).catch(() => {});
+
         hasNewOrder = true;
       }
 

@@ -744,13 +744,42 @@ module.exports = {
   },
 
   // --- KOT Order Punching (Atomic Transaction) ---
-  punchKOT({ tableId, tableName, waiterName, items }) {
-    const kotId = 'KOT-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
+  punchKOT({ id, tableId, tableName, waiterName, items }) {
+    const kotId = id || ('KOT-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900));
     
+    // Normalize and ensure tableId exists to satisfy foreign key constraint
+    let cleanTableId = String(tableId || '').trim();
+    let table = db.prepare('SELECT id, name FROM tables WHERE id = ?').get(cleanTableId);
+    if (!table) {
+      const tidNum = cleanTableId.replace(/\D/g, '');
+      if (tidNum) {
+        const altTid = `T-${tidNum.padStart(2, '0')}`;
+        table = db.prepare('SELECT id, name FROM tables WHERE id = ?').get(altTid);
+        if (table) cleanTableId = table.id;
+        else {
+          const directTid = `T-${tidNum}`;
+          table = db.prepare('SELECT id, name FROM tables WHERE id = ?').get(directTid);
+          if (table) cleanTableId = table.id;
+        }
+      }
+    }
+    if (!table) {
+      const byName = db.prepare('SELECT id, name FROM tables WHERE name = ? COLLATE NOCASE').get(tableName || cleanTableId);
+      if (byName) {
+        cleanTableId = byName.id;
+        table = byName;
+      } else {
+        // Safe auto-creation so foreign key never fails and order is NEVER lost!
+        db.prepare('INSERT OR IGNORE INTO tables (id, name, floor, position, landmark, seats, sort_order, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(cleanTableId, tableName || ('Table ' + cleanTableId), '1st Floor', 'Main Area', 'Dining Hall', 4, 99, 'occupied');
+      }
+    }
+    const finalTableName = tableName || (table ? table.name : ('Table ' + cleanTableId));
+
     db.exec('BEGIN TRANSACTION;');
     try {
-      db.prepare('INSERT INTO kots (id, table_id, table_name, waiter_name, status) VALUES (?, ?, ?, ?, ?)')
-        .run(kotId, tableId, tableName, waiterName || 'Floor Staff', 'pending');
+      db.prepare('INSERT OR IGNORE INTO kots (id, table_id, table_name, waiter_name, status) VALUES (?, ?, ?, ?, ?)')
+        .run(kotId, cleanTableId, finalTableName, waiterName || 'Floor Staff', 'pending');
 
       const insertItem = db.prepare('INSERT INTO kot_items (kot_id, item_id, name, price, qty, is_bar, notes) VALUES (?, ?, ?, ?, ?, ?, ?)');
       for (const item of items) {
@@ -758,7 +787,7 @@ module.exports = {
       }
 
       // Mark table as occupied
-      db.prepare("UPDATE tables SET status = 'occupied' WHERE id = ?").run(tableId);
+      db.prepare("UPDATE tables SET status = 'occupied' WHERE id = ?").run(cleanTableId);
 
       db.exec('COMMIT;');
       return this.getKOTById(kotId);
