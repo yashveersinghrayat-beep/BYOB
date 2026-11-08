@@ -467,6 +467,9 @@ const DB_SERVICE = {
       this.cloudChannel.on('broadcast', { event: 'TABLE_STATUS_CHANGED' }, (msg) => {
         this.applyTableStatusFromRemote(msg.payload);
       });
+      this.cloudChannel.on('broadcast', { event: 'TABLE_STATUS_UPDATED' }, (msg) => {
+        this.applyTableStatusFromRemote(msg.payload);
+      });
 
       this.cloudChannel.on('broadcast', { event: 'TABLES_UPDATED' }, (msg) => {
         if (msg.payload && Array.isArray(msg.payload.tables)) {
@@ -593,12 +596,20 @@ const DB_SERVICE = {
 
   applyTableStatusFromRemote(data) {
     if (!data || !data.tableId) return;
-    let t = this.tables.find(x => x.id === data.tableId);
+    const norm = (id) => String(id || '').replace(/^T-0?/, '');
+    let t = this.tables.find(x => x.id === data.tableId || (norm(x.id) && norm(x.id) === norm(data.tableId)));
     if (t) {
       t.status = data.status || t.status;
       if (data.status === 'vacant') {
         t.placedOrders = [];
         t.currentSubtotal = 0;
+        t.occupiedSince = null;
+        t.occupied_since = null;
+        t.paymentProof = null;
+        t.paymentStatus = null;
+      } else if (data.paymentProof !== undefined) {
+        t.paymentProof = data.paymentProof;
+        t.paymentStatus = 'proof_submitted';
       }
       this.saveLocalTables();
       this.notifyTables();
@@ -1042,7 +1053,7 @@ const DB_SERVICE = {
     }
     t.status = 'occupied';
     if (!t.occupiedSince) {
-      t.occupiedSince = data.timestamp || new Date().toISOString();
+      t.occupiedSince = new Date().toISOString();
       t.occupied_since = t.occupiedSince;
     }
     if (!t.placedOrders) t.placedOrders = [];
@@ -1066,7 +1077,8 @@ const DB_SERVICE = {
       tableName,
       waiterName: assignedWaiter,
       items,
-      newSubtotal
+      newSubtotal,
+      timestamp: t.occupiedSince
     });
 
     // 2. Supabase Cloud Sync Branch
@@ -1231,6 +1243,7 @@ const DB_SERVICE = {
       this.saveLocalTables();
       this.notifyTables();
     }
+    this.broadcastRealtime('TABLE_STATUS_CHANGED', { tableId, status, paymentProof });
     this.broadcastRealtime('TABLE_STATUS_UPDATED', { tableId, status, paymentProof });
     try {
       if (this.mode === 'supabase_cloud') {

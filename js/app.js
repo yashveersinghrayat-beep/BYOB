@@ -6590,54 +6590,23 @@ const APP = {
   handleIncomingAppUpdate(info) {
     if (!info) return;
     this.state.latestUpdateInfo = info;
-    const installedVer = localStorage.getItem('onyx_installed_version') || this.CURRENT_VERSION;
-
-    const isForced = Number(info.force_update) === 1;
-    const isNewer = this.compareVersions(info.latest_version, installedVer) > 0;
-    const isBelowMin = this.compareVersions(info.min_supported_version, installedVer) > 0;
-
-    if (isForced && (isNewer || isBelowMin)) {
-      this.showForceUpdateModal(info, installedVer);
-    } else {
-      const modal = document.getElementById('force-update-modal');
-      if (modal && !this.state.isForceUpdateLocked) {
-        modal.classList.add('hidden');
-      }
+    // Suppressed: Ensure force-update modal is strictly hidden on both web app and mobile app
+    this.state.isForceUpdateLocked = false;
+    const modal = document.getElementById('force-update-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
   },
 
   showForceUpdateModal(info, installedVer) {
-    this.state.isForceUpdateLocked = true;
-    this.state.pendingUpdate = info;
-
+    // Explicitly suppressed per user directive: do not block waiter app or web app
+    this.state.isForceUpdateLocked = false;
     const modal = document.getElementById('force-update-modal');
-    if (!modal) return;
-
-    const titleEl = document.getElementById('force-update-title');
-    const curEl = document.getElementById('force-update-current-ver');
-    const newEl = document.getElementById('force-update-new-ver');
-    const notesEl = document.getElementById('force-update-notes');
-    const statusEl = document.getElementById('force-update-status');
-    const btnEl = document.getElementById('btn-perform-force-update');
-
-    if (titleEl) titleEl.textContent = info.update_title || 'Mandatory App Update';
-    if (curEl) curEl.textContent = `v${installedVer}`;
-    if (newEl) newEl.textContent = `v${info.latest_version}`;
-    if (notesEl) {
-      const notes = info.update_notes || 'Critical database and order sync fixes.\nHigh-speed floor mapping and table live indicators.\nAutomatic local cache purge.';
-      notesEl.innerHTML = notes.split('\n').filter(Boolean).map(line => `• ${line}`).join('<br>');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
-    if (statusEl) statusEl.classList.add('hidden');
-    if (btnEl) {
-      btnEl.disabled = false;
-      btnEl.className = "w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-110 active:scale-95 text-black font-black text-sm uppercase tracking-wider transition-all shadow-xl flex items-center justify-center gap-2";
-      btnEl.innerHTML = '<span>⚡ 1-Click Download & Update</span>';
-      btnEl.onclick = () => APP.performOneClickUpdate();
-    }
-
-    modal.classList.remove('hidden');
-    this.haptic('alert');
-    this.playBeep('void');
   },
 
   async performOneClickUpdate() {
