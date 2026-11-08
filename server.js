@@ -11,7 +11,7 @@ const SupabaseBridge = require('./backend/supabase-bridge.js');
 
 // Modular Dual Thermal Printer Add-on with Safe Cloud Fallback
 let KitchenPrinterAddon, BillPrinterAddon, updatePrinterConfig;
-let KITCHEN_PRINTER_CONFIG = { enabled: false, printerIp: '192.168.225.4', printerPort: 9100 };
+let KITCHEN_PRINTER_CONFIG = { enabled: false, printerIp: '192.168.1.9', printerPort: 9100 };
 let BILL_PRINTER_CONFIG = { enabled: true, mode: 'browser', printerIp: '192.168.1.250', printerPort: 9100 };
 try {
   const mod = require('./backend/kitchen-printer-addon.js');

@@ -10,9 +10,10 @@ const net = require('net');
 
 const KITCHEN_PRINTER_CONFIG = {
   enabled: true,               // Switch: true (Auto-print ON) | false (OFF)
-  printerIp: '192.168.225.4',  // Kitchen Thermal Printer IP on Ground Floor (Port 9100)
+  printerIp: '192.168.1.9',    // 2nd Floor Forwarded WAN IP (Port 9100)
+  fallbackIp: '192.168.225.4', // Ground Floor Direct LAN IP (Port 9100)
   printerPort: 9100,           // Standard ESC/POS RAW Port
-  timeoutMs: 2500,             // 2.5s connection timeout (never blocks server)
+  timeoutMs: 1500,             // 1.5s fast failover timeout
   restaurantName: 'BYOB INDIRAPURAM',
   autoCut: true,
   debug: true
@@ -322,91 +323,77 @@ class KitchenPrinterAddon {
     return this.printKot(testKot);
   }
 
-  _doSocketBufferPrint(buffer, jobId, label = 'Slip') {
+  // Send RAW ESC/POS stream with automatic Dual-Floor Failover (2nd Floor & Ground Floor)
+  _trySendSocket(ip, port, buffer, timeoutMs) {
     return new Promise((resolve) => {
       const socket = new net.Socket();
-      let finished = false;
-
-      const finish = (ok, errorMsg = null) => {
-        if (finished) return;
-        finished = true;
+      let done = false;
+      const complete = (ok, msg = null) => {
+        if (done) return;
+        done = true;
         try { socket.destroy(); } catch (e) {}
-
-        if (ok) {
-          this.notifyStatus(true);
-          console.log(`🖨️ [Kitchen Printer] SUCCESS: ${label} printed wirelessly to ${KITCHEN_PRINTER_CONFIG.printerIp}`);
-          resolve({ success: true, message: `${label} printed to ${KITCHEN_PRINTER_CONFIG.printerIp}` });
-        } else {
-          this.notifyStatus(false, errorMsg);
-          console.warn(`⚠️ [Kitchen Printer] OFFLINE: ${errorMsg} (${KITCHEN_PRINTER_CONFIG.printerIp})`);
-          resolve({ success: false, error: errorMsg });
-        }
+        resolve({ ok, msg, ip });
       };
-
-      socket.setTimeout(KITCHEN_PRINTER_CONFIG.timeoutMs);
-      socket.connect(KITCHEN_PRINTER_CONFIG.printerPort, KITCHEN_PRINTER_CONFIG.printerIp, () => {
+      socket.setTimeout(timeoutMs);
+      socket.connect(port, ip, () => {
         socket.write(buffer, () => {
-          setTimeout(() => finish(true), 150);
+          setTimeout(() => complete(true), 120);
         });
       });
-      socket.on('timeout', () => finish(false, 'Connection timeout (Printer may be OFF or unreachable on Wi-Fi)'));
-      socket.on('error', (err) => finish(false, err.message || 'TCP error'));
-      socket.on('close', (hadError) => {
-        if (!finished) finish(false, hadError ? 'Transmission interrupted' : 'Connection closed unexpectedly');
-      });
+      socket.on('timeout', () => complete(false, 'Connection timeout'));
+      socket.on('error', (e) => complete(false, e.message || 'Network error'));
+      socket.on('close', (h) => { if (!done) complete(false, h ? 'Interrupted' : 'Closed unexpectedly'); });
     });
   }
 
-  _doSocketPrint(kotData, kotId) {
+  async _sendToCandidatePrinters(buffer) {
+    const candidates = [
+      KITCHEN_PRINTER_CONFIG.printerIp,   // Primary: 192.168.1.9 (2nd Floor forward)
+      KITCHEN_PRINTER_CONFIG.fallbackIp  // Fallback: 192.168.225.4 (Ground Floor direct)
+    ].filter(Boolean);
+
+    let lastError = 'No targets';
+    for (const ip of candidates) {
+      const res = await this._trySendSocket(ip, KITCHEN_PRINTER_CONFIG.printerPort, buffer, KITCHEN_PRINTER_CONFIG.timeoutMs || 1500);
+      if (res.ok) {
+        return { success: true, connectedIp: ip };
+      }
+      lastError = res.msg;
+    }
+    return { success: false, error: lastError };
+  }
+
+  async _doSocketBufferPrint(buffer, jobId, label = 'Slip') {
+    const res = await this._sendToCandidatePrinters(buffer);
+    if (res.success) {
+      this.notifyStatus(true);
+      console.log(`🖨️ [Kitchen Printer] SUCCESS: ${label} printed wirelessly to ${res.connectedIp}`);
+      return { success: true, message: `${label} printed to ${res.connectedIp}` };
+    } else {
+      this.notifyStatus(false, res.error);
+      console.warn(`⚠️ [Kitchen Printer] OFFLINE: ${res.error} (${KITCHEN_PRINTER_CONFIG.printerIp})`);
+      return { success: false, error: res.error };
+    }
+  }
+
+  async _doSocketPrint(kotData, kotId) {
     const buffer = this.buildEscPosBuffer(kotData);
+    const res = await this._sendToCandidatePrinters(buffer);
 
-    return new Promise((resolve) => {
-      const socket = new net.Socket();
-      let finished = false;
-
-      const finish = (ok, errorMsg = null) => {
-        if (finished) return;
-        finished = true;
-        try { socket.destroy(); } catch (e) {}
-
-        if (ok) {
-          if (kotId) this.printedKotIds.add(kotId);
-          this.pendingQueue = this.pendingQueue.filter(k => this.getKotId(k) !== kotId);
-          this.notifyStatus(true);
-          console.log(`🖨️ [Kitchen Printer] SUCCESS: KOT #${kotId || 'NEW'} printed wirelessly to ${KITCHEN_PRINTER_CONFIG.printerIp}`);
-          resolve({ success: true, message: `KOT printed to ${KITCHEN_PRINTER_CONFIG.printerIp}` });
-        } else {
-          if (kotId && !this.pendingQueue.some(k => this.getKotId(k) === kotId)) {
-            this.pendingQueue.push(kotData);
-          }
-          this.notifyStatus(false, errorMsg, kotData);
-          console.warn(`⚠️ [Kitchen Printer] OFFLINE / FAILED: ${errorMsg} (${KITCHEN_PRINTER_CONFIG.printerIp})`);
-          resolve({ success: false, error: errorMsg });
-        }
-      };
-
-      socket.setTimeout(KITCHEN_PRINTER_CONFIG.timeoutMs);
-
-      socket.connect(KITCHEN_PRINTER_CONFIG.printerPort, KITCHEN_PRINTER_CONFIG.printerIp, () => {
-        socket.write(buffer, () => {
-          setTimeout(() => finish(true), 150);
-        });
-      });
-
-      socket.on('timeout', () => {
-        finish(false, 'Connection timeout (Printer may be OFF or unreachable on Wi-Fi)');
-      });
-
-      socket.on('error', (err) => {
-        finish(false, err.message || 'TCP Network error');
-      });
-
-      socket.on('close', (hadError) => {
-        if (!finished) {
-          finish(false, hadError ? 'Transmission interrupted' : 'Printer closed connection unexpectedly');
-        }
-      });
-    });
+    if (res.success) {
+      if (kotId) this.printedKotIds.add(kotId);
+      this.pendingQueue = this.pendingQueue.filter(k => this.getKotId(k) !== kotId);
+      this.notifyStatus(true);
+      console.log(`🖨️ [Kitchen Printer] SUCCESS: KOT #${kotId || 'NEW'} printed wirelessly to ${res.connectedIp}`);
+      return { success: true, message: `KOT printed to ${res.connectedIp}` };
+    } else {
+      if (kotId && !this.pendingQueue.some(k => this.getKotId(k) === kotId)) {
+        this.pendingQueue.push(kotData);
+      }
+      this.notifyStatus(false, res.error, kotData);
+      console.warn(`⚠️ [Kitchen Printer] OFFLINE / FAILED: ${res.error} (${KITCHEN_PRINTER_CONFIG.printerIp})`);
+      return { success: false, error: res.error };
+    }
   }
 
   // Notify UI via Realtime SSE about Printer Health
