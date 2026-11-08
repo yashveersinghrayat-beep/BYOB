@@ -145,6 +145,14 @@ class SupabaseBridge {
               this.handleRemoteBillSettledBroadcast(payload);
             } else if (ev === 'TABLE_STATUS_CHANGED') {
               this.handleRemoteTableStatusBroadcast(payload);
+            } else if (ev === 'DEVELOPER_KILL_SWITCH') {
+              if (this.broadcast) {
+                this.broadcast('DEVELOPER_KILL_SWITCH', payload);
+              }
+            } else if (ev === 'REMOTE_SESSION_KILL') {
+              if (this.broadcast) {
+                this.broadcast('REMOTE_SESSION_KILL', payload);
+              }
             }
           }
         } catch (e) { }

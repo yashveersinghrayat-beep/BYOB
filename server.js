@@ -378,6 +378,12 @@ async function handleRequest(req, res) {
 
     // --- KOT Order Punching ---
     if (pathname === '/api/orders/punch' && method === 'POST') {
+      if (DB.isDeveloperKillSwitchActive()) {
+        return sendJSON(res, 403, { 
+          success: false, 
+          error: 'SYSTEM PERMANENTLY DEACTIVATED: Commercial software license suspended by developer.' 
+        });
+      }
       const body = await parseBody(req);
       const kot = DB.punchKOT(body);
       const tables = DB.getTables();
@@ -484,6 +490,12 @@ async function handleRequest(req, res) {
     }
 
     if (pathname === '/api/bills/settle' && method === 'POST') {
+      if (DB.isDeveloperKillSwitchActive()) {
+        return sendJSON(res, 403, { 
+          success: false, 
+          error: 'SYSTEM PERMANENTLY DEACTIVATED: Commercial software license suspended by developer.' 
+        });
+      }
       const body = await parseBody(req);
       const bill = DB.settleBill(body);
       const tables = DB.getTables();
@@ -699,6 +711,175 @@ async function handleRequest(req, res) {
       const limit = parseInt(parsedUrl.searchParams.get('limit') || '100');
       const logs = DB.getTelemetryLogs({ deviceId, eventType, tableId }, limit);
       return sendJSON(res, 200, { success: true, logs });
+    }
+
+    // --- Live Device Heartbeat & Registry ---
+    if (pathname === '/api/telemetry/heartbeat' && method === 'POST') {
+      const body = await parseBody(req);
+      const forwarded = req.headers['x-forwarded-for'];
+      const rawIp = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
+      const clientIp = (rawIp === '::1' || rawIp === '::ffff:127.0.0.1') ? '127.0.0.1' : (rawIp || '').replace(/^::ffff:/, '') || '127.0.0.1';
+
+      const devId = body.deviceId || 'DEV-UNKNOWN';
+      DB.recordDeviceHeartbeat({
+        deviceId: devId,
+        deviceType: body.deviceType || 'android_apk',
+        deviceModel: body.deviceModel || 'Unknown Device',
+        appVersion: body.appVersion || '5.1',
+        platform: body.platform || 'android_apk',
+        role: body.role || 'waiter',
+        ipAddress: clientIp,
+        metadata: body.metadata || null
+      });
+
+      // Mirror to Supabase Cloud store_settings for remote developer dashboard
+      try {
+        const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+        const deviceData = {
+          deviceId: devId,
+          deviceModel: body.deviceModel || 'Unknown Device',
+          platform: body.platform || 'android_apk',
+          appVersion: body.appVersion || '5.1',
+          role: body.role || 'waiter',
+          ipAddress: clientIp,
+          lastSeen: new Date().toISOString(),
+          status: 'active'
+        };
+        fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings', {
+          method: 'POST',
+          headers: {
+            'apikey': supaKey,
+            'Authorization': 'Bearer ' + supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            key: `dev_device_${devId}`,
+            value: JSON.stringify(deviceData),
+            updated_at: new Date().toISOString()
+          })
+        }).catch(() => {});
+      } catch (e) {}
+
+      const isKilled = DB.isDeveloperKillSwitchActive();
+      return sendJSON(res, 200, {
+        success: true,
+        deviceId: devId,
+        killSwitchActive: isKilled,
+        killReason: isKilled ? DB.getSettings().developer_kill_switch_reason : null
+      });
+    }
+
+    // --- Developer Live Devices Monitor ---
+    if (pathname === '/api/developer/live-devices' && method === 'GET') {
+      const devices = DB.getActiveDevices();
+      const liveCount = devices.filter(d => d.is_live === 1).length;
+      return sendJSON(res, 200, {
+        success: true,
+        totalInstalled: devices.length,
+        totalLiveOnline: liveCount,
+        killSwitchActive: DB.isDeveloperKillSwitchActive(),
+        devices
+      });
+    }
+
+    // --- Developer Master Kill-Switch Route ---
+    if (pathname === '/api/developer/kill-switch' && method === 'POST') {
+      const body = await parseBody(req);
+      const secret = body.secretCode || body.code;
+      if (secret !== 'DEV-UNLOCK-778899' && secret !== 'BYOB_DEV_MASTER_2026') {
+        return sendJSON(res, 401, { success: false, error: 'Unauthorized: Invalid developer secret passphrase.' });
+      }
+
+      const active = Boolean(body.active);
+      const reason = body.reason || (active 
+        ? 'SOFTWARE LICENSE SUSPENDED: Commercial usage rights have been terminated by the software developer. All operations are halted permanently.'
+        : 'System restored by developer.');
+
+      DB.setDeveloperKillSwitch(active, reason);
+
+      // Broadcast immediately to all connected devices via SSE
+      broadcastEvent('DEVELOPER_KILL_SWITCH', { active, reason });
+
+      // Broadcast immediately to all remote phones via Supabase WebSocket
+      if (bridge && typeof bridge.broadcastToWebSocket === 'function') {
+        bridge.broadcastToWebSocket('DEVELOPER_KILL_SWITCH', { active, reason });
+      }
+
+      // Sync to Supabase Cloud store_settings
+      try {
+        const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+        await fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings', {
+          method: 'POST',
+          headers: {
+            'apikey': supaKey,
+            'Authorization': 'Bearer ' + supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            key: 'developer_kill_switch_active',
+            value: active ? '1' : '0',
+            updated_at: new Date().toISOString()
+          })
+        });
+        await fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings', {
+          method: 'POST',
+          headers: {
+            'apikey': supaKey,
+            'Authorization': 'Bearer ' + supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            key: 'developer_kill_switch_reason',
+            value: reason,
+            updated_at: new Date().toISOString()
+          })
+        });
+      } catch(e) {}
+
+      return sendJSON(res, 200, {
+        success: true,
+        killSwitchActive: active,
+        reason,
+        message: active ? '🛑 KILL SWITCH ACTIVATED: All apps permanently locked.' : '✅ SYSTEM RESTORED: All apps unlocked.'
+      });
+    }
+
+    // --- Remote Session Kill Route (Manager force-closes all other sessions) ---
+    if (pathname === '/api/sessions/terminate-others' && method === 'POST') {
+      const body = await parseBody(req);
+      const allowedDeviceId = body.allowedDeviceId || 'DESK-MANAGER';
+      const reason = body.reason || 'Manager initiated emergency termination of all other sessions';
+      const epoch = Date.now().toString();
+
+      DB.updateSettings({
+        session_revocation_epoch: epoch,
+        authorized_session_device: allowedDeviceId
+      });
+
+      broadcastEvent('REMOTE_SESSION_KILL', { allowedDeviceId, epoch, reason });
+
+      if (bridge && typeof bridge.broadcastToWebSocket === 'function') {
+        bridge.broadcastToWebSocket('REMOTE_SESSION_KILL', { allowedDeviceId, epoch, reason });
+      }
+
+      try {
+        const supaKey = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+        await fetch('https://wxsabwhabitqmzkplhyk.supabase.co/rest/v1/store_settings', {
+          method: 'POST',
+          headers: {
+            'apikey': supaKey,
+            'Authorization': 'Bearer ' + supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({ key: 'session_revocation_epoch', value: epoch, updated_at: new Date().toISOString() })
+        });
+      } catch (e) {}
+
+      return sendJSON(res, 200, { success: true, epoch, allowedDeviceId, message: 'All other sessions terminated successfully.' });
     }
 
   } catch (apiErr) {

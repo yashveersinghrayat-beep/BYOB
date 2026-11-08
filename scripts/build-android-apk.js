@@ -99,23 +99,46 @@ fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), `<?xml versio
 const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.onyx.pos"
-    android:versionCode="10"
-    android:versionName="5.0">
+    android:versionCode="11"
+    android:versionName="5.1">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
+    <!-- Core Network & Connectivity -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Camera & Audio (QR, Payment Proof Slips) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
+    <!-- System Notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- File Storage & Media Permissions -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+    <!-- Location & Bluetooth for Wireless Thermal Printers -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+
+    <!-- Hardware Feature Declarations -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <application
         android:label="@string/app_name"
@@ -123,6 +146,7 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:hardwareAccelerated="true">
 
@@ -142,6 +166,63 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 fs.writeFileSync(path.join(BUILD_DIR, 'AndroidManifest.xml'), manifestContent);
 
 // 4. Java Sources (Separate top-level classes to prevent D8 inner-class parameter metadata bug)
+const posNativeBridgeJava = `package com.onyx.pos;
+
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import android.webkit.JavascriptInterface;
+
+public class PosNativeBridge {
+    private final MainActivity activity;
+
+    public PosNativeBridge(MainActivity activity) {
+        this.activity = activity;
+    }
+
+    @JavascriptInterface
+    public void requestAllPermissions() {
+        activity.runOnUiThread(activity);
+    }
+
+    @JavascriptInterface
+    public void openAppSettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            Uri uri = Uri.fromParts("package", activity.getPackageName(), null);
+            intent.setData(uri);
+            activity.startActivity(intent);
+        } catch (Exception e) {}
+    }
+
+    @JavascriptInterface
+    public boolean hasCameraPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return activity.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    @JavascriptInterface
+    public String getDeviceModel() {
+        return Build.MANUFACTURER + " " + Build.MODEL;
+    }
+
+    @JavascriptInterface
+    public String getAppVersion() {
+        return "5.1";
+    }
+
+    @JavascriptInterface
+    public void closeApp() {
+        activity.finishAffinity();
+        System.exit(0);
+    }
+}
+`;
+fs.writeFileSync(path.join(srcDir, 'PosNativeBridge.java'), posNativeBridgeJava);
+
 const posWebChromeClientJava = `package com.onyx.pos;
 
 import android.webkit.PermissionRequest;
@@ -156,17 +237,10 @@ public class PosWebChromeClient extends WebChromeClient {
 
     @Override
     public void onPermissionRequest(final PermissionRequest request) {
-        boolean hasCamera = true;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            hasCamera = activity.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED;
-        }
-        if (hasCamera) {
+        try {
             request.grant(request.getResources());
-        } else {
-            activity.pendingWebPermissionRequest = request;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                activity.requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 101);
-            }
+        } catch (Exception e) {
+            try { request.deny(); } catch (Exception ex) {}
         }
     }
 }
@@ -239,23 +313,53 @@ import android.webkit.WebView;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements DownloadListener {
+public class MainActivity extends Activity implements DownloadListener, Runnable {
     private WebView webView;
     private static final String SERVER_URL = "https://byob-yashveersinghrayat-5191s-projects.vercel.app?platform=android_apk";
     private static final int PERMISSION_REQ_CODE = 101;
     public PermissionRequest pendingWebPermissionRequest;
 
+    @Override
+    public void run() {
+        checkAndRequestAllPermissions();
+    }
+
     public void checkAndRequestAllPermissions() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             java.util.List<String> needed = new java.util.ArrayList<String>();
+
+            // 1. Camera (Essential for Table bill & UPI settlement proof capture)
             if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 needed.add(android.Manifest.permission.CAMERA);
             }
+
+            // 2. Storage & Photos
             if (android.os.Build.VERSION.SDK_INT >= 33) {
+                if (checkSelfPermission("android.permission.READ_MEDIA_IMAGES") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    needed.add("android.permission.READ_MEDIA_IMAGES");
+                }
                 if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     needed.add("android.permission.POST_NOTIFICATIONS");
                 }
+            } else {
+                if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    needed.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
+                }
+                if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    needed.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                }
             }
+
+            // 3. Bluetooth for Wireless Thermal Printers (Android 12+)
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                if (checkSelfPermission("android.permission.BLUETOOTH_CONNECT") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    needed.add("android.permission.BLUETOOTH_CONNECT");
+                }
+                if (checkSelfPermission("android.permission.BLUETOOTH_SCAN") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    needed.add("android.permission.BLUETOOTH_SCAN");
+                }
+            }
+
             if (!needed.isEmpty()) {
                 requestPermissions(needed.toArray(new String[0]), PERMISSION_REQ_CODE);
             }
@@ -350,7 +454,6 @@ public class MainActivity extends Activity implements DownloadListener {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         hideSystemUI();
-        checkAndRequestAllPermissions();
 
         FrameLayout layout = new FrameLayout(this);
         layout.setFitsSystemWindows(false);
@@ -380,6 +483,10 @@ public class MainActivity extends Activity implements DownloadListener {
         webView.setWebChromeClient(new PosWebChromeClient(this));
         webView.setWebViewClient(new PosWebViewClient());
         webView.setDownloadListener(this);
+        webView.addJavascriptInterface(new PosNativeBridge(this), "PosAndroid");
+
+        // Schedule batch permission prompt once UI is attached and visible
+        webView.postDelayed(this, 500);
 
         // Connect directly to Live Vercel Web App (falls back instantly to bundled assets if offline)
         webView.loadUrl(SERVER_URL);
@@ -415,6 +522,7 @@ const javaFiles = [
   path.join(srcDir, 'MainActivity.java'),
   path.join(srcDir, 'PosWebChromeClient.java'),
   path.join(srcDir, 'PosWebViewClient.java'),
+  path.join(srcDir, 'PosNativeBridge.java'),
   path.join(srcDir, 'R.java')
 ];
 const quotedJava = javaFiles.map(j => `"${j}"`).join(' ');

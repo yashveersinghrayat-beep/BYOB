@@ -2123,6 +2123,28 @@
           </button>
         </div>
       </div>
+
+      <!-- Emergency Multi-Device Remote Kill Switch Card -->
+      <div class="bg-gradient-to-r from-red-950/40 via-[#181119] to-[#121622] border-2 border-red-500/30 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center text-2xl flex-shrink-0">
+            🚨
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-black uppercase tracking-wider text-white">Emergency Multi-Device Remote Kill-Switch</h3>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Active Defense</span>
+            </div>
+            <p class="text-xs text-neutral-300 mt-1">
+              Instantly force-closes and locks out <strong>every other device, phone, or browser tab</strong> running ONYX POS across the entire restaurant network. Only this device will remain authorized.
+            </p>
+          </div>
+        </div>
+        <button onclick="APP.terminateAllOtherSessions()" type="button" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-900/40 active:scale-95 flex items-center justify-center gap-2 flex-shrink-0">
+          <span>🛑</span>
+          <span>Terminate All Other Sessions Now</span>
+        </button>
+      </div>
     </div>
 
     <!-- ================= PANE: DUAL PRINTERS SETUP (BILL & KITCHEN WI-FI) ================= -->

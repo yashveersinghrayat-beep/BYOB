@@ -249,6 +249,22 @@ function initDatabase() {
       released_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_by TEXT DEFAULT 'Manager'
     );
+
+    -- 14. Real-Time Installed Device Registry & Live Heartbeat
+    CREATE TABLE IF NOT EXISTS app_install_devices (
+      device_id TEXT PRIMARY KEY,
+      device_type TEXT DEFAULT 'android_apk',
+      device_model TEXT,
+      app_version TEXT DEFAULT '5.1',
+      platform TEXT DEFAULT 'android_apk',
+      role TEXT DEFAULT 'waiter',
+      installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_heartbeat_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      ip_address TEXT,
+      is_online INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'active',
+      metadata TEXT
+    );
   `);
 
   // Auto-migration for existing SQLite databases
@@ -292,7 +308,7 @@ function initDatabase() {
   if (countRow.count === 0) {
     seedDefaultStoreData();
   } else {
-    // Ensure default printer settings exist
+    // Ensure default printer & developer control settings exist
     const ins = db.prepare('INSERT OR IGNORE INTO store_settings (key, value) VALUES (?, ?)');
     ins.run('kitchen_printer_enabled', '1');
     ins.run('kitchen_printer_ip', '192.168.1.252');
@@ -300,6 +316,10 @@ function initDatabase() {
     ins.run('bill_printer_mode', 'browser');
     ins.run('bill_printer_ip', '192.168.1.250');
     ins.run('bill_printer_port', '9100');
+    ins.run('developer_kill_switch_active', '0');
+    ins.run('developer_kill_switch_reason', 'SOFTWARE LICENSE SUSPENDED: Commercial usage rights have been terminated by the software developer.');
+    ins.run('developer_kill_switch_code', 'DEV-UNLOCK-778899');
+    ins.run('live_device_index', '[]');
   }
 }
 
@@ -637,6 +657,79 @@ module.exports = {
         .run(newId, user.name, user.role, user.pin, user.phone || '', 1);
     }
     return this.getAllStaff();
+  },
+
+  // --- Real-Time Installed Device Registry & Live Heartbeat ---
+  recordDeviceHeartbeat({ deviceId, deviceType, deviceModel, appVersion, platform, role, ipAddress, metadata }) {
+    if (!deviceId) return null;
+    const stmt = db.prepare(`
+      INSERT INTO app_install_devices (
+        device_id, device_type, device_model, app_version, platform, role, ip_address, is_online, status, metadata, last_heartbeat_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'active', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(device_id) DO UPDATE SET
+        device_type = excluded.device_type,
+        device_model = COALESCE(excluded.device_model, app_install_devices.device_model),
+        app_version = excluded.app_version,
+        platform = excluded.platform,
+        role = excluded.role,
+        ip_address = COALESCE(excluded.ip_address, app_install_devices.ip_address),
+        is_online = 1,
+        metadata = COALESCE(excluded.metadata, app_install_devices.metadata),
+        last_heartbeat_at = CURRENT_TIMESTAMP
+    `);
+    stmt.run(
+      deviceId,
+      deviceType || 'android_apk',
+      deviceModel || 'Unknown Device',
+      appVersion || '5.1',
+      platform || 'android_apk',
+      role || 'waiter',
+      ipAddress || '',
+      typeof metadata === 'object' ? JSON.stringify(metadata) : (metadata || null)
+    );
+
+    try {
+      const devices = db.prepare(`SELECT device_id, device_model, platform, app_version, role, last_heartbeat_at, (strftime('%s', 'now') - strftime('%s', last_heartbeat_at) < 120) as is_live FROM app_install_devices ORDER BY last_heartbeat_at DESC`).all();
+      this.updateSettings({ live_device_index: JSON.stringify(devices) });
+    } catch(e) {}
+
+    return { success: true, deviceId };
+  },
+
+  getActiveDevices() {
+    return db.prepare(`
+      SELECT 
+        device_id,
+        device_type,
+        device_model,
+        app_version,
+        platform,
+        role,
+        installed_at,
+        last_heartbeat_at,
+        ip_address,
+        status,
+        CASE WHEN (strftime('%s', 'now') - strftime('%s', last_heartbeat_at)) < 120 THEN 1 ELSE 0 END AS is_live,
+        (strftime('%s', 'now') - strftime('%s', last_heartbeat_at)) AS seconds_since_ping
+      FROM app_install_devices
+      ORDER BY last_heartbeat_at DESC
+    `).all();
+  },
+
+  // --- Developer Kill-Switch Control ---
+  isDeveloperKillSwitchActive() {
+    const row = db.prepare("SELECT value FROM store_settings WHERE key = 'developer_kill_switch_active'").get();
+    return row && String(row.value).trim() === '1';
+  },
+
+  setDeveloperKillSwitch(active, reason = 'Software license suspended by developer') {
+    const val = active ? '1' : '0';
+    this.updateSettings({
+      developer_kill_switch_active: val,
+      developer_kill_switch_reason: reason,
+      developer_kill_switch_updated_at: new Date().toISOString()
+    });
+    return { active: val === '1', reason };
   },
 
   // --- Dynamic Tables ---

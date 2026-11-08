@@ -725,6 +725,23 @@ const APP = {
   },
 
   init() {
+    // 0A. Developer Master Kill-Switch Check (Permanent Database Lock)
+    if (this.checkDeveloperLockout()) {
+      return;
+    }
+
+    // 0B. Check Remote Session Termination (by Manager)
+    if (this.checkSessionRevocation()) {
+      return;
+    }
+
+    // 0C. Auto request all native permissions on Android APK launch
+    if (window.PosAndroid && typeof window.PosAndroid.requestAllPermissions === 'function') {
+      try {
+        window.PosAndroid.requestAllPermissions();
+      } catch (e) {}
+    }
+
     this.checkFreshStartReset();
     this.loadLocalCarts(); // Restore draft carts on reload (Item 9)
     this.initAuth(); // Initialize User Role / Welcome Gateway
@@ -743,6 +760,191 @@ const APP = {
     this.renderAll();
     this.updateCartUI();
     this.updateTableHeaderBadges();
+  },
+
+  // ================= -1. DEVELOPER GLOBAL KILL SWITCH & ACCESS CONTROLS =================
+  checkDeveloperLockout() {
+    const isPermLocked = localStorage.getItem('onyx_dev_lock_permanent') === '1';
+    const isCloudLocked = DB_SERVICE.storeSettings && String(DB_SERVICE.storeSettings.developer_kill_switch_active).trim() === '1';
+    if (isPermLocked || isCloudLocked) {
+      const reason = (DB_SERVICE.storeSettings && DB_SERVICE.storeSettings.developer_kill_switch_reason) 
+        || localStorage.getItem('onyx_dev_lock_reason')
+        || 'SOFTWARE LICENSE SUSPENDED: Commercial usage rights have been terminated by the software developer. All operations are halted permanently.';
+      this.activateDeveloperLockout(reason);
+      return true;
+    }
+    return false;
+  },
+
+  activateDeveloperLockout(reason = 'Commercial software license suspended by developer.') {
+    window.__ONYX_LOCKOUT_ACTIVE__ = true;
+    try {
+      localStorage.setItem('onyx_dev_lock_permanent', '1');
+      localStorage.setItem('onyx_dev_lock_reason', reason);
+      sessionStorage.clear();
+      localStorage.removeItem('onyx_manager_pin_cache');
+      localStorage.removeItem('onyx_auth_user');
+    } catch(e) {}
+
+    try {
+      if (DB_SERVICE.sse) DB_SERVICE.sse.close();
+      if (DB_SERVICE.cloudChannel && typeof ONYX_CLOUD_CONFIG !== 'undefined') {
+        const client = ONYX_CLOUD_CONFIG.getClient();
+        if (client) client.removeChannel(DB_SERVICE.cloudChannel);
+      }
+    } catch(e) {}
+
+    const old = document.getElementById('onyx-dev-lock-screen');
+    if (old) old.remove();
+
+    const devId = this.getDeviceId ? this.getDeviceId() : (localStorage.getItem('onyx_device_id') || 'DEV-PHONE');
+    const lockScreen = document.createElement('div');
+    lockScreen.id = 'onyx-dev-lock-screen';
+    lockScreen.style.cssText = 'position:fixed;inset:0;background:#05060a;z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;user-select:none;touch-action:none;';
+    lockScreen.innerHTML = `
+      <div style="width:96px;height:96px;border-radius:28px;background:rgba(239,68,68,0.12);border:2px solid rgba(239,68,68,0.4);display:flex;align-items:center;justify-content:center;font-size:46px;margin-bottom:24px;box-shadow:0 0 50px rgba(239,68,68,0.25);">
+        🛑
+      </div>
+      <div style="display:inline-block;padding:4px 12px;border-radius:9999px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">
+        SYSTEM ACCESS TERMINATED
+      </div>
+      <h1 style="font-size:26px;font-weight:900;color:#ffffff;margin:0 0 8px 0;letter-spacing:0.5px;">
+        Software License Suspended
+      </h1>
+      <p style="font-size:13px;color:#94a3b8;max-width:460px;line-height:1.6;margin:0 0 24px 0;">
+        All restaurant point-of-sale services, kitchen ticketing (KOT), billing, and network operations have been permanently disabled by the software system architect.
+      </p>
+
+      <div style="background:#0b0f19;border:1px solid #1f293d;border-radius:16px;padding:16px 20px;max-width:440px;width:100%;font-size:12px;margin-bottom:24px;text-align:left;box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        <div style="color:#ef4444;font-weight:bold;margin-bottom:6px;font-size:12px;">
+          ⚠️ Reason for Suspension:
+        </div>
+        <div style="color:#e2e8f0;line-height:1.5;margin-bottom:12px;font-size:12px;">
+          ${reason}
+        </div>
+        <div style="border-top:1px solid #1e293b;padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-family:monospace;font-size:11px;color:#64748b;">
+          <span>Terminal ID: <strong style="color:#94a3b8;">${devId}</strong></span>
+          <span>Status: <strong style="color:#ef4444;">LOCKED</strong></span>
+        </div>
+      </div>
+
+      <div style="font-size:12px;color:#64748b;max-width:420px;line-height:1.5;margin-bottom:20px;">
+        Commercial usage agreement settlement required. Contact the software architect/developer directly to settle outstanding invoices and restore terminal authorization.
+      </div>
+
+      <button onclick="APP.retryDeveloperUnlock()" style="padding:10px 24px;background:#1e293b;border:1px solid #334155;border-radius:12px;color:#cbd5e1;font-weight:700;font-size:12px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
+        🔄 Check License Status
+      </button>
+    `;
+    document.body.appendChild(lockScreen);
+
+    window.addEventListener('keydown', (e) => { e.stopPropagation(); }, true);
+    window.addEventListener('contextmenu', (e) => { e.preventDefault(); }, true);
+  },
+
+  async retryDeveloperUnlock() {
+    try {
+      this.showToast('Checking developer license status with cloud database...', 'info');
+      if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
+        const client = ONYX_CLOUD_CONFIG.getClient();
+        if (client) {
+          const { data } = await client.from('store_settings').select('value').eq('key', 'developer_kill_switch_active').maybeSingle();
+          if (data && String(data.value).trim() === '0') {
+            localStorage.removeItem('onyx_dev_lock_permanent');
+            localStorage.removeItem('onyx_dev_lock_reason');
+            window.__ONYX_LOCKOUT_ACTIVE__ = false;
+            this.showToast('✅ Software license restored! Reloading...', 'success');
+            setTimeout(() => window.location.reload(), 1200);
+            return;
+          }
+        }
+      }
+      this.showToast('❌ System remains locked by developer.', 'error');
+    } catch(e) {
+      this.showToast('License verification failed: ' + e.message, 'error');
+    }
+  },
+
+  checkSessionRevocation() {
+    const isRevoked = localStorage.getItem('onyx_session_revoked') === '1';
+    const revokedEpoch = parseInt(DB_SERVICE.storeSettings?.session_revocation_epoch || 0, 10);
+    const allowedDevice = DB_SERVICE.storeSettings?.authorized_session_device;
+    const currentDeviceId = this.getDeviceId ? this.getDeviceId() : localStorage.getItem('onyx_device_id');
+    const regAt = parseInt(localStorage.getItem('onyx_device_registered_at') || '0', 10);
+
+    if (isRevoked || (revokedEpoch > 0 && currentDeviceId !== allowedDevice && (!regAt || regAt < revokedEpoch))) {
+      this.lockoutTerminatedSession('Session was revoked during Manager emergency multi-device termination.');
+      return true;
+    }
+    return false;
+  },
+
+  lockoutTerminatedSession(reason = 'Terminated remotely by Manager') {
+    try {
+      sessionStorage.clear();
+      localStorage.setItem('onyx_session_revoked', '1');
+      localStorage.removeItem('onyx_manager_pin_cache');
+      localStorage.removeItem('onyx_manager_session');
+    } catch(e) {}
+
+    const old = document.getElementById('onyx-remote-kill-screen');
+    if (old) old.remove();
+
+    const devId = this.getDeviceId ? this.getDeviceId() : 'DEV-PHONE';
+    const screen = document.createElement('div');
+    screen.id = 'onyx-remote-kill-screen';
+    screen.style.cssText = 'position:fixed;inset:0;background:#05070c;z-index:9999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;';
+    screen.innerHTML = `
+      <div style="width:80px;height:80px;border-radius:24px;background:rgba(239,68,68,0.15);border:2px solid rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center;font-size:38px;margin-bottom:20px;">
+        🛑
+      </div>
+      <h1 style="font-size:22px;font-weight:900;color:#ef4444;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px 0;">
+        Session Terminated Remotely
+      </h1>
+      <p style="font-size:14px;color:#94a3b8;max-width:440px;line-height:1.5;margin:0 0 20px 0;">
+        The Restaurant Manager has remotely terminated and closed all other active sessions across the restaurant.
+      </p>
+      <div style="background:#0e131f;border:1px solid #1e293b;border-radius:12px;padding:12px 20px;font-family:monospace;font-size:12px;color:#64748b;margin-bottom:20px;display:flex;flex-direction:column;gap:4px;text-align:left;">
+        <div><strong style="color:#94a3b8;">Device ID:</strong> ${devId}</div>
+        <div><strong style="color:#94a3b8;">Status:</strong> <span style="color:#ef4444;font-weight:bold;">REVOKED & LOCKED</span></div>
+        <div><strong style="color:#94a3b8;">Reason:</strong> ${reason}</div>
+      </div>
+      <button onclick="window.location.reload()" style="background:#1e293b;color:#f8fafc;border:1px solid #334155;padding:10px 24px;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer;">
+        🔄 Retry Connection
+      </button>
+    `;
+    document.body.appendChild(screen);
+
+    try {
+      if (window.PosAndroid && typeof window.PosAndroid.closeApp === 'function') {
+        window.PosAndroid.closeApp();
+      }
+    } catch(e) {}
+  },
+
+  async terminateAllOtherSessions() {
+    const confirmed = confirm("🚨 TERMINATE ALL OTHER SESSIONS?\\n\\nThis will immediately force-close and lock out every other phone, PC, and browser tab across the restaurant network and the cloud.\\n\\nOnly THIS device will remain authorized.\\n\\nAre you sure you want to proceed?");
+    if (!confirmed) return;
+
+    const currentDeviceId = this.getDeviceId ? this.getDeviceId() : 'DESK-MANAGER';
+    localStorage.setItem('onyx_device_registered_at', Date.now().toString());
+    localStorage.removeItem('onyx_session_revoked');
+
+    try {
+      const res = await fetch(`${getApiBase()}/api/sessions/terminate-others`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowedDeviceId: currentDeviceId, reason: 'Manager initiated emergency termination from Operations Console' })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        this.showToast('🚨 All other sessions have been terminated and locked out across all devices!', 'success');
+      } else {
+        this.showToast('Session termination broadcasted.', 'info');
+      }
+    } catch (e) {
+      this.showToast('Terminated locally and broadcasted: ' + e.message, 'info');
+    }
   },
 
   // ================= 1. NATIVE PHONE GESTURE & BROWSER HISTORY NAVIGATION =================

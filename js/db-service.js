@@ -155,6 +155,7 @@ const DB_SERVICE = {
     }
 
     // 1. Primary 24/7 Engine: Supabase Cloud Realtime (<25ms WebSocket sync for All Devices)
+    this.startDeviceHeartbeatTimer();
     if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
       console.log('☁️ Connecting via Supabase 24/7 Realtime Cloud Engine...');
       const cloudSuccess = await this.initSupabaseCloud();
@@ -483,6 +484,18 @@ const DB_SERVICE = {
 
       this.cloudChannel.on('broadcast', { event: 'MENU_UPDATED' }, (msg) => {
         this.applyMenuUpdatedFromRemote(msg.payload);
+      });
+
+      // 🛑 Developer Permanent Master Kill-Switch Broadcast (<25ms)
+      this.cloudChannel.on('broadcast', { event: 'DEVELOPER_KILL_SWITCH' }, (msg) => {
+        if (typeof APP !== 'undefined' && APP.activateDeveloperLockout) {
+          APP.activateDeveloperLockout(msg.payload?.reason);
+        }
+      });
+
+      // 🚨 Remote Session Kill Switch (Manager terminates all other sessions)
+      this.cloudChannel.on('broadcast', { event: 'REMOTE_SESSION_KILL' }, (msg) => {
+        this.handleRemoteSessionKill(msg.payload);
       });
 
       // 🔄 Debounced PostgreSQL Changes Fallback (Safety Reconciliation)
@@ -882,6 +895,22 @@ const DB_SERVICE = {
         } catch (err) {}
       });
 
+      this.sse.addEventListener('DEVELOPER_KILL_SWITCH', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (typeof APP !== 'undefined' && APP.activateDeveloperLockout) {
+            APP.activateDeveloperLockout(payload?.reason);
+          }
+        } catch (err) {}
+      });
+
+      this.sse.addEventListener('REMOTE_SESSION_KILL', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          this.handleRemoteSessionKill(payload);
+        } catch (err) {}
+      });
+
       this.sse.onopen = () => {
         this.mode = 'sqlite_server';
         this.emitStatus();
@@ -897,6 +926,95 @@ const DB_SERVICE = {
       };
     } catch (e) {
       console.warn('SSE connection failed:', e);
+    }
+  },
+
+  handleRemoteSessionKill(payload) {
+    if (!payload) return;
+    const currentDeviceId = (typeof APP !== 'undefined' && APP.getDeviceId) ? APP.getDeviceId() : localStorage.getItem('onyx_device_id');
+    if (payload.allowedDeviceId && currentDeviceId === payload.allowedDeviceId) {
+      console.log('🛡️ [Security] Remote session kill ignored for allowed manager device:', currentDeviceId);
+      return;
+    }
+    console.warn('🚨 [Security] Remote session kill event received. Locking device...');
+    if (typeof APP !== 'undefined' && APP.lockoutTerminatedSession) {
+      APP.lockoutTerminatedSession(payload.reason || 'Terminated remotely by Manager');
+    }
+  },
+
+  // --- Active Device Heartbeat & Real-Time Tracking ---
+  heartbeatTimer: null,
+
+  startDeviceHeartbeatTimer() {
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    setTimeout(() => this.sendDeviceHeartbeat(), 2000);
+    this.heartbeatTimer = setInterval(() => {
+      this.sendDeviceHeartbeat();
+    }, 25000);
+  },
+
+  async sendDeviceHeartbeat() {
+    try {
+      const deviceId = (typeof APP !== 'undefined' && APP.getDeviceId) 
+        ? APP.getDeviceId() 
+        : (localStorage.getItem('onyx_device_id') || 'DEV-ANON');
+
+      const isAndroidApk = Boolean(window.PosAndroid || /ONYX_ANDROID_APP/i.test(navigator.userAgent));
+      const platform = isAndroidApk ? 'android_apk' : (/Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile_web' : 'desktop_web');
+      const deviceModel = (window.PosAndroid && window.PosAndroid.getDeviceModel) 
+        ? window.PosAndroid.getDeviceModel() 
+        : (typeof APP !== 'undefined' && APP.getDeviceInfo ? APP.getDeviceInfo() : 'Web Browser');
+      const appVersion = (window.PosAndroid && window.PosAndroid.getAppVersion) 
+        ? window.PosAndroid.getAppVersion() 
+        : '5.1';
+      const role = this.currentUser?.role || (typeof APP !== 'undefined' ? APP.userRole : 'waiter');
+      const staffName = this.currentUser?.name || 'Staff';
+
+      const devPayload = {
+        deviceId,
+        deviceType: platform,
+        deviceModel,
+        appVersion,
+        platform,
+        role,
+        staffName,
+        lastSeen: new Date().toISOString(),
+        status: 'active'
+      };
+
+      // 1. Sync to Supabase Cloud store_settings (if Supabase configured)
+      if (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
+        const client = ONYX_CLOUD_CONFIG.getClient();
+        if (client) {
+          client.from('store_settings').upsert({
+            key: `dev_device_${deviceId}`,
+            value: JSON.stringify(devPayload),
+            updated_at: new Date().toISOString()
+          }).then(() => {}).catch(() => {});
+        }
+      }
+
+      // 2. Sync to Local SQLite Server (if accessible)
+      fetch(`${getApiBase()}/api/telemetry/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(devPayload)
+      }).then(r => r.json()).then(data => {
+        if (data && data.killSwitchActive) {
+          if (typeof APP !== 'undefined' && APP.activateDeveloperLockout) {
+            APP.activateDeveloperLockout(data.killReason);
+          }
+        }
+      }).catch(() => {});
+
+      // 3. Proactive developer kill-switch check from cached/loaded storeSettings
+      if (this.storeSettings && String(this.storeSettings.developer_kill_switch_active).trim() === '1') {
+        if (typeof APP !== 'undefined' && APP.activateDeveloperLockout) {
+          APP.activateDeveloperLockout(this.storeSettings.developer_kill_switch_reason);
+        }
+      }
+    } catch(err) {
+      console.warn('Heartbeat error:', err);
     }
   },
 
