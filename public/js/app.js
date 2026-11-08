@@ -416,6 +416,15 @@ const APP = {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         this.requestWakeLock();
+        if (window.DB && typeof window.DB.reconcileSupabase === 'function') {
+          window.DB.reconcileSupabase();
+        }
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (window.DB && typeof window.DB.reconcileSupabase === 'function') {
+        window.DB.reconcileSupabase();
       }
     });
 

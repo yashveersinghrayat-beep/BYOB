@@ -151,6 +151,17 @@ const DB_SERVICE = {
       window.addEventListener('online', () => {
         console.log('[Network] Back online! Replaying queued offline actions...');
         this.replayOfflineQueue();
+        if (typeof this.reconcileSupabase === 'function') this.reconcileSupabase();
+      });
+      window.addEventListener('focus', () => {
+        if (typeof this.reconcileSupabase === 'function') this.reconcileSupabase();
+      });
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          if (typeof this.reconcileSupabase === 'function') this.reconcileSupabase();
+        }
       });
     }
 
@@ -323,6 +334,7 @@ const DB_SERVICE = {
       this.mode = 'supabase_cloud';
       await this.loadSupabaseData();
       this.subscribeSupabaseRealtime();
+      this.startCloudReconciliationPoller(2000);
       this.notifyAll();
       return true;
     } catch (err) {
@@ -416,6 +428,103 @@ const DB_SERVICE = {
       this.notifyAll();
     } catch (err) {
       console.error('Error loading Supabase data:', err);
+    }
+  },
+
+  _cloudReconcileTimer: null,
+  _isReconciling: false,
+
+  startCloudReconciliationPoller(intervalMs = 2000) {
+    if (this._cloudReconcileTimer) clearInterval(this._cloudReconcileTimer);
+    this._cloudReconcileTimer = setInterval(() => {
+      this.reconcileSupabase();
+    }, intervalMs);
+  },
+
+  async reconcileSupabase() {
+    if (this._isReconciling) return;
+    if (this.mode !== 'supabase_cloud') return;
+    const client = ONYX_CLOUD_CONFIG.getClient();
+    if (!client) return;
+
+    this._isReconciling = true;
+    try {
+      const [tblRes, kotRes] = await Promise.all([
+        client.from('tables').select('id,name,status,current_subtotal,updated_at').neq('status', 'vacant'),
+        client.from('kots').select('id,table_id,waiter_name,status,created_at,kot_items(id,item_id,name,price,qty,is_void,is_bar,notes)').in('status', ['pending', 'preparing', 'ready', 'served'])
+      ]);
+
+      const cloudOccupiedTables = tblRes.data || [];
+      const cloudKots = kotRes.data || [];
+
+      const norm = (id) => String(id || '').replace(/^T-0*/i, '').trim();
+      let hasChanges = false;
+
+      for (const t of this.tables) {
+        const cloudT = cloudOccupiedTables.find(ct => ct.id === t.id || norm(ct.id) === norm(t.id));
+        if (cloudT) {
+          const targetStatus = cloudT.status || 'occupied';
+          const targetSub = parseFloat(cloudT.current_subtotal) || 0;
+          const matchingKots = cloudKots.filter(k => k.table_id === t.id || norm(k.table_id) === norm(t.id));
+          const placedOrders = [];
+          let earliestTime = null;
+
+          matchingKots.forEach(k => {
+            if (k.created_at && (!earliestTime || k.created_at < earliestTime)) earliestTime = k.created_at;
+            if (Array.isArray(k.kot_items)) {
+              k.kot_items.forEach(ki => {
+                if (ki.is_void) return;
+                placedOrders.push({
+                  id: ki.id,
+                  item_id: ki.item_id,
+                  kot_id: k.id,
+                  name: ki.name,
+                  price: parseFloat(ki.price),
+                  qty: ki.qty,
+                  notes: ki.notes || '',
+                  is_bar: ki.is_bar ? 1 : 0
+                });
+              });
+            }
+          });
+
+          const calcSub = placedOrders.reduce((s, it) => s + (it.price * it.qty), 0);
+          const finalSub = calcSub || targetSub;
+
+          if (t.status !== targetStatus || t.currentSubtotal !== finalSub || (t.placedOrders || []).length !== placedOrders.length) {
+            t.status = targetStatus;
+            t.currentSubtotal = finalSub;
+            t.placedOrders = placedOrders;
+            if (!t.occupiedSince) {
+              t.occupiedSince = earliestTime || new Date().toISOString();
+              t.occupied_since = t.occupiedSince;
+            }
+            hasChanges = true;
+          }
+        } else {
+          // Table should be vacant in cloud
+          if (t.status !== 'vacant' || (t.currentSubtotal && t.currentSubtotal > 0) || (t.placedOrders && t.placedOrders.length > 0)) {
+            t.status = 'vacant';
+            t.currentSubtotal = 0;
+            t.placedOrders = [];
+            t.occupiedSince = null;
+            t.occupied_since = null;
+            t.paymentProof = null;
+            t.paymentStatus = null;
+            hasChanges = true;
+          }
+        }
+      }
+
+      if (hasChanges) {
+        this.saveLocalTables();
+        this.notifyTables();
+        this.notifyKots();
+      }
+    } catch (err) {
+      // Silent error handling for background polling
+    } finally {
+      this._isReconciling = false;
     }
   },
 
@@ -513,6 +622,11 @@ const DB_SERVICE = {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => this.scheduleDebouncedLoadSupabaseData())
         .subscribe((status) => {
           console.log('📡 [Supabase Realtime] Multi-Device Hub Connected:', status);
+          if (status === 'SUBSCRIBED') {
+            this.reconcileSupabase();
+          } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+            setTimeout(() => this.subscribeSupabaseRealtime(), 2500);
+          }
         });
     } catch (e) {
       console.warn('Realtime subscription error:', e);
@@ -565,6 +679,18 @@ const DB_SERVICE = {
     this.notifyTables();
     this.notifyKots();
 
+    // Self-healing mesh: if sender reported other occupied tables that we have as vacant, reconcile immediately!
+    if (Array.isArray(data.activeOccupiedTableIds)) {
+      const normCheck = (id) => String(id || '').replace(/^T-0*/i, '').trim();
+      const hasMissing = data.activeOccupiedTableIds.some(id => {
+        const found = this.tables.find(x => x.id === id || normCheck(x.id) === normCheck(id));
+        return !found || found.status === 'vacant';
+      });
+      if (hasMissing) {
+        this.reconcileSupabase();
+      }
+    }
+
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try { navigator.vibrate(35); } catch (e) {}
     }
@@ -588,6 +714,18 @@ const DB_SERVICE = {
     this.saveLocalTables();
     this.notifyTables();
     this.notifyKots();
+
+    // Self-healing mesh: if sender reported other occupied tables that we have as vacant, reconcile immediately!
+    if (Array.isArray(data.activeOccupiedTableIds)) {
+      const normCheck = (id) => String(id || '').replace(/^T-0*/i, '').trim();
+      const hasMissing = data.activeOccupiedTableIds.some(id => {
+        const found = this.tables.find(x => x.id === id || normCheck(x.id) === normCheck(id));
+        return !found || found.status === 'vacant';
+      });
+      if (hasMissing) {
+        this.reconcileSupabase();
+      }
+    }
 
     if (typeof APP !== 'undefined' && APP.playBeep) {
       APP.playBeep('success');
@@ -1071,6 +1209,7 @@ const DB_SERVICE = {
     this.notifyTables();
 
     // 1. INSTANT BROADCAST TO ALL CONNECTED DEVICES (<25ms)
+    const activeOccupiedTableIds = this.tables.filter(x => x.status === 'occupied' || (x.currentSubtotal || 0) > 0).map(x => x.id);
     this.broadcastRealtime('KOT_PUNCHED', {
       kotId,
       tableId,
@@ -1078,7 +1217,8 @@ const DB_SERVICE = {
       waiterName: assignedWaiter,
       items,
       newSubtotal,
-      timestamp: t.occupiedSince
+      timestamp: t.occupiedSince,
+      activeOccupiedTableIds
     });
 
     // 2. Supabase Cloud Sync Branch
@@ -1299,11 +1439,13 @@ const DB_SERVICE = {
     this.notifyKots();
 
     // 1. INSTANT BROADCAST TO ALL CONNECTED DEVICES (<25ms)
+    const remainingOccupiedIds = this.tables.filter(x => x.id !== billData.tableId && (x.status === 'occupied' || (x.currentSubtotal || 0) > 0)).map(x => x.id);
     this.broadcastRealtime('BILL_SETTLED', {
       billId,
       invoiceNumber: invNo,
       tableId: billData.tableId,
-      tableName: billData.tableName
+      tableName: billData.tableName,
+      activeOccupiedTableIds: remainingOccupiedIds
     });
 
     // 2. Supabase Cloud Sync Branch (Sanitized for Schema)
