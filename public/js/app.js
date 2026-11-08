@@ -589,13 +589,15 @@ const APP = {
   },
 
   checkFreshStartReset() {
-    const FRESH_KEY = 'onyx_fresh_start_today_v2';
+    const FRESH_KEY = 'onyx_fresh_start_production_clean_v1';
     if (typeof localStorage !== 'undefined' && localStorage.getItem(FRESH_KEY) !== '1') {
       try {
         localStorage.removeItem('onyx_pending_carts');
         localStorage.removeItem('onyx_local_tables');
         localStorage.removeItem('byob_card_failures');
         localStorage.removeItem('onyx_sync_queue');
+        localStorage.removeItem('onyx_orders_cache');
+        localStorage.removeItem('onyx_kots_cache');
         localStorage.setItem(FRESH_KEY, '1');
       } catch (e) {}
     }
