@@ -674,14 +674,16 @@ module.exports = {
     return this.getTables();
   },
 
-  updateTableStatus(tableId, status, paymentProof = null) {
+  updateTableStatus(tableId, status, paymentProof = undefined) {
     const rawTid = String(tableId || '');
     const tidNum = rawTid.replace(/\D/g, '');
     const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
     const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
 
     for (const tid of tidVariants) {
-      if (paymentProof !== null && paymentProof !== undefined) {
+      if (paymentProof === null) {
+        db.prepare('UPDATE tables SET status = ?, payment_proof = NULL WHERE id = ?').run(status, tid);
+      } else if (paymentProof !== undefined) {
         const proofStr = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : String(paymentProof);
         db.prepare('UPDATE tables SET status = ?, payment_proof = ? WHERE id = ?').run(status, proofStr, tid);
       } else {

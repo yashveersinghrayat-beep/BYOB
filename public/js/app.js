@@ -71,22 +71,42 @@ const APP = {
     return this.state.userName || this.state.currentStaffName || localStorage.getItem('onyx_staff_name') || localStorage.getItem('onyx_user_name') || 'Floor Staff';
   },
 
+  isAndroidApp() {
+    if (typeof window === 'undefined') return false;
+    const ua = (navigator.userAgent || '').toLowerCase();
+    const search = (window.location.search || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    const stored = localStorage.getItem('onyx_platform');
+    if (search.includes('platform=android_apk') || search.includes('view=app') || hash === '#app' || stored === 'android_apk' || ua.includes('onyx_android_app') || typeof window.AndroidBridge !== 'undefined') {
+      return true;
+    }
+    return false;
+  },
+
   // ================= 0. USER AUTH & ROLE MANAGEMENT =================
   initAuth() {
-    // Zero-Trust Security: Every reload defaults to Waiter role!
-    // Manager privileges require explicit PIN unlock in the active session.
-    const sessionAuth = sessionStorage.getItem('onyx_manager_authenticated');
-    if (sessionAuth === 'true') {
-      this.state.userRole = 'manager';
-      this.state.userName = localStorage.getItem('onyx_user_name') || 'Owner / Manager';
-      this.state.userEmail = localStorage.getItem('onyx_user_email') || 'admin@google.in';
-    } else {
+    const isApk = this.isAndroidApp();
+    if (isApk) {
+      // ANDROID APK: Dedicated Handheld Waiter Terminal (Strict Role Isolation)
       this.state.userRole = 'waiter';
       this.state.userEmail = 'waiter@onyx';
       this.state.userName = localStorage.getItem('onyx_staff_name') || 'Floor Staff';
-      localStorage.setItem('onyx_user_role', 'waiter');
-      localStorage.setItem('onyx_user_email', 'waiter@onyx');
-      localStorage.setItem('onyx_user_name', 'Floor Staff');
+      this.state.currentView = 'app';
+    } else {
+      // WEB APP: Manager Station (Cashier Counter POS & Operations Console)
+      const urlParams = new URLSearchParams(window.location.search);
+      const reqView = urlParams.get('view');
+      this.state.userRole = 'manager';
+      this.state.userEmail = localStorage.getItem('onyx_user_email') || 'manager@byob';
+      this.state.userName = localStorage.getItem('onyx_user_name') || 'Cashier / Manager';
+      if (reqView === 'manager') {
+        this.state.currentView = 'manager';
+      } else if (reqView === 'app') {
+        this.state.currentView = 'app';
+        this.state.userRole = 'waiter';
+      } else {
+        this.state.currentView = 'web';
+      }
     }
     this.renderAuthBadge();
   },
@@ -1413,6 +1433,12 @@ const APP = {
 
   // ================= 3. VIEWPORT SWITCHER (APP vs WEB vs MANAGER) =================
   setView(view) {
+    const isApk = this.isAndroidApp();
+    if (isApk && view !== 'app') {
+      console.warn('Android App is locked strictly to Handheld Waiter Terminal.');
+      return;
+    }
+
     if (view === 'manager') {
       // If not authenticated as admin/manager, prompt for PIN
       if (this.state.userRole !== 'admin' && this.state.userRole !== 'manager') {
@@ -1441,6 +1467,17 @@ const APP = {
     const toggle = document.getElementById('hdr-viewport-toggle');
     const mgrUnlockBtn = document.getElementById('btn-app-mgr-unlock');
 
+    // On Web App (Counter PC / Browser), hide Waiter Terminal tab because counter is strictly for manager
+    if (btnApp) {
+      if (isApk || !window.location.search.includes('show_waiter=1')) {
+        btnApp.classList.add('hidden');
+        btnApp.style.setProperty('display', 'none', 'important');
+      } else {
+        btnApp.classList.remove('hidden');
+        btnApp.style.removeProperty('display');
+      }
+    }
+
     if (view === 'app') {
       this.state.userRole = 'waiter'; // Waiter Terminal is STRICTLY for waiters
       this.renderAuthBadge();
@@ -1456,8 +1493,8 @@ const APP = {
         toggle.style.setProperty('display', 'none', 'important');
       }
       if (mgrUnlockBtn) {
-        mgrUnlockBtn.classList.remove('hidden');
-        mgrUnlockBtn.style.setProperty('display', 'inline-flex', 'important');
+        mgrUnlockBtn.classList.add('hidden');
+        mgrUnlockBtn.style.setProperty('display', 'none', 'important');
       }
 
       if (containerApp) {
@@ -1479,6 +1516,8 @@ const APP = {
       if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
       if (this.state.appScreen === 'tables') this.goToTables();
     } else if (view === 'web') {
+      this.state.userRole = 'manager'; // Web App is STRICTLY for Manager
+      this.renderAuthBadge();
       if (toggle) {
         toggle.classList.remove('hidden');
         toggle.style.removeProperty('display');
@@ -1506,10 +1545,12 @@ const APP = {
       }
       if (hdrBtn) { hdrBtn.classList.add('hidden'); hdrBtn.style.display = 'none'; }
       if (hdrSecPill) { hdrSecPill.classList.add('hidden'); hdrSecPill.classList.remove('flex'); hdrSecPill.style.display = 'none'; }
-      if (btnWeb) btnWeb.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center justify-center gap-1 shadow whitespace-nowrap min-w-[95px]";
+      if (btnWeb) btnWeb.className = "view-tab-btn flex-1 md:flex-initial px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500 text-black flex items-center justify-center gap-1.5 shadow whitespace-nowrap";
       if (btnApp) btnApp.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
-      if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
+      if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap";
     } else if (view === 'manager') {
+      this.state.userRole = 'manager'; // Web App is STRICTLY for Manager
+      this.renderAuthBadge();
       if (toggle) {
         toggle.classList.remove('hidden');
         toggle.style.removeProperty('display');
@@ -1535,9 +1576,9 @@ const APP = {
       }
       if (hdrBtn) { hdrBtn.classList.remove('hidden'); hdrBtn.style.display = 'flex'; }
       if (hdrSecPill) { hdrSecPill.classList.remove('hidden'); hdrSecPill.classList.add('flex'); hdrSecPill.style.display = 'flex'; }
-      if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all bg-gradient-to-r from-amber-500 to-amber-600 text-black flex items-center justify-center gap-1 shadow-lg whitespace-nowrap min-w-[95px]";
+      if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-3 sm:px-4 py-1.5 rounded-lg text-xs font-black transition-all bg-gradient-to-r from-amber-500 to-amber-600 text-black flex items-center justify-center gap-1.5 shadow-lg whitespace-nowrap";
       if (btnApp) btnApp.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
-      if (btnWeb) btnWeb.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
+      if (btnWeb) btnWeb.className = "view-tab-btn flex-1 md:flex-initial px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1.5 whitespace-nowrap";
       this.renderManagerDashboard();
     }
 
@@ -3406,16 +3447,29 @@ const APP = {
     }).join('');
   },
 
-  openBillingPage(push = true) {
+  async openBillingPage(push = true) {
     if (this.state.userRole !== 'manager' && this.state.currentView === 'app') {
       const isHi = this.state.lang === 'hi' || (typeof I18N !== 'undefined' && I18N.currentLang === 'hi');
       this.showToast(isHi ? '🔒 केवल मैनेजर ही बिल सेटल कर सकते हैं। कृपया पेमेंट प्रूफ लें।' : '🔒 Access Restricted: Only Manager can settle bills. Please show payment QR & collect proof.');
       this.openWaiterPaymentFlow();
       return;
     }
+
+    const liveTable = this.getLiveTable();
+    // Auto-punch any pending unpunched draft items on this table so nothing is left out
+    const draft = this.getLocalCart(this.state.selectedTableId);
+    if (draft && draft.length > 0) {
+      await this.sendOrder().catch(() => {});
+    }
+
+    const items = this.getTableBillItems(null, true);
+    if (items.length === 0 && (!liveTable || (liveTable.currentSubtotal || 0) === 0)) {
+      this.showToast('⚠️ No active orders on this table to settle');
+      return;
+    }
+
     const modal = document.getElementById('billing-modal');
     const table = this.getTable();
-    const liveTable = this.getLiveTable();
 
     document.getElementById('bill-page-title').textContent = `${table.name} — Detailed Billing & Settlement`;
     document.getElementById('bill-page-subtitle').textContent = `${table.position} (${table.landmark}) • Server: ${this.getStaffName()}`;
@@ -4887,6 +4941,46 @@ const APP = {
     }
   },
 
+  async rejectPaymentProof(tableId = null) {
+    const targetTableId = tableId || this.state.selectedTableId;
+    const table = this.getTable(targetTableId);
+    const liveTable = this.getLiveTable(targetTableId);
+    if (!liveTable || !liveTable.paymentProof) {
+      this.showToast('No payment proof to remove on this table');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to reject/clear the payment proof for ${table ? table.name : targetTableId}?\n\nThe photo proof will be removed and status reset so waiter can capture a fresh proof.`)) {
+      return;
+    }
+
+    liveTable.paymentProof = null;
+    liveTable.paymentStatus = null;
+    liveTable.paymentProofTime = null;
+
+    try {
+      if (window.DB && typeof window.DB.saveTablePaymentProof === 'function') {
+        await window.DB.saveTablePaymentProof(targetTableId, null);
+      } else if (window.DB && typeof window.DB.updateTableStatus === 'function') {
+        await window.DB.updateTableStatus(targetTableId, 'occupied', null);
+      } else {
+        await fetch('/api/tables/payment-proof', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tableId: targetTableId, paymentProof: null })
+        });
+      }
+    } catch (e) {
+      console.warn('Backend clear proof error:', e);
+    }
+
+    this.refreshBillingModalData();
+    this.renderFloorTables();
+    this.renderAll();
+    this.updateCartUI();
+    this.showToast(`🗑️ Payment proof cleared for ${table ? table.name : targetTableId}. Status reset to pending payment.`);
+  },
+
   viewPastBillProof(billId) {
     const bill = (this.state.recentBillsMap && this.state.recentBillsMap[billId]) || (window.DB && window.DB.pastBills && window.DB.pastBills.find(b => b.id == billId));
     let proof = bill?.payment_proof || bill?.paymentProof;
@@ -6260,6 +6354,10 @@ const APP = {
 
   // ================= MANAGER COMMAND CENTER (ALL-IN-ONE) =================
   openManagerPinGate() {
+    if (this.isAndroidApp()) {
+      console.warn('Manager Pin Gate is strictly disabled on Handheld Waiter Terminal.');
+      return;
+    }
     this.closeManagerSidebar();
     document.body.classList.remove('mgr-view-active');
     document.body.classList.remove('mgr-sidebar-open');

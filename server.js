@@ -314,14 +314,15 @@ async function handleRequest(req, res) {
     }
     if (pathname === '/api/tables/payment-proof' && method === 'POST') {
       const body = await parseBody(req);
-      if (body.tableId && body.paymentProof) {
-        const tables = DB.updateTableStatus(body.tableId, 'bill_printed', body.paymentProof);
+      if (body.tableId && body.paymentProof !== undefined) {
+        const status = body.paymentProof ? 'bill_printed' : 'occupied';
+        const tables = DB.updateTableStatus(body.tableId, status, body.paymentProof);
         broadcastEvent('TABLES_UPDATED', tables);
-        bridge.broadcastToWebSocket('TABLES_UPDATED', { tableId: body.tableId, status: 'bill_printed', paymentProof: body.paymentProof });
-        bridge.pushTableStatusToCloud(body.tableId, 'bill_printed', body.paymentProof);
+        bridge.broadcastToWebSocket('TABLES_UPDATED', { tableId: body.tableId, status, paymentProof: body.paymentProof });
+        bridge.pushTableStatusToCloud(body.tableId, status, body.paymentProof);
         return sendJSON(res, 200, { success: true, tables });
       }
-      return sendJSON(res, 400, { success: false, error: 'tableId and paymentProof required' });
+      return sendJSON(res, 400, { success: false, error: 'tableId required' });
     }
 
     // --- Menu Management ---

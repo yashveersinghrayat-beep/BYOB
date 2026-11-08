@@ -168,8 +168,8 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private WebView webView;
-    private static final String SERVER_URL = "https://byob-yashveersinghrayat-5191s-projects.vercel.app";
-    private static final String LOCAL_FALLBACK = "file:///android_asset/index.html";
+    private static final String SERVER_URL = "https://byob-yashveersinghrayat-5191s-projects.vercel.app?platform=android_apk";
+    private static final String LOCAL_FALLBACK = "file:///android_asset/index.html?platform=android_apk";
     private static final int PERMISSION_REQ_CODE = 101;
     public PermissionRequest pendingWebPermissionRequest;
 
@@ -364,6 +364,7 @@ public class MainActivity extends Activity {
         setContentView(layout);
 
         WebSettings settings = webView.getSettings();
+        settings.setUserAgentString(settings.getUserAgentString() + " ONYX_ANDROID_APP");
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);

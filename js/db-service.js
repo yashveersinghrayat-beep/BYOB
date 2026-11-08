@@ -1086,12 +1086,15 @@ const DB_SERVICE = {
     }
   },
 
-  async updateTableStatus(tableId, status, paymentProof = null) {
+  async updateTableStatus(tableId, status, paymentProof = undefined) {
     const norm = (id) => String(id || '').replace(/^T-0*/i, '').trim();
     let t = this.tables.find(x => x.id === tableId || norm(x.id) === norm(tableId));
     if (t) {
       t.status = status;
-      if (paymentProof !== null) {
+      if (paymentProof === null) {
+        t.paymentProof = null;
+        t.paymentStatus = null;
+      } else if (paymentProof !== undefined) {
         t.paymentProof = paymentProof;
         t.paymentStatus = 'proof_submitted';
       }
