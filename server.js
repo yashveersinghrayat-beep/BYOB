@@ -1,6 +1,14 @@
 // ONYX COMMERCIAL RESTAURANT ENGINE - Production Server & Realtime SSE Hub
 // Powers: Waiter Handhelds, Cashier Counter POS, Kitchen KDS & Owner Admin Portal
 
+// Process-level resilience to prevent unexpected server terminations
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ [Server Error Guard] Uncaught Exception:', err.message || err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️ [Server Error Guard] Unhandled Rejection:', reason && reason.message ? reason.message : reason);
+});
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -59,7 +67,11 @@ function broadcastEvent(eventType, payload) {
   const message = `event: ${eventType}\ndata: ${JSON.stringify(payload)}\n\n`;
   for (const client of sseClients) {
     try {
-      client.write(message);
+      if (!client.writableEnded && !client.destroyed) {
+        client.write(message);
+      } else {
+        sseClients.delete(client);
+      }
     } catch (e) {
       sseClients.delete(client);
     }
@@ -144,6 +156,9 @@ async function handleRequest(req, res) {
     res.write('event: connected\ndata: {"status": "ok"}\n\n');
     sseClients.add(res);
 
+    res.on('error', () => {
+      sseClients.delete(res);
+    });
     req.on('close', () => {
       sseClients.delete(res);
     });
