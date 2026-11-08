@@ -406,6 +406,8 @@ const DB_SERVICE = {
             currentSubtotal: isTableVacant ? 0 : (calculatedSubtotal || parseFloat(t.current_subtotal) || 0),
             waiterName: waiterName || '',
             firstSeatedTime: firstSeatedTime || null,
+            occupiedSince: isTableVacant ? null : (t.occupied_since || firstSeatedTime || null),
+            occupied_since: isTableVacant ? null : (t.occupied_since || firstSeatedTime || null),
             kotCount: tableKots.length
           };
         });
@@ -523,6 +525,10 @@ const DB_SERVICE = {
       this.tables.push(t);
     }
     t.status = 'occupied';
+    if (!t.occupiedSince) {
+      t.occupiedSince = data.timestamp || new Date().toISOString();
+      t.occupied_since = t.occupiedSince;
+    }
     if (!t.placedOrders) t.placedOrders = [];
     if (Array.isArray(data.items)) {
       data.items.forEach(it => {
@@ -572,6 +578,8 @@ const DB_SERVICE = {
       t.status = 'vacant';
       t.placedOrders = [];
       t.currentSubtotal = 0;
+      t.occupiedSince = null;
+      t.occupied_since = null;
     }
     this.kots = this.kots.filter(k => k.table_id !== data.tableId && norm(k.table_id) !== norm(data.tableId));
     this.saveLocalTables();
@@ -1033,6 +1041,10 @@ const DB_SERVICE = {
       this.tables.push(t);
     }
     t.status = 'occupied';
+    if (!t.occupiedSince) {
+      t.occupiedSince = data.timestamp || new Date().toISOString();
+      t.occupied_since = t.occupiedSince;
+    }
     if (!t.placedOrders) t.placedOrders = [];
     items.forEach(it => {
       const existing = t.placedOrders.find(p => (p.id === it.id || p.name === it.name) && (p.notes || '') === (it.notes || ''));
@@ -1265,6 +1277,8 @@ const DB_SERVICE = {
       t.currentSubtotal = 0;
       t.paymentProof = null;
       t.paymentStatus = null;
+      t.occupiedSince = null;
+      t.occupied_since = null;
     }
     this.kots = this.kots.filter(k => k.table_id !== billData.tableId && norm(k.table_id) !== norm(billData.tableId));
     this.saveLocalTables();

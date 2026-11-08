@@ -276,7 +276,29 @@ const APP = {
     const targetId = tid || this.state.selectedTableId;
     if (window.DB && window.DB.tables && window.DB.tables.length > 0) {
       const found = window.DB.tables.find(t => this.isSameTableId(t.id, targetId));
-      if (found) return found;
+      if (found) {
+        if (!found.occupiedSince && found.occupied_since) {
+          found.occupiedSince = found.occupied_since;
+        }
+        const isOcc = (found.currentSubtotal || 0) > 0 || found.status === 'occupied' || found.status === 'bill_printed' || (found.placedOrders && found.placedOrders.length > 0);
+        if (isOcc && !found.occupiedSince) {
+          if (found.placedOrders && found.placedOrders.length > 0) {
+            let earliest = null;
+            found.placedOrders.forEach(o => {
+              const dt = o.created_at || o.timestamp || o.time;
+              if (dt && (!earliest || dt < earliest)) earliest = dt;
+            });
+            found.occupiedSince = earliest || new Date().toISOString();
+          } else {
+            found.occupiedSince = new Date().toISOString();
+          }
+          found.occupied_since = found.occupiedSince;
+        } else if (!isOcc) {
+          found.occupiedSince = null;
+          found.occupied_since = null;
+        }
+        return found;
+      }
     }
     const def = (typeof RESTAURANT_TABLES !== 'undefined' ? RESTAURANT_TABLES : []).find(t => this.isSameTableId(t.id, targetId));
     const num = parseInt(String(targetId || '').replace(/[^0-9]/g, ''), 10);
@@ -289,8 +311,71 @@ const APP = {
       seats: def ? def.seats : 4,
       status: 'vacant',
       currentSubtotal: 0,
-      placedOrders: []
+      placedOrders: [],
+      occupiedSince: null,
+      occupied_since: null
     };
+  },
+
+  // Live Table Occupancy Duration Formatter (MM:SS or H:MM:SS)
+  formatOccupiedDuration(occupiedSince) {
+    if (!occupiedSince) return '00:00';
+    let timeMs = 0;
+    if (typeof occupiedSince === 'number') {
+      timeMs = occupiedSince;
+    } else if (typeof occupiedSince === 'string') {
+      let cleaned = occupiedSince.trim();
+      if (!cleaned.includes('T') && cleaned.includes(' ')) {
+        cleaned = cleaned.replace(' ', 'T');
+      }
+      if (!cleaned.endsWith('Z') && !cleaned.slice(10).includes('+') && !cleaned.slice(10).includes('-')) {
+        cleaned += 'Z';
+      }
+      timeMs = new Date(cleaned).getTime();
+      if (isNaN(timeMs)) {
+        timeMs = new Date(occupiedSince).getTime();
+      }
+    } else {
+      timeMs = new Date(occupiedSince).getTime();
+    }
+    if (isNaN(timeMs) || timeMs <= 0) return '00:00';
+    const now = Date.now();
+    const diffSec = Math.max(0, Math.floor((now - timeMs) / 1000));
+    const hrs = Math.floor(diffSec / 3600);
+    const mins = Math.floor((diffSec % 3600) / 60);
+    const secs = diffSec % 60;
+    const mm = String(mins).padStart(2, '0');
+    const ss = String(secs).padStart(2, '0');
+    if (hrs > 0) {
+      return `${hrs}:${mm}:${ss}`;
+    }
+    return `${mm}:${ss}`;
+  },
+
+  // 1-Second Smooth Timer Loop (0% CPU, direct text-node updates without floor grid re-render)
+  startTableTimerLoop() {
+    if (this._tableTimerInterval) {
+      clearInterval(this._tableTimerInterval);
+    }
+    this._tableTimerInterval = setInterval(() => {
+      const timerEls = document.querySelectorAll('[data-table-timer-since]');
+      if (!timerEls || timerEls.length === 0) return;
+      timerEls.forEach(el => {
+        const since = el.getAttribute('data-table-timer-since');
+        if (!since || since === 'null' || since === 'undefined') return;
+        const formatted = this.formatOccupiedDuration(since);
+        const textSpan = el.querySelector('.table-timer-text');
+        if (textSpan) {
+          if (textSpan.textContent !== formatted) {
+            textSpan.textContent = formatted;
+          }
+        } else {
+          if (el.textContent !== formatted) {
+            el.textContent = formatted;
+          }
+        }
+      });
+    }, 1000);
   },
 
   // Helper to get current waiter's pending local round cart for selected table
@@ -527,6 +612,7 @@ const APP = {
       try { localStorage.setItem('onyx_lang', lang); } catch (e) {}
     }
     this.updateLanguageUI();
+    this.startTableTimerLoop();
     this.renderAll();
     this.updateCartUI();
     this.updateTableHeaderBadges();
@@ -757,6 +843,7 @@ const APP = {
       I18N.setLanguage(this.state.lang || 'en');
     }
     this.updateLanguageUI();
+    this.startTableTimerLoop();
     this.renderAll();
     this.updateCartUI();
     this.updateTableHeaderBadges();
@@ -1523,7 +1610,13 @@ const APP = {
     const subtotal = liveTable.currentSubtotal || placed.reduce((s, i) => s + (i.price * i.qty), 0);
 
     const nameEl = document.getElementById('sheet-table-name');
-    if (nameEl) nameEl.textContent = `${table.name} (${table.position})`;
+    if (nameEl) {
+      if (liveTable.occupiedSince) {
+        nameEl.innerHTML = `${table.name} (${table.position}) <span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#14120e] text-amber-300 border border-amber-500/40 inline-flex items-center gap-1" data-table-timer-since="${liveTable.occupiedSince}"><span>⏱️</span><span class="table-timer-text">${this.formatOccupiedDuration(liveTable.occupiedSince)}</span></span>`;
+      } else {
+        nameEl.textContent = `${table.name} (${table.position})`;
+      }
+    }
 
     const isBilled = liveTable.status === 'bill_printed';
     const statusEl = document.getElementById('sheet-table-status');
@@ -1600,8 +1693,11 @@ const APP = {
     if (isOccupied) {
       const fp = this.buildTableFootprint(placedOrders, 6);
       if (dockBadge) {
-        dockBadge.className = "text-[10px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white font-mono shadow";
-        dockBadge.textContent = `🔴 OCCUPIED • ₹${subtotal.toLocaleString('en-IN')}`;
+        dockBadge.className = "text-[10px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white font-mono shadow inline-flex items-center gap-1.5";
+        const timerPart = live.occupiedSince 
+          ? `<span class="bg-black/50 px-1 py-0.5 rounded border border-white/20 inline-flex items-center gap-0.5 text-amber-300" data-table-timer-since="${live.occupiedSince}">⏱️<span class="table-timer-text">${this.formatOccupiedDuration(live.occupiedSince)}</span></span>`
+          : '';
+        dockBadge.innerHTML = `<span>🔴 OCCUPIED • ₹${subtotal.toLocaleString('en-IN')}</span> ${timerPart}`;
       }
       if (dockIcon) {
         dockIcon.className = "w-7 h-7 rounded-lg bg-red-500/20 border border-red-500 flex items-center justify-center text-xs font-black text-red-400 shadow";
@@ -2038,6 +2134,11 @@ const APP = {
         let middleHtml = "";
         let footerHtml = "";
 
+        const hasTimer = (isOccupied || isBilled) && liveTable.occupiedSince;
+        const timerBadge = hasTimer
+          ? `<span class="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#14120e] text-amber-300 border border-amber-500/40 inline-flex items-center gap-1 shadow-sm shrink-0" data-table-timer-since="${liveTable.occupiedSince}"><span>⏱️</span><span class="table-timer-text">${this.formatOccupiedDuration(liveTable.occupiedSince)}</span></span>`
+          : '';
+
         if (isBilled) {
           const hasProof = !!liveTable.paymentProof;
           cardClass = isCurrent ? "table-card-selected-billed ring-2 ring-amber-400" : (hasProof ? "table-card-billed border-2 border-emerald-400 bg-[#0e1d15]" : "table-card-billed border-2 border-amber-400/90 bg-[#1f1910]");
@@ -2096,9 +2197,14 @@ const APP = {
             type="button"
             onclick="APP.selectTable('${t.id}')"
             class="floor-table-card ${cardClass} p-3 rounded-2xl text-left transition-all flex flex-col justify-between shadow-lg group overflow-hidden active:scale-95">
-            <div class="flex items-center justify-between w-full">
-              <span class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">${t.name}</span>
-              ${headerBadge}
+            <div class="flex items-center justify-between w-full gap-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="text-sm font-black text-white group-hover:text-amber-300 transition-colors truncate">${t.name}</span>
+                ${timerBadge}
+              </div>
+              <div class="shrink-0">
+                ${headerBadge}
+              </div>
             </div>
             ${middleHtml}
             ${footerHtml}
@@ -2167,6 +2273,11 @@ const APP = {
           }
         }
 
+        let timerWebBadge = '';
+        if ((isOccupied || isBilled) && liveTable.occupiedSince) {
+          timerWebBadge = `<div class="text-[9px] font-mono font-black text-amber-300 bg-black/60 px-1.5 py-0.5 rounded-md mt-0.5 inline-flex items-center gap-1 border border-amber-500/30 shadow-sm" data-table-timer-since="${liveTable.occupiedSince}"><span>⏱️</span><span class="table-timer-text">${this.formatOccupiedDuration(liveTable.occupiedSince)}</span></div>`;
+        }
+
         return `
           <button 
             onclick="APP.selectTable('${t.id}')"
@@ -2174,6 +2285,7 @@ const APP = {
             title="${t.name}: ${isOccupied ? (liveTable.placedOrders || []).map(i => i.qty + 'x ' + i.name).join(', ') : 'Free Table'}">
             <div class="text-xs font-black truncate w-full">${t.name}</div>
             <div class="text-[10px] font-mono font-bold mt-0.5">${statusBadge}</div>
+            ${timerWebBadge}
             ${footprintMicro}
           </button>
         `;
@@ -6246,6 +6358,9 @@ const APP = {
 
   updateTableHeaderBadges() {
     const t = this.getTable();
+    const live = this.getLiveTable ? this.getLiveTable(t.id) : t;
+    const isOccupied = (live.currentSubtotal || 0) > 0 || live.status === 'occupied' || live.status === 'bill_printed' || (live.placedOrders && live.placedOrders.length > 0);
+
     // Top Bar
     const hName = document.getElementById('header-table-name');
     const hLandmark = document.getElementById('header-table-landmark');
@@ -6256,13 +6371,25 @@ const APP = {
     const appSub = document.getElementById('app-sub-table');
     const appLandmark = document.getElementById('app-sub-landmark');
     if (appSub) appSub.textContent = t.name;
-    if (appLandmark) appLandmark.textContent = t.position;
+    if (appLandmark) {
+      if (isOccupied && live.occupiedSince) {
+        appLandmark.innerHTML = `${t.position} • <span class="inline-flex items-center gap-1 font-mono text-amber-300 font-bold" data-table-timer-since="${live.occupiedSince}"><span>⏱️</span><span class="table-timer-text">${this.formatOccupiedDuration(live.occupiedSince)}</span></span>`;
+      } else {
+        appLandmark.textContent = t.position;
+      }
+    }
 
     // Web POS Title & Landmark
     const posTitle = document.getElementById('pos-table-title');
     const posLandmark = document.getElementById('pos-table-landmark');
     if (posTitle) posTitle.textContent = t.name;
-    if (posLandmark) posLandmark.textContent = `${t.landmark} • ${t.seats} Seats`;
+    if (posLandmark) {
+      if (isOccupied && live.occupiedSince) {
+        posLandmark.innerHTML = `${t.landmark} • ${t.seats} Seats • <span class="inline-flex items-center gap-1 font-mono text-amber-300 font-bold" data-table-timer-since="${live.occupiedSince}"><span>⏱️</span><span class="table-timer-text">${this.formatOccupiedDuration(live.occupiedSince)}</span></span>`;
+      } else {
+        posLandmark.textContent = `${t.landmark} • ${t.seats} Seats`;
+      }
+    }
   },
 
   // ================= 9. REAL-TIME SERVER & DATABASE DUAL HEALTH MONITOR =================
@@ -7939,6 +8066,8 @@ const APP = {
       const placedOrders = live.placedOrders || [];
       const billTotal = live.currentSubtotal || placedOrders.reduce((s, it) => s + (it.price * it.qty), 0);
       const isOccupied = billTotal > 0 || live.status === 'occupied' || placedOrders.length > 0;
+      const isBilled = live.status === 'bill_printed';
+      const hasTimer = (isOccupied || isBilled) && live.occupiedSince;
 
       return `
         <div class="p-3 rounded-2xl border transition-all flex flex-col justify-between ${
@@ -7947,9 +8076,16 @@ const APP = {
             : 'bg-[#121622] border-[#252c3f]'
         }">
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <div class="font-black text-xs text-white">${t.name}</div>
-              <span class="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${
+            <div class="flex items-center justify-between mb-1.5 gap-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <div class="font-black text-xs text-white truncate">${t.name}</div>
+                ${hasTimer ? `
+                  <span class="text-[9px] px-1.5 py-0.5 rounded-md font-mono font-bold bg-[#14120e] text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0" data-table-timer-since="${live.occupiedSince}">
+                    <span>⏱️</span><span class="table-timer-text">${this.formatOccupiedDuration(live.occupiedSince)}</span>
+                  </span>
+                ` : ''}
+              </div>
+              <span class="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold shrink-0 ${
                 isOccupied ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
               }">${isOccupied ? 'OCCUPIED' : 'FREE'}</span>
             </div>

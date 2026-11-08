@@ -269,6 +269,7 @@ function initDatabase() {
 
   // Auto-migration for existing SQLite databases
   try { db.exec('ALTER TABLE tables ADD COLUMN payment_proof TEXT;'); } catch (e) {}
+  try { db.exec('ALTER TABLE tables ADD COLUMN occupied_since DATETIME;'); } catch (e) {}
   try { db.exec('ALTER TABLE bills ADD COLUMN payment_proof TEXT;'); } catch (e) {}
   try { db.exec('ALTER TABLE bills ADD COLUMN round_off REAL DEFAULT 0;'); } catch (e) {}
   try { db.exec('ALTER TABLE bills ADD COLUMN service_charge REAL DEFAULT 0;'); } catch (e) {}
@@ -763,7 +764,24 @@ module.exports = {
       // Self-healing: if an occupied table has no pending orders left and no proof, reset to vacant
       if (orders.length === 0 && (t.status === 'occupied' || t.status === 'bill_printed') && !t.paymentProof) {
         t.status = 'vacant';
-        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL WHERE id = ?").run(t.id);
+        t.occupied_since = null;
+        t.occupiedSince = null;
+        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL, occupied_since = NULL WHERE id = ?").run(t.id);
+      } else if (orders.length > 0 || t.status === 'occupied' || t.status === 'bill_printed') {
+        let earliest = t.occupied_since;
+        for (const ord of orders) {
+          if (ord.created_at && (!earliest || ord.created_at < earliest)) {
+            earliest = ord.created_at;
+          }
+        }
+        t.occupied_since = earliest || t.occupied_since || new Date().toISOString();
+        t.occupiedSince = t.occupied_since;
+        if (!t.occupied_since) {
+          try { db.prepare("UPDATE tables SET occupied_since = ? WHERE id = ?").run(t.occupied_since, t.id); } catch(e) {}
+        }
+      } else {
+        t.occupied_since = null;
+        t.occupiedSince = null;
       }
     }
     return tables;
@@ -789,13 +807,15 @@ module.exports = {
     const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
 
     for (const tid of tidVariants) {
-      if (paymentProof === null) {
-        db.prepare('UPDATE tables SET status = ?, payment_proof = NULL WHERE id = ?').run(status, tid);
+      if (status === 'vacant') {
+        db.prepare('UPDATE tables SET status = ?, payment_proof = NULL, occupied_since = NULL WHERE id = ?').run(status, tid);
+      } else if (paymentProof === null) {
+        db.prepare('UPDATE tables SET status = ?, payment_proof = NULL, occupied_since = COALESCE(occupied_since, CURRENT_TIMESTAMP) WHERE id = ?').run(status, tid);
       } else if (paymentProof !== undefined) {
         const proofStr = typeof paymentProof === 'object' ? JSON.stringify(paymentProof) : String(paymentProof);
-        db.prepare('UPDATE tables SET status = ?, payment_proof = ? WHERE id = ?').run(status, proofStr, tid);
+        db.prepare('UPDATE tables SET status = ?, payment_proof = ?, occupied_since = COALESCE(occupied_since, CURRENT_TIMESTAMP) WHERE id = ?').run(status, proofStr, tid);
       } else {
-        db.prepare('UPDATE tables SET status = ? WHERE id = ?').run(status, tid);
+        db.prepare('UPDATE tables SET status = ?, occupied_since = COALESCE(occupied_since, CURRENT_TIMESTAMP) WHERE id = ?').run(status, tid);
       }
     }
     return this.getTables();
@@ -879,8 +899,8 @@ module.exports = {
         insertItem.run(kotId, item.id, item.name, item.price, item.qty, item.is_bar ? 1 : 0, item.notes || '');
       }
 
-      // Mark table as occupied
-      db.prepare("UPDATE tables SET status = 'occupied' WHERE id = ?").run(cleanTableId);
+      // Mark table as occupied and record occupancy start time
+      db.prepare("UPDATE tables SET status = 'occupied', occupied_since = COALESCE(occupied_since, CURRENT_TIMESTAMP) WHERE id = ?").run(cleanTableId);
 
       db.exec('COMMIT;');
       return this.getKOTById(kotId);
@@ -911,7 +931,7 @@ module.exports = {
     if (kot && (status === 'cancelled' || status === 'served')) {
       const activeKots = db.prepare("SELECT id FROM kots WHERE table_id = ? AND status NOT IN ('served', 'cancelled', 'billed')").all(kot.table_id);
       if (activeKots.length === 0 && status === 'cancelled') {
-        db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ?").run(kot.table_id);
+        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL, occupied_since = NULL WHERE id = ?").run(kot.table_id);
       }
     }
     return kot;
@@ -969,7 +989,7 @@ module.exports = {
 
       for (const tid of tidVariants) {
         db.prepare("UPDATE kots SET status = 'billed' WHERE table_id = ? AND status != 'cancelled'").run(tid);
-        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL WHERE id = ?").run(tid);
+        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL, occupied_since = NULL WHERE id = ?").run(tid);
       }
 
       db.exec('COMMIT;');
@@ -1386,8 +1406,10 @@ module.exports = {
       db.prepare("UPDATE kots SET table_id = ?, table_name = ? WHERE table_id = ? AND status NOT IN ('served', 'billed', 'cancelled')")
         .run(targetTableId, targetTable.name, sourceTableId);
 
-      db.prepare("UPDATE tables SET status = 'occupied' WHERE id = ?").run(targetTableId);
-      db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ?").run(sourceTableId);
+      const srcTable = db.prepare("SELECT * FROM tables WHERE id = ?").get(sourceTableId);
+      const occSince = (srcTable && srcTable.occupied_since) ? srcTable.occupied_since : new Date().toISOString();
+      db.prepare("UPDATE tables SET status = 'occupied', occupied_since = ? WHERE id = ?").run(occSince, targetTableId);
+      db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL, occupied_since = NULL WHERE id = ?").run(sourceTableId);
 
       db.exec('COMMIT;');
       return this.getTables();
@@ -1413,7 +1435,7 @@ module.exports = {
 
       const targetId = match ? match.id : tableId;
       db.prepare("UPDATE kots SET status = 'billed' WHERE (table_id = ? OR table_id = ?) AND status != 'cancelled'").run(targetId, tableId);
-      db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL WHERE id = ? OR id = ?").run(targetId, tableId);
+      db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL, occupied_since = NULL WHERE id = ? OR id = ?").run(targetId, tableId);
       db.exec('COMMIT;');
       return this.getTables();
     } catch (e) {
@@ -1530,7 +1552,7 @@ module.exports = {
       // Recalculate table status
       const activeKots = db.prepare("SELECT id FROM kots WHERE table_id = ? AND status != 'served' AND status != 'billed' AND status != 'cancelled'").all(kot.table_id);
       if (activeKots.length === 0) {
-        db.prepare("UPDATE tables SET status = 'vacant' WHERE id = ?").run(kot.table_id);
+        db.prepare("UPDATE tables SET status = 'vacant', payment_proof = NULL, occupied_since = NULL WHERE id = ?").run(kot.table_id);
       }
 
       db.exec('COMMIT;');
