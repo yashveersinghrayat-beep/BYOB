@@ -1020,16 +1020,7 @@ const APP = {
       return;
     }
 
-    if (isBilled) {
-      if (this.state.userRole === 'manager') {
-        this.openPostPrintSettleModal(tableId);
-      } else {
-        this.openTableActionSheet(tableId);
-      }
-      return;
-    }
-
-    this.showToast(`Selected ${table.name} (${table.position}) • ${isOccupied ? `🔴 ₹${live.currentSubtotal.toLocaleString('en-IN')}` : '🟢 Free'}`);
+    this.showToast(`Selected ${table.name} (${table.position}) • ${isBilled ? `🧾 Billed: ₹${live.currentSubtotal.toLocaleString('en-IN')}` : (isOccupied ? `🔴 ₹${live.currentSubtotal.toLocaleString('en-IN')}` : '🟢 Free')}`);
   },
 
   // Step 2: Open Menu for currently selected table
@@ -1353,7 +1344,7 @@ const APP = {
     if (this.state.currentView === 'app' || this.state.userRole !== 'manager') {
       this.openWaiterPaymentFlow(this.state.selectedTableId);
     } else {
-      this.openPostPrintSettleModal(this.state.selectedTableId);
+      this.openBillingPage();
     }
   },
 
@@ -1447,6 +1438,8 @@ const APP = {
     const containerMgr = document.getElementById('view-manager-container');
     const hdrBtn = document.getElementById('hdr-sidebar-toggle-btn');
     const hdrSecPill = document.getElementById('hdr-manager-section-pill');
+    const toggle = document.getElementById('hdr-viewport-toggle');
+    const mgrUnlockBtn = document.getElementById('btn-app-mgr-unlock');
 
     if (view === 'app') {
       this.state.userRole = 'waiter'; // Waiter Terminal is STRICTLY for waiters
@@ -1456,6 +1449,17 @@ const APP = {
       document.body.classList.remove('mgr-sidebar-open');
       document.body.classList.remove('web-view-active');
       document.body.classList.add('app-view-active');
+
+      // Strictly hide Cashier Counter & Operations Console toggle in Waiter App view
+      if (toggle) {
+        toggle.classList.add('hidden');
+        toggle.style.setProperty('display', 'none', 'important');
+      }
+      if (mgrUnlockBtn) {
+        mgrUnlockBtn.classList.remove('hidden');
+        mgrUnlockBtn.style.setProperty('display', 'inline-flex', 'important');
+      }
+
       if (containerApp) {
         containerApp.classList.remove('hidden');
         containerApp.style.setProperty('display', 'flex', 'important');
@@ -1475,6 +1479,14 @@ const APP = {
       if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
       if (this.state.appScreen === 'tables') this.goToTables();
     } else if (view === 'web') {
+      if (toggle) {
+        toggle.classList.remove('hidden');
+        toggle.style.removeProperty('display');
+      }
+      if (mgrUnlockBtn) {
+        mgrUnlockBtn.classList.add('hidden');
+        mgrUnlockBtn.style.setProperty('display', 'none', 'important');
+      }
       this.closeManagerSidebar();
       document.body.classList.remove('mgr-view-active');
       document.body.classList.remove('mgr-sidebar-open');
@@ -1498,6 +1510,14 @@ const APP = {
       if (btnApp) btnApp.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
       if (btnMgr) btnMgr.className = "view-tab-btn flex-1 md:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-[#202738] transition-all flex items-center justify-center gap-1 whitespace-nowrap min-w-[95px]";
     } else if (view === 'manager') {
+      if (toggle) {
+        toggle.classList.remove('hidden');
+        toggle.style.removeProperty('display');
+      }
+      if (mgrUnlockBtn) {
+        mgrUnlockBtn.classList.add('hidden');
+        mgrUnlockBtn.style.setProperty('display', 'none', 'important');
+      }
       document.body.classList.add('mgr-view-active');
       document.body.classList.remove('web-view-active');
       document.body.classList.remove('app-view-active');
@@ -3524,6 +3544,38 @@ const APP = {
 
     // Keep Cash Payment calculations and dynamic exact button in sync with total
     this.updateCashCalculation(this.state.cashTendered || 0);
+
+    // Update UPI Proof Verification in Billing Modal
+    const proofBox = document.getElementById('bill-upi-proof-box');
+    const proofImg = document.getElementById('bill-upi-proof-img');
+    const proofMeta = document.getElementById('bill-upi-proof-meta');
+    const proofMissingNotice = document.getElementById('bill-upi-no-proof');
+    const proofCompareToolAmt = document.getElementById('bill-upi-tool-amount');
+    const cardChargeAmt = document.getElementById('card-charge-amount');
+    const counterUpiId = document.getElementById('bill-counter-upi-id');
+    const counterQrImg = document.getElementById('bill-counter-qr-img');
+
+    if (proofCompareToolAmt) proofCompareToolAmt.textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
+    if (cardChargeAmt) cardChargeAmt.textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
+
+    const store = (window.DB && window.DB.storeSettings) || {};
+    const upiId = store.upi_vpa || 'Q676029996@ybl';
+    if (counterUpiId) counterUpiId.textContent = upiId;
+    if (counterQrImg) {
+      const storeName = store.store_name || 'BYOB Restaurant';
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(storeName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + (this.getTable()?.name || 'Bill'))}`;
+      counterQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
+    }
+
+    if (liveTable && liveTable.paymentProof) {
+      if (proofBox) proofBox.classList.remove('hidden');
+      if (proofMissingNotice) proofMissingNotice.classList.add('hidden');
+      if (proofImg) proofImg.src = liveTable.paymentProof;
+      if (proofMeta) proofMeta.textContent = `📸 Captured by Staff (${this.getStaffName()}) • Customer Phone Proof`;
+    } else {
+      if (proofBox) proofBox.classList.add('hidden');
+      if (proofMissingNotice) proofMissingNotice.classList.remove('hidden');
+    }
   },
 
   closeBillingPage(updateHistory = true) {
@@ -3591,6 +3643,28 @@ const APP = {
       if (tabCash) tabCash.className = "py-2 rounded-lg font-bold bg-amber-500 text-black";
       if (secCash) secCash.classList.remove('hidden');
       this.updateCashCalculation(this.state.cashTendered || 0);
+    }
+
+    const settleLabel = document.getElementById('bill-modal-settle-label');
+    if (settleLabel) {
+      if (mode === 'upi') settleLabel.textContent = '✅ Settle Payment via UPI (Verify Proof)';
+      else if (mode === 'cash') settleLabel.textContent = '💵 Settle Payment via Cash & Free Table';
+      else if (mode === 'card') settleLabel.textContent = '💳 Settle Payment via Card / EDC Machine';
+    }
+  },
+
+  toggleBillingModalQr() {
+    const box = document.getElementById('bill-counter-qr-box');
+    const btn = document.getElementById('btn-toggle-bill-qr');
+    if (box) {
+      const isHidden = box.classList.contains('hidden');
+      if (isHidden) {
+        box.classList.remove('hidden');
+        if (btn) btn.innerHTML = '<span>✕ Hide Counter UPI QR</span>';
+      } else {
+        box.classList.add('hidden');
+        if (btn) btn.innerHTML = '<span>📱 Show Counter UPI QR for Customer to Scan</span>';
+      }
     }
   },
 
@@ -4256,13 +4330,9 @@ const APP = {
     const hasLiveOrders = allBillItems.length > 0 || (liveTable && (liveTable.currentSubtotal || 0) > 0);
     const isReprintNow = receiptEl?.dataset?.isReprint === 'true' || (document.getElementById('epson-inv-no')?.textContent || '').includes('REPRINT') || isPastReprint;
 
-    if (hasLiveOrders && !isReprintNow && targetTableId) {
+    if (hasLiveOrders && targetTableId) {
       this.markTableAsBillPrinted(targetTableId);
-      if (this.state.userRole === 'manager') {
-        setTimeout(() => {
-          this.openPostPrintSettleModal(targetTableId);
-        }, 700);
-      }
+      this.showToast(`🖨️ 80mm Bill Printed for Table ${targetTableId} • Ready for payment anytime`);
     }
   },
 
