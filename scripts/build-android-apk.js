@@ -110,6 +110,8 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -166,8 +168,46 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private WebView webView;
-    private static final String SERVER_URL = "https://byob-orcin.vercel.app";
+    private static final String SERVER_URL = "https://byob-yashveersinghrayat-5191s-projects.vercel.app";
     private static final String LOCAL_FALLBACK = "file:///android_asset/index.html";
+    private static final int PERMISSION_REQ_CODE = 101;
+    public PermissionRequest pendingWebPermissionRequest;
+
+    public void checkAndRequestAllPermissions() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            java.util.List<String> needed = new java.util.ArrayList<String>();
+            if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                needed.add(android.Manifest.permission.CAMERA);
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    needed.add("android.permission.POST_NOTIFICATIONS");
+                }
+            }
+            if (!needed.isEmpty()) {
+                requestPermissions(needed.toArray(new String[0]), PERMISSION_REQ_CODE);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQ_CODE) {
+            boolean cameraGranted = false;
+            for (int i = 0; i < permissions.length; i++) {
+                if (android.Manifest.permission.CAMERA.equals(permissions[i]) && grantResults[i] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    cameraGranted = true;
+                }
+            }
+            if (cameraGranted && pendingWebPermissionRequest != null) {
+                try {
+                    pendingWebPermissionRequest.grant(pendingWebPermissionRequest.getResources());
+                } catch (Exception e) {}
+                pendingWebPermissionRequest = null;
+            }
+        }
+    }
 
     private static class PosWebViewClient extends WebViewClient {
         @Override
@@ -205,30 +245,31 @@ public class MainActivity extends Activity {
     }
 
     private static class PosWebChromeClient extends WebChromeClient {
-        private final Activity activity;
+        private final MainActivity activity;
 
-        public PosWebChromeClient(Activity activity) {
+        public PosWebChromeClient(MainActivity activity) {
             this.activity = activity;
         }
 
         @Override
         public void onPermissionRequest(final PermissionRequest request) {
-            activity.runOnUiThread(new PermissionGranter(request));
-        }
-    }
-
-    private static class PermissionGranter implements Runnable {
-        private final PermissionRequest request;
-
-        public PermissionGranter(PermissionRequest request) {
-            this.request = request;
-        }
-
-        @Override
-        public void run() {
-            if (request != null) {
-                request.grant(request.getResources());
-            }
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    boolean hasCamera = true;
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        hasCamera = activity.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                    }
+                    if (hasCamera) {
+                        request.grant(request.getResources());
+                    } else {
+                        activity.pendingWebPermissionRequest = request;
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                            activity.requestPermissions(new String[]{android.Manifest.permission.CAMERA}, PERMISSION_REQ_CODE);
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -294,6 +335,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         hideSystemUI();
+        checkAndRequestAllPermissions();
     }
 
     @Override
@@ -310,6 +352,7 @@ public class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         hideSystemUI();
+        checkAndRequestAllPermissions();
 
         FrameLayout layout = new FrameLayout(this);
         layout.setFitsSystemWindows(false);
@@ -333,13 +376,6 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false);
-
-        // Auto-request Camera Permission at runtime (Android 6.0+ / API 23+)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 101);
-            }
-        }
 
         webView.setBackgroundColor(0xFF090A0E);
         webView.setWebChromeClient(new PosWebChromeClient(this));
