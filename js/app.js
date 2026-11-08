@@ -1243,8 +1243,8 @@ const APP = {
   renderRunningBillScreen() {
     const table = this.getTable();
     const liveTable = this.getLiveTable();
-    const items = this.getTableBillItems(null, true);
-    const billTotals = this.calculateTotalBill(null, true);
+    const items = this.getTableBillItems(null, false);
+    const billTotals = this.calculateTotalBill(null, false);
     const subtotal = billTotals.subtotal;
     const gstAmount = billTotals.cgst + billTotals.sgst;
     const grandTotal = billTotals.grandTotal;
@@ -3104,7 +3104,7 @@ const APP = {
     }
   },
 
-  getTableBillItems(targetTableId = null, includeDraft = true) {
+  getTableBillItems(targetTableId = null, includeDraft = false) {
     const tId = targetTableId || this.state.selectedTableId;
     const liveTable = this.getLiveTable(tId);
     const placed = (liveTable && Array.isArray(liveTable.placedOrders)) ? [...liveTable.placedOrders] : [];
@@ -3127,7 +3127,7 @@ const APP = {
     return combined;
   },
 
-  calculateTotalBill(targetTableId = null, includeDraft = true) {
+  calculateTotalBill(targetTableId = null, includeDraft = false) {
     const tId = targetTableId || this.state.selectedTableId;
     const items = this.getTableBillItems(tId, includeDraft);
     const subtotal = items.reduce((s, i) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0);
@@ -3456,13 +3456,7 @@ const APP = {
     }
 
     const liveTable = this.getLiveTable();
-    // Auto-punch any pending unpunched draft items on this table so nothing is left out
-    const draft = this.getLocalCart(this.state.selectedTableId);
-    if (draft && draft.length > 0) {
-      await this.sendOrder().catch(() => {});
-    }
-
-    const items = this.getTableBillItems(null, true);
+    const items = this.getTableBillItems(null, false);
     if (items.length === 0 && (!liveTable || (liveTable.currentSubtotal || 0) === 0)) {
       this.showToast('⚠️ No active orders on this table to settle');
       return;
@@ -3499,8 +3493,8 @@ const APP = {
 
   refreshBillingModalData() {
     const liveTable = this.getLiveTable();
-    const items = this.getTableBillItems(null, true);
-    const { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct } = this.calculateTotalBill(null, true);
+    const items = this.getTableBillItems(null, false);
+    const { subtotal, discountAmount, taxable, cgst, sgst, serviceCharge, roundOff, grandTotal, perPerson, cgstPct, sgstPct } = this.calculateTotalBill(null, false);
     const payUpiLiveAmt = document.getElementById('pay-upi-live-amount');
     if (payUpiLiveAmt) payUpiLiveAmt.textContent = '₹' + grandTotal.toLocaleString('en-IN');
 
@@ -3967,8 +3961,8 @@ const APP = {
       custName = customBill.customer_name || '';
       custPhone = customBill.customer_phone || '';
     } else {
-      items = this.getTableBillItems(null, true);
-      billTotals = this.calculateTotalBill(null, true);
+      items = this.getTableBillItems(null, false);
+      billTotals = this.calculateTotalBill(null, false);
       subtotal = billTotals.subtotal;
       discountAmount = billTotals.discountAmount;
       cgst = billTotals.cgst;
@@ -4166,12 +4160,6 @@ const APP = {
     // 1. ALWAYS populate receipt data for current table first so DOM elements are never ₹0 placeholder
     if (!isPastReprint || !epsonModal || epsonModal.classList.contains('hidden')) {
       this.openEpsonReceiptModal(false);
-    }
-
-    // 2. If table has pending unpunched cart items, auto-punch them so backend & live state have them officially
-    const draft = this.getLocalCart(targetTableId);
-    if (draft && draft.length > 0) {
-      this.sendOrder().catch(() => {});
     }
 
     const receiptEl = document.getElementById('epson-print-wrapper');
@@ -4380,7 +4368,7 @@ const APP = {
 
     // Trigger Post-Print Settlement Prompt for live running bills
     const liveTable = this.getLiveTable(targetTableId);
-    const allBillItems = this.getTableBillItems(targetTableId, true);
+    const allBillItems = this.getTableBillItems(targetTableId, false);
     const hasLiveOrders = allBillItems.length > 0 || (liveTable && (liveTable.currentSubtotal || 0) > 0);
     const isReprintNow = receiptEl?.dataset?.isReprint === 'true' || (document.getElementById('epson-inv-no')?.textContent || '').includes('REPRINT') || isPastReprint;
 
@@ -4542,7 +4530,7 @@ const APP = {
       this.showToast('⚠️ No active orders on ' + (table?.name || 'Table'));
       return;
     }
-    const totals = this.calculateTotalBill(tId, true);
+    const totals = this.calculateTotalBill(tId, false);
     const store = (window.DB && window.DB.storeSettings) || {};
     const upiId = store.upi_vpa || 'Q676029996@ybl';
     const storeName = store.store_name || 'BYOB Restaurant';

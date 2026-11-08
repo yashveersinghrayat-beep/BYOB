@@ -345,6 +345,38 @@ async function runVerification() {
     console.log('✅ PASS: Multiple reprints work freely without unwanted popups.');
 
     // -------------------------------------------------------------
+    // TEST 4B: ZERO FOOD WASTAGE - UNPUNCHED DRAFT ITEMS ARE NEVER AUTO-PUNCHED NOR BILLED
+    // -------------------------------------------------------------
+    console.log('\n--- TEST 4B: ZERO FOOD WASTAGE - UNPUNCHED DRAFT CART ITEMS GUARD ---');
+    const foodWastageCheck = await cdp.eval(`(() => {
+      // Add an unpunched draft item into the cart for Table 5
+      APP.state.localCarts['T-05'] = [{ id: 'draft-dish-99', name: 'Mutton Biryani', price: 450, qty: 2 }];
+      const initialPlacedCount = (APP.getLiveTable('T-05').placedOrders || []).length;
+      
+      // Open billing page
+      APP.openBillingPage();
+      const subtotalText = document.getElementById('bill-subtotal').textContent;
+      const afterPlacedCount = (APP.getLiveTable('T-05').placedOrders || []).length;
+      
+      APP.closeBillingPage();
+      return {
+        initialPlacedCount,
+        afterPlacedCount,
+        subtotalText,
+        wasAutoPunched: afterPlacedCount > initialPlacedCount,
+        wasDraftBilled: subtotalText.includes('900')
+      };
+    })()`);
+    console.log('Food Wastage Prevention Check:', foodWastageCheck);
+    if (foodWastageCheck.wasAutoPunched) {
+      throw new Error('FAIL: Draft cart items were auto-punched to kitchen! This causes food wastage.');
+    }
+    if (foodWastageCheck.wasDraftBilled) {
+      throw new Error('FAIL: Unpunched draft cart items were added to bill! Customer cannot be billed for unpunched food.');
+    }
+    console.log('✅ PASS: Unpunched draft cart items are NOT auto-punched and NOT billed! Zero food wastage guaranteed.');
+
+    // -------------------------------------------------------------
     // TEST 5: UPI PAYMENT PROOF VERIFICATION & SETTLEMENT
     // -------------------------------------------------------------
     console.log('\n--- TEST 5: UPI PAYMENT PROOF VERIFICATION & SETTLEMENT ---');
