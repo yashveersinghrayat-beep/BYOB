@@ -99,8 +99,8 @@ fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), `<?xml versio
 const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.onyx.pos"
-    android:versionCode="9"
-    android:versionName="4.1">
+    android:versionCode="10"
+    android:versionName="5.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -141,7 +141,84 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 </manifest>`;
 fs.writeFileSync(path.join(BUILD_DIR, 'AndroidManifest.xml'), manifestContent);
 
-// 4. MainActivity.java
+// 4. Java Sources (Separate top-level classes to prevent D8 inner-class parameter metadata bug)
+const posWebChromeClientJava = `package com.onyx.pos;
+
+import android.webkit.PermissionRequest;
+import android.webkit.WebChromeClient;
+
+public class PosWebChromeClient extends WebChromeClient {
+    private final MainActivity activity;
+
+    public PosWebChromeClient(MainActivity activity) {
+        this.activity = activity;
+    }
+
+    @Override
+    public void onPermissionRequest(final PermissionRequest request) {
+        boolean hasCamera = true;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            hasCamera = activity.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        }
+        if (hasCamera) {
+            request.grant(request.getResources());
+        } else {
+            activity.pendingWebPermissionRequest = request;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                activity.requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 101);
+            }
+        }
+    }
+}
+`;
+fs.writeFileSync(path.join(srcDir, 'PosWebChromeClient.java'), posWebChromeClientJava);
+
+const posWebViewClientJava = `package com.onyx.pos;
+
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+public class PosWebViewClient extends WebViewClient {
+    private static final String LOCAL_FALLBACK = "file:///android_asset/index.html?platform=android_apk";
+
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+        if (url != null && (url.endsWith(".apk") || url.contains(".apk?"))) {
+            return false;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        if (request != null && request.getUrl() != null) {
+            String url = request.getUrl().toString();
+            if (url.endsWith(".apk") || url.contains(".apk?")) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+        if (failingUrl != null && failingUrl.startsWith("http")) {
+            view.loadUrl(LOCAL_FALLBACK);
+        }
+    }
+
+    @Override
+    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+        if (request != null && request.isForMainFrame()) {
+            view.loadUrl(LOCAL_FALLBACK);
+        }
+    }
+}
+`;
+fs.writeFileSync(path.join(srcDir, 'PosWebViewClient.java'), posWebViewClientJava);
+
 const mainActivityJava = `package com.onyx.pos;
 
 import android.app.Activity;
@@ -157,19 +234,14 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements DownloadListener {
     private WebView webView;
     private static final String SERVER_URL = "https://byob-yashveersinghrayat-5191s-projects.vercel.app?platform=android_apk";
-    private static final String LOCAL_FALLBACK = "file:///android_asset/index.html?platform=android_apk";
     private static final int PERMISSION_REQ_CODE = 101;
     public PermissionRequest pendingWebPermissionRequest;
 
@@ -209,104 +281,30 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static class PosWebViewClient extends WebViewClient {
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if (url != null && (url.endsWith(".apk") || url.contains(".apk?"))) {
-                return false;
+    @Override
+    public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+        try {
+            Uri downloadUri = Uri.parse(url);
+            DownloadManager.Request request = new DownloadManager.Request(downloadUri);
+            request.setMimeType("application/vnd.android.package-archive");
+            request.setDescription("Downloading ONYX POS Update...");
+            request.setTitle("ONYX_POS.apk");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "ONYX_POS.apk");
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            if (dm != null) {
+                dm.enqueue(request);
+                Toast.makeText(this, "⚡ Downloading ONYX POS update to phone storage...", Toast.LENGTH_LONG).show();
+                return;
             }
-            return false;
-        }
+        } catch (Exception e) {}
 
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            if (request != null && request.getUrl() != null) {
-                String url = request.getUrl().toString();
-                if (url.endsWith(".apk") || url.contains(".apk?")) {
-                    return false;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-            if (failingUrl != null && failingUrl.startsWith("http")) {
-                view.loadUrl(LOCAL_FALLBACK);
-            }
-        }
-
-        @Override
-        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            if (request != null && request.isForMainFrame()) {
-                view.loadUrl(LOCAL_FALLBACK);
-            }
-        }
-    }
-
-    private static class PosWebChromeClient extends WebChromeClient {
-        private final MainActivity activity;
-
-        public PosWebChromeClient(MainActivity activity) {
-            this.activity = activity;
-        }
-
-        @Override
-        public void onPermissionRequest(final PermissionRequest request) {
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    boolean hasCamera = true;
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                        hasCamera = activity.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED;
-                    }
-                    if (hasCamera) {
-                        request.grant(request.getResources());
-                    } else {
-                        activity.pendingWebPermissionRequest = request;
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                            activity.requestPermissions(new String[]{android.Manifest.permission.CAMERA}, PERMISSION_REQ_CODE);
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    private static class PosDownloadListener implements DownloadListener {
-        private final Activity activity;
-
-        public PosDownloadListener(Activity activity) {
-            this.activity = activity;
-        }
-
-        @Override
-        public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-            try {
-                Uri downloadUri = Uri.parse(url);
-                DownloadManager.Request request = new DownloadManager.Request(downloadUri);
-                request.setMimeType("application/vnd.android.package-archive");
-                request.setDescription("Downloading ONYX POS Update...");
-                request.setTitle("ONYX_POS.apk");
-                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "ONYX_POS.apk");
-                DownloadManager dm = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
-                if (dm != null) {
-                    dm.enqueue(request);
-                    Toast.makeText(activity, "⚡ Downloading ONYX POS update to phone storage...", Toast.LENGTH_LONG).show();
-                    return;
-                }
-            } catch (Exception e) {
-                // Ignore and try intent fallback
-            }
-
-            try {
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(url));
-                activity.startActivity(intent);
-            } catch (Exception ex) {
-                Toast.makeText(activity, "Download failed: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
-            }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse(url));
+            startActivity(intent);
+        } catch (Exception ex) {
+            Toast.makeText(this, "Download failed: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -345,7 +343,7 @@ public class MainActivity extends Activity {
         // Keep Screen Awake (Restaurant POS standard)
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // Strictly Lock Screen Orientation to Portrait (prevents auto-rotate displacement during waiter movement)
+        // Strictly Lock Screen Orientation to Portrait
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         // Enable Fullscreen Kiosk Mode with Immersive Sticky navigation hiding
@@ -381,7 +379,7 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(0xFF090A0E);
         webView.setWebChromeClient(new PosWebChromeClient(this));
         webView.setWebViewClient(new PosWebViewClient());
-        webView.setDownloadListener(new PosDownloadListener(this));
+        webView.setDownloadListener(this);
 
         // Connect directly to Live Vercel Web App (falls back instantly to bundled assets if offline)
         webView.loadUrl(SERVER_URL);
@@ -415,9 +413,12 @@ execSync(`"${AAPT2}" link -I "${PLATFORM_JAR}" --manifest "${path.join(BUILD_DIR
 console.log('☕ Step 3: Compiling Java classes with javac...');
 const javaFiles = [
   path.join(srcDir, 'MainActivity.java'),
+  path.join(srcDir, 'PosWebChromeClient.java'),
+  path.join(srcDir, 'PosWebViewClient.java'),
   path.join(srcDir, 'R.java')
 ];
-execSync(`"${JAVAC}" --release 8 -d "${objDir}" -cp "${PLATFORM_JAR}" "${javaFiles[0]}" "${javaFiles[1]}"`, { stdio: 'inherit' });
+const quotedJava = javaFiles.map(j => `"${j}"`).join(' ');
+execSync(`"${JAVAC}" --release 8 -d "${objDir}" -cp "${PLATFORM_JAR}" ${quotedJava}`, { stdio: 'inherit' });
 
 // Step 4: D8 Dexing
 console.log('⚡ Step 4: Converting Java bytecode to Dalvik Executable (classes.dex) with d8...');

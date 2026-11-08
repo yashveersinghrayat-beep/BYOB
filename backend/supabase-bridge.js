@@ -26,8 +26,8 @@ class SupabaseBridge {
 
   start(intervalMs = 1200) {
     // Initial sync of tables to cloud
-    this.syncAllTablesToCloud().catch(() => {});
-    
+    this.syncAllTablesToCloud().catch(() => { });
+
     // Seed already known KOT IDs from SQLite (avoids duplicate reprints on server restart)
     try {
       if (this.db && this.db.db) {
@@ -52,7 +52,7 @@ class SupabaseBridge {
       }
 
       // Seed past KOT IDs directly from Supabase Cloud to guarantee no duplicate reprints
-      fetch(`${SUPABASE_URL}/rest/v1/kots?select=id&order=created_at.desc&limit=500`, { 
+      fetch(`${SUPABASE_URL}/rest/v1/kots?select=id&order=created_at.desc&limit=500`, {
         headers: HEADERS,
         signal: AbortSignal.timeout(5000)
       })
@@ -66,8 +66,8 @@ class SupabaseBridge {
               }
             });
           }
-        }).catch(() => {});
-    } catch (e) {}
+        }).catch(() => { });
+    } catch (e) { }
 
     // 1. Native High-Speed Realtime WebSocket (<25ms instant push/pull)
     this.connectRealtimeWebSocket();
@@ -88,7 +88,7 @@ class SupabaseBridge {
       this.wsHeartbeat = null;
     }
     if (this.ws) {
-      try { this.ws.close(); } catch (e) {}
+      try { this.ws.close(); } catch (e) { }
       this.ws = null;
     }
     this.isWsConnected = false;
@@ -135,11 +135,11 @@ class SupabaseBridge {
               this.handleRemoteKotBroadcast(payload);
             } else if (ev === 'ITEM_VOIDED') {
               if (this.printer && payload) {
-                this.printer.printVoidSlip(payload).catch(() => {});
+                this.printer.printVoidSlip(payload).catch(() => { });
               }
             } else if (ev === 'TABLE_TRANSFERRED') {
               if (this.printer && payload) {
-                this.printer.printTransferSlip(payload).catch(() => {});
+                this.printer.printTransferSlip(payload).catch(() => { });
               }
             } else if (ev === 'BILL_SETTLED') {
               this.handleRemoteBillSettledBroadcast(payload);
@@ -147,7 +147,7 @@ class SupabaseBridge {
               this.handleRemoteTableStatusBroadcast(payload);
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       };
 
       this.ws.onclose = () => {
@@ -158,7 +158,7 @@ class SupabaseBridge {
 
       this.ws.onerror = () => {
         this.isWsConnected = false;
-        try { this.ws.close(); } catch (e) {}
+        try { this.ws.close(); } catch (e) { }
       };
     } catch (e) {
       console.warn('[Supabase Bridge] WebSocket init notice:', e.message);
@@ -178,7 +178,7 @@ class SupabaseBridge {
         },
         ref: 'bc-' + Date.now()
       }));
-    } catch (e) {}
+    } catch (e) { }
   }
 
   handleRemoteKotBroadcast(payload) {
@@ -244,7 +244,7 @@ class SupabaseBridge {
             tableName: payload.tableName || ('Table ' + cleanTableId),
             waiterName: payload.waiterName || 'Remote Staff',
             items: normalizedItems
-          }).catch(() => {});
+          }).catch(() => { });
         }
       }
       if (kotId) this.syncedKotIds.add(kotId);
@@ -287,7 +287,7 @@ class SupabaseBridge {
       if (this.broadcast) {
         this.broadcast('TABLES_UPDATED', updatedTables);
       }
-    } catch (err) {}
+    } catch (err) { }
   }
 
   // 1. Sync All Tables to Supabase Cloud
@@ -507,7 +507,7 @@ class SupabaseBridge {
           headers: HEADERS,
           body: JSON.stringify(bodyObj),
           signal: AbortSignal.timeout(5000)
-        }).catch(() => {});
+        }).catch(() => { });
       }
     } catch (e) {
       console.warn('[Supabase Bridge] Failed to mirror table status to cloud:', e.message);
@@ -519,7 +519,7 @@ class SupabaseBridge {
     try {
       if (!voidResult) return;
       const { voidedItem, tableId, tableName, floor, reason, staffName, deviceId, authorizedBy, amount } = voidResult;
-      
+
       this.broadcastToWebSocket('ITEM_VOIDED', {
         tableId,
         tableName: tableName || tableId,
@@ -637,7 +637,7 @@ class SupabaseBridge {
             tableName: kot.table_name,
             waiterName: kot.waiter_name,
             items
-          }).catch(() => {});
+          }).catch(() => { });
         }
         this.syncedKotIds.add(kot.id);
         if (this.printer && this.printer.printedKotIds) {
@@ -649,7 +649,7 @@ class SupabaseBridge {
           method: 'PATCH',
           headers: HEADERS,
           body: JSON.stringify({ status: 'active', updated_at: new Date().toISOString() })
-        }).catch(() => {});
+        }).catch(() => { });
 
         hasNewOrder = true;
       }

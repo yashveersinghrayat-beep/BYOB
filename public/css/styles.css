@@ -63,7 +63,7 @@ body.app-view-active #hdr-viewport-toggle {
 }
 
 body.app-view-active #btn-app-mgr-unlock {
-  display: inline-flex !important;
+  display: none !important;
 }
 
 body {
