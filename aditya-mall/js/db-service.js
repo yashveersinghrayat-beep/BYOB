@@ -79,10 +79,20 @@ const DB_SERVICE = {
         }
       }
     }
+    let portions = item.portions;
+    if (typeof portions === 'string') {
+      try { portions = JSON.parse(portions); } catch(e){}
+    }
+    if (!portions && typeof MENU_ITEMS !== 'undefined') {
+      const local = MENU_ITEMS.find(m => m.id === item.id);
+      if (local && local.portions) portions = local.portions;
+    }
+
     return {
       ...item,
       is_veg: isVeg ? 1 : 0,
-      isVeg: isVeg
+      isVeg: isVeg,
+      portions: portions || null
     };
   },
 
@@ -356,7 +366,7 @@ const DB_SERVICE = {
         client.from('categories').select('*').order('sort_order', { ascending: true }),
         client.from('menu_items').select('*'),
         client.from('store_settings').select('*'),
-        client.from('kots').select('*, kot_items(*)').in('status', ['pending', 'preparing', 'ready', 'served'])
+        client.from('kots').select('*, kot_items(*)').in('status', ['pending', 'active', 'preparing', 'ready', 'served'])
       ]);
 
       if (setRes.data && setRes.data.length > 0) {
@@ -471,7 +481,7 @@ const DB_SERVICE = {
     try {
       const [tblRes, kotRes] = await Promise.all([
         client.from('tables').select('id,name,status,current_subtotal,updated_at'),
-        client.from('kots').select('id,table_id,waiter_name,status,created_at,kot_items(*)').in('status', ['pending', 'preparing', 'ready', 'served'])
+        client.from('kots').select('id,table_id,waiter_name,status,created_at,kot_items(*)').in('status', ['pending', 'active', 'preparing', 'ready', 'served'])
       ]);
 
       if (kotRes.error) {

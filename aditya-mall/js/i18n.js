@@ -424,6 +424,7 @@ const I18N = {
     nv_chicken_shami: "चिकन शामी कबाब",
     nv_chicken_tikka: "चिकन टिक्का",
     nv_chicken_wings: "चिकन विंग्स फ्राइड",
+    nv_chilli_mutton: "चिली मटन",
     nv_chilli_mutton_full: "चिली मटन (फुल)",
     nv_chilli_mutton_half: "चिली मटन (हाफ)",
     nv_egg_bhurji: "अंडा भुर्जी",
@@ -431,7 +432,7 @@ const I18N = {
     nv_masala_omelette: "मसाला आमलेट",
     nv_mutton_seekh: "मटन सीक कबाब",
     nv_tandoori_chicken_full: "तंदूरी चिकन (फुल)",
-    nv_tandoori_chicken: "तंदूरी चिकन (हाफ)",
+    nv_tandoori_chicken: "तंदूरी चिकन",
     nv_tandoori_chicken_half: "तंदूरी चिकन (हाफ)",
 
     // Smoke

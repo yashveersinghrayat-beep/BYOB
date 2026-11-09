@@ -89,7 +89,9 @@ class AdityaPrinterBridge {
 
   async seedExistingKots() {
     try {
-      const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/kots?select=id&order=created_at.desc&limit=200`, {
+      // Strictly only seed KOTs that are already completed/active/billed.
+      // Any 'pending' KOT was punched while bridge was off and MUST be printed!
+      const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/kots?status=neq.pending&select=id&order=created_at.desc&limit=200`, {
         headers: HEADERS,
         signal: AbortSignal.timeout(5000)
       });
@@ -98,7 +100,7 @@ class AdityaPrinterBridge {
         for (const k of kots) {
           if (k.id) this.printedKotIds.add(k.id);
         }
-        console.log(`📦 Seeded ${this.printedKotIds.size} existing KOT IDs (anti-duplicate shield ready).`);
+        console.log(`📦 Seeded ${this.printedKotIds.size} non-pending KOT IDs (anti-duplicate shield ready).`);
       }
     } catch (e) {
       console.warn('⚠️ Notice during initial KOT seeding:', e.message);
@@ -279,28 +281,46 @@ class AdityaPrinterBridge {
 
     // 5. Column Headers
     pushBytes(0x1B, 0x45, 0x01); // Bold ON
-    pushText(' QTY   ITEM DESCRIPTION                NOTES    \n');
+    pushText(' QTY   ITEM DESCRIPTION                PORTION  \n');
     pushBytes(0x1B, 0x45, 0x00); // Bold OFF
-    pushText('------------------------------------------------\n');
+    pushText('================================================\n');
 
-    // 6. Food Items
+    // 6. Food Items (High-Prominence Quantity & Portion Display)
     const items = (kotData.items || []).filter(it => !it.is_void && !it.voided);
     for (const item of items) {
-      const qtyStr = `${item.qty || 1}x`.padEnd(5, ' ');
-      const name = String(item.name || item.title || 'Item');
+      const qty = item.qty || 1;
+      let rawName = String(item.name || item.title || 'Item').toUpperCase();
 
-      pushBytes(0x1B, 0x21, 0x10); // Double Height for clean reading across kitchen counter
-      pushText(` ${qtyStr}${name}\n`);
+      // Extract portion label if present (e.g., "Butter Chicken (Half)" -> "HALF")
+      let portionLabel = '';
+      const portionMatch = rawName.match(/\((QUARTER|HALF|FULL|QTR|2 PCS|4 PCS)\)/i);
+      if (portionMatch) {
+        portionLabel = portionMatch[1].toUpperCase();
+        rawName = rawName.replace(/\((QUARTER|HALF|FULL|QTR|2 PCS|4 PCS)\)/i, '').trim();
+      } else if (item.portion) {
+        portionLabel = String(item.portion).toUpperCase();
+      }
+
+      // Quantity Badge in Double Height + Double Width Bold: [ 2x ]
+      pushBytes(0x1B, 0x45, 0x01); // Bold ON
+      pushBytes(0x1B, 0x21, 0x20); // Double Width
+      pushText(` [ ${qty}x ] `);
+      pushText(`${rawName}`);
+      if (portionLabel) {
+        pushText(` [${portionLabel}]`);
+      }
+      pushText('\n');
+      pushBytes(0x1B, 0x21, 0x00); // Normal
+      pushBytes(0x1B, 0x45, 0x00); // Bold OFF
 
       const note = item.notes || item.note || item.instructions;
       if (note) {
-        pushBytes(0x1B, 0x21, 0x00); // Normal
-        pushText(`       * Note: ${note}\n`);
+        pushBytes(0x1B, 0x45, 0x01); // Bold ON
+        pushText(`         >> NOTE: ${note}\n`);
+        pushBytes(0x1B, 0x45, 0x00); // Bold OFF
       }
+      pushText('------------------------------------------------\n');
     }
-
-    pushBytes(0x1B, 0x21, 0x00); // Normal
-    pushText('------------------------------------------------\n');
 
     if (kotData.notes || kotData.specialNote) {
       pushBytes(0x1B, 0x45, 0x01);
@@ -558,6 +578,15 @@ class AdityaPrinterBridge {
           res.end(content);
         }
       });
+    });
+
+    server.on('error', (err) => {
+      console.warn('⚠️ [Aditya Bridge] Local HTTP server error:', err.message);
+    });
+
+    server.on('clientError', (err, socket) => {
+      if (err.code === 'ECONNRESET' || !socket.writable) return;
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
     });
 
     server.listen(CONFIG.httpPort, '0.0.0.0', () => {

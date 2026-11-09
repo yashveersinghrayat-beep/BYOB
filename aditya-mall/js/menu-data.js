@@ -1,20 +1,60 @@
 // ==============================================================================
 // 💎 ONYX COMMERCIAL RESTAURANT POS — OFFICIAL MENU & TABLE LAYOUT
-// Brand: BYOB INDIRAPURAM / BAITHAK (NEW MACHAN VASUNDHARA)
-// 100% Exact Match with Official Menu Cards
+// Branch: Aditya Mall (Indirapuram)
+// 100% Exact Match with Official Menu Cards with Smart Portion Support
 // ==============================================================================
 
 const CATEGORIES = [
-  { id: "top_hits", name: "Top Hits", icon: "⭐" },
-  { id: "all", name: "All Items", icon: "📋" },
-  { id: "mixers", name: "Mixers & Beverages", icon: "🍾" },
-  { id: "chakna", name: "Veg Starters & Bar Bites", icon: "🥜" },
-  { id: "nonveg_starters", name: "Non-Veg Starters", icon: "🍗" },
-  { id: "indochinese", name: "Indo-Chinese & Pasta", icon: "🍝" },
-  { id: "mains", name: "Main Course", icon: "🍛" },
-  { id: "breads", name: "Breads", icon: "🫓" },
-  { id: "desserts_salads", name: "Desserts & Salads", icon: "🍨" },
-  { id: "smoke", name: "Smoke", icon: "🚬" }
+  {
+    "id": "top_hits",
+    "name": "Top Hits",
+    "icon": "⭐"
+  },
+  {
+    "id": "all",
+    "name": "All Items",
+    "icon": "📋"
+  },
+  {
+    "id": "mixers",
+    "name": "Mixers & Beverages",
+    "icon": "🍾"
+  },
+  {
+    "id": "chakna",
+    "name": "Veg Starters & Bar Bites",
+    "icon": "🥜"
+  },
+  {
+    "id": "nonveg_starters",
+    "name": "Non-Veg Starters",
+    "icon": "🍗"
+  },
+  {
+    "id": "indochinese",
+    "name": "Indo-Chinese & Pasta",
+    "icon": "🍝"
+  },
+  {
+    "id": "mains",
+    "name": "Main Course",
+    "icon": "🍛"
+  },
+  {
+    "id": "breads",
+    "name": "Breads",
+    "icon": "🫓"
+  },
+  {
+    "id": "desserts_salads",
+    "name": "Desserts & Salads",
+    "icon": "🍨"
+  },
+  {
+    "id": "smoke",
+    "name": "Smoke",
+    "icon": "🚬"
+  }
 ];
 
 // Most frequent fast-moving items in BYOB:
@@ -37,58 +77,479 @@ const TOP_HITS_IDS = [
 
 // Quick 1-tap re-order chips in POS
 const QUICK_BAR = [
-  { id: "m_ice", name: "Ice Bucket", price: 69, icon: "🧊" },
-  { id: "m_soda", name: "Soda", price: 49, icon: "🍾" },
-  { id: "m_glass", name: "Glass", price: 10, icon: "🥛" },
-  { id: "m_water", name: "Water (1L)", price: 40, icon: "💧" },
-  { id: "m_soft_can", name: "Cold Drink", price: 99, icon: "🥤" },
-  { id: "m_redbull", name: "Red Bull", price: 220, icon: "⚡" },
-  { id: "m_lime", name: "Fresh Lime", price: 120, icon: "🍋" }
+  {
+    "id": "m_ice",
+    "name": "Ice Bucket",
+    "price": 69,
+    "icon": "🧊"
+  },
+  {
+    "id": "m_soda",
+    "name": "Soda",
+    "price": 49,
+    "icon": "🍾"
+  },
+  {
+    "id": "m_glass",
+    "name": "Glass",
+    "price": 10,
+    "icon": "🥛"
+  },
+  {
+    "id": "m_water",
+    "name": "Water (1L)",
+    "price": 40,
+    "icon": "💧"
+  },
+  {
+    "id": "m_soft_can",
+    "name": "Cold Drink",
+    "price": 99,
+    "icon": "🥤"
+  },
+  {
+    "id": "m_redbull",
+    "name": "Red Bull",
+    "price": 220,
+    "icon": "⚡"
+  },
+  {
+    "id": "m_lime",
+    "name": "Fresh Lime",
+    "price": 120,
+    "icon": "🍋"
+  }
 ];
 
-// ================= RESTAURANT ROOM LAYOUT (42 TABLES - 1ST LOCATION) =================
+// Backward-compatible alias map for split legacy item IDs
+const MENU_ITEM_ALIASES = {
+  "nv_tandoori_chicken_half": {
+    "targetId": "nv_tandoori_chicken",
+    "portionKey": "half",
+    "label": "Half",
+    "price": 399
+  },
+  "nv_tandoori_chicken_full": {
+    "targetId": "nv_tandoori_chicken",
+    "portionKey": "full",
+    "label": "Full",
+    "price": 679
+  },
+  "nv_chilli_mutton_half": {
+    "targetId": "nv_chilli_mutton",
+    "portionKey": "half",
+    "label": "Half",
+    "price": 399
+  },
+  "nv_chilli_mutton_full": {
+    "targetId": "nv_chilli_mutton",
+    "portionKey": "full",
+    "label": "Full",
+    "price": 499
+  }
+};
+
+// ================= RESTAURANT ROOM LAYOUT (33 TABLES - ADITYA MALL) =================
 const RESTAURANT_TABLES = [
-  // 1st Floor (15 Tables)
-  { id: "T-01", name: "Table 1", floor: "1st Floor", row: "Front Area", position: "1st Floor • Front #1", landmark: "Near 1st Floor Entrance", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-02", name: "Table 2", floor: "1st Floor", row: "Front Area", position: "1st Floor • Front #2", landmark: "Front Center Window", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-03", name: "Table 3", floor: "1st Floor", row: "Front Area", position: "1st Floor • Front #3", landmark: "Beside Wall Sofas", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-04", name: "Table 4", floor: "1st Floor", row: "Middle Area", position: "1st Floor • Middle #4", landmark: "Center Hall Left Column", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-05", name: "Table 5", floor: "1st Floor", row: "Middle Area", position: "1st Floor • Middle #5", landmark: "Center Main Pathway", seats: 8, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-06", name: "Table 6", floor: "1st Floor", row: "Middle Area", position: "1st Floor • Middle #6", landmark: "Central Hall Right Column", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-07", name: "Table 7", floor: "1st Floor", row: "Middle Area", position: "1st Floor • Middle #7", landmark: "Near Pillar Left", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-08", name: "Table 8", floor: "1st Floor", row: "Middle Area", position: "1st Floor • Middle #8", landmark: "Center Pathway South", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-09", name: "Table 9", floor: "1st Floor", row: "Middle Area", position: "1st Floor • Middle #9", landmark: "Beside Wall Woodwork", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-10", name: "Table 10", floor: "1st Floor", row: "Back Area", position: "1st Floor • Back #10", landmark: "Near Service Station", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-11", name: "Table 11", floor: "1st Floor", row: "Back Area", position: "1st Floor • Back #11", landmark: "Front of Bar Counter", seats: 8, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-12", name: "Table 12", floor: "1st Floor", row: "Back Area", position: "1st Floor • Back #12", landmark: "Adjacent to Mixer Station", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-13", name: "Table 13", floor: "1st Floor", row: "Corner Lounge", position: "1st Floor • Corner #13", landmark: "Corner Lounge Left", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-14", name: "Table 14", floor: "1st Floor", row: "Corner Lounge", position: "1st Floor • Corner #14", landmark: "Corner Lounge Right", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-15", name: "Table 15", floor: "1st Floor", row: "VIP Section", position: "1st Floor • VIP #15", landmark: "VIP Family Section", seats: 8, status: "vacant", activeBill: 0, time: "" },
-
-  // 2nd Floor (10 Tables)
-  { id: "T-16", name: "Table 16", floor: "2nd Floor", row: "Front Landing", position: "2nd Floor • Front #16", landmark: "Staircase Landing Area", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-17", name: "Table 17", floor: "2nd Floor", row: "Front Landing", position: "2nd Floor • Front #17", landmark: "Opposite Service Counter", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-18", name: "Table 18", floor: "2nd Floor", row: "Central Dining", position: "2nd Floor • Center #18", landmark: "Central Dining Area", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-19", name: "Table 19", floor: "2nd Floor", row: "Central Dining", position: "2nd Floor • Center #19", landmark: "Beside Glass Partition", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-20", name: "Table 20", floor: "2nd Floor", row: "Central Dining", position: "2nd Floor • Center #20", landmark: "Central Hall Pathway", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-21", name: "Table 21", floor: "2nd Floor", row: "Atrium View", position: "2nd Floor • Window #21", landmark: "Mall Atrium View Window", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-22", name: "Table 22", floor: "2nd Floor", row: "Atrium View", position: "2nd Floor • Window #22", landmark: "Mall Atrium View Corner", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-23", name: "Table 23", floor: "2nd Floor", row: "Inner Lounge", position: "2nd Floor • Inner #23", landmark: "Inner Lounge Section", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-24", name: "Table 24", floor: "2nd Floor", row: "Inner Lounge", position: "2nd Floor • Inner #24", landmark: "Inner Dining Booth", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-25", name: "Table 25", floor: "2nd Floor", row: "VIP Dining", position: "2nd Floor • VIP #25", landmark: "2nd Floor Family Dining", seats: 8, status: "vacant", activeBill: 0, time: "" },
-
-  // Rooftop (8 Tables)
-  { id: "T-26", name: "Table 26", floor: "Rooftop", row: "Terrace Open", position: "Rooftop • Terrace #26", landmark: "Rooftop Entrance Canopy", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-27", name: "Table 27", floor: "Rooftop", row: "Terrace Open", position: "Rooftop • Terrace #27", landmark: "Open Sky Seating East", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-28", name: "Table 28", floor: "Rooftop", row: "Center Island", position: "Rooftop • Center #28", landmark: "Rooftop Center Island", seats: 8, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-29", name: "Table 29", floor: "Rooftop", row: "Center Island", position: "Rooftop • Center #29", landmark: "Beside Gazebo Canopy", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-30", name: "Table 30", floor: "Rooftop", row: "Skyline Railing", position: "Rooftop • Railing #30", landmark: "Skyline City View Railing 1", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-31", name: "Table 31", floor: "Rooftop", row: "Skyline Railing", position: "Rooftop • Railing #31", landmark: "Skyline City View Railing 2", seats: 4, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-32", name: "Table 32", floor: "Rooftop", row: "Cabana Booth", position: "Rooftop • Lounge #32", landmark: "Rooftop Cabana Booth", seats: 6, status: "vacant", activeBill: 0, time: "" },
-  { id: "T-33", name: "Table 33", floor: "Rooftop", row: "VIP Sky Deck", position: "Rooftop • VIP #33", landmark: "Rooftop VIP Sky Deck", seats: 10, status: "vacant", activeBill: 0, time: "" }
+  {
+    "id": "T-01",
+    "name": "Table 1",
+    "floor": "1st Floor",
+    "row": "Front Area",
+    "position": "1st Floor • Front #1",
+    "landmark": "Near 1st Floor Entrance",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-02",
+    "name": "Table 2",
+    "floor": "1st Floor",
+    "row": "Front Area",
+    "position": "1st Floor • Front #2",
+    "landmark": "Front Center Window",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-03",
+    "name": "Table 3",
+    "floor": "1st Floor",
+    "row": "Front Area",
+    "position": "1st Floor • Front #3",
+    "landmark": "Beside Wall Sofas",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-04",
+    "name": "Table 4",
+    "floor": "1st Floor",
+    "row": "Middle Area",
+    "position": "1st Floor • Middle #4",
+    "landmark": "Center Hall Left Column",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-05",
+    "name": "Table 5",
+    "floor": "1st Floor",
+    "row": "Middle Area",
+    "position": "1st Floor • Middle #5",
+    "landmark": "Center Main Pathway",
+    "seats": 8,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-06",
+    "name": "Table 6",
+    "floor": "1st Floor",
+    "row": "Middle Area",
+    "position": "1st Floor • Middle #6",
+    "landmark": "Central Hall Right Column",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-07",
+    "name": "Table 7",
+    "floor": "1st Floor",
+    "row": "Middle Area",
+    "position": "1st Floor • Middle #7",
+    "landmark": "Near Pillar Left",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-08",
+    "name": "Table 8",
+    "floor": "1st Floor",
+    "row": "Middle Area",
+    "position": "1st Floor • Middle #8",
+    "landmark": "Center Pathway South",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-09",
+    "name": "Table 9",
+    "floor": "1st Floor",
+    "row": "Middle Area",
+    "position": "1st Floor • Middle #9",
+    "landmark": "Beside Wall Woodwork",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-10",
+    "name": "Table 10",
+    "floor": "1st Floor",
+    "row": "Back Area",
+    "position": "1st Floor • Back #10",
+    "landmark": "Near Service Station",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-11",
+    "name": "Table 11",
+    "floor": "1st Floor",
+    "row": "Back Area",
+    "position": "1st Floor • Back #11",
+    "landmark": "Front of Bar Counter",
+    "seats": 8,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-12",
+    "name": "Table 12",
+    "floor": "1st Floor",
+    "row": "Back Area",
+    "position": "1st Floor • Back #12",
+    "landmark": "Adjacent to Mixer Station",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-13",
+    "name": "Table 13",
+    "floor": "1st Floor",
+    "row": "Corner Lounge",
+    "position": "1st Floor • Corner #13",
+    "landmark": "Corner Lounge Left",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-14",
+    "name": "Table 14",
+    "floor": "1st Floor",
+    "row": "Corner Lounge",
+    "position": "1st Floor • Corner #14",
+    "landmark": "Corner Lounge Right",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-15",
+    "name": "Table 15",
+    "floor": "1st Floor",
+    "row": "VIP Section",
+    "position": "1st Floor • VIP #15",
+    "landmark": "VIP Family Section",
+    "seats": 8,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-16",
+    "name": "Table 16",
+    "floor": "2nd Floor",
+    "row": "Front Landing",
+    "position": "2nd Floor • Front #16",
+    "landmark": "Staircase Landing Area",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-17",
+    "name": "Table 17",
+    "floor": "2nd Floor",
+    "row": "Front Landing",
+    "position": "2nd Floor • Front #17",
+    "landmark": "Opposite Service Counter",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-18",
+    "name": "Table 18",
+    "floor": "2nd Floor",
+    "row": "Central Dining",
+    "position": "2nd Floor • Center #18",
+    "landmark": "Central Dining Area",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-19",
+    "name": "Table 19",
+    "floor": "2nd Floor",
+    "row": "Central Dining",
+    "position": "2nd Floor • Center #19",
+    "landmark": "Beside Glass Partition",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-20",
+    "name": "Table 20",
+    "floor": "2nd Floor",
+    "row": "Central Dining",
+    "position": "2nd Floor • Center #20",
+    "landmark": "Central Hall Pathway",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-21",
+    "name": "Table 21",
+    "floor": "2nd Floor",
+    "row": "Atrium View",
+    "position": "2nd Floor • Window #21",
+    "landmark": "Mall Atrium View Window",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-22",
+    "name": "Table 22",
+    "floor": "2nd Floor",
+    "row": "Atrium View",
+    "position": "2nd Floor • Window #22",
+    "landmark": "Mall Atrium View Corner",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-23",
+    "name": "Table 23",
+    "floor": "2nd Floor",
+    "row": "Inner Lounge",
+    "position": "2nd Floor • Inner #23",
+    "landmark": "Inner Lounge Section",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-24",
+    "name": "Table 24",
+    "floor": "2nd Floor",
+    "row": "Inner Lounge",
+    "position": "2nd Floor • Inner #24",
+    "landmark": "Inner Dining Booth",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-25",
+    "name": "Table 25",
+    "floor": "2nd Floor",
+    "row": "VIP Dining",
+    "position": "2nd Floor • VIP #25",
+    "landmark": "2nd Floor Family Dining",
+    "seats": 8,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-26",
+    "name": "Table 26",
+    "floor": "Rooftop",
+    "row": "Terrace Open",
+    "position": "Rooftop • Terrace #26",
+    "landmark": "Rooftop Entrance Canopy",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-27",
+    "name": "Table 27",
+    "floor": "Rooftop",
+    "row": "Terrace Open",
+    "position": "Rooftop • Terrace #27",
+    "landmark": "Open Sky Seating East",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-28",
+    "name": "Table 28",
+    "floor": "Rooftop",
+    "row": "Center Island",
+    "position": "Rooftop • Center #28",
+    "landmark": "Rooftop Center Island",
+    "seats": 8,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-29",
+    "name": "Table 29",
+    "floor": "Rooftop",
+    "row": "Center Island",
+    "position": "Rooftop • Center #29",
+    "landmark": "Beside Gazebo Canopy",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-30",
+    "name": "Table 30",
+    "floor": "Rooftop",
+    "row": "Skyline Railing",
+    "position": "Rooftop • Railing #30",
+    "landmark": "Skyline City View Railing 1",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-31",
+    "name": "Table 31",
+    "floor": "Rooftop",
+    "row": "Skyline Railing",
+    "position": "Rooftop • Railing #31",
+    "landmark": "Skyline City View Railing 2",
+    "seats": 4,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-32",
+    "name": "Table 32",
+    "floor": "Rooftop",
+    "row": "Cabana Booth",
+    "position": "Rooftop • Lounge #32",
+    "landmark": "Rooftop Cabana Booth",
+    "seats": 6,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  },
+  {
+    "id": "T-33",
+    "name": "Table 33",
+    "floor": "Rooftop",
+    "row": "VIP Sky Deck",
+    "position": "Rooftop • VIP #33",
+    "landmark": "Rooftop VIP Sky Deck",
+    "seats": 10,
+    "status": "vacant",
+    "activeBill": 0,
+    "time": ""
+  }
 ];
 
-// ================= COMPLETE OFFICIAL MENU ITEMS =================
+// ================= COMPLETE OFFICIAL MENU ITEMS (WITH SMART PORTIONS) =================
 const MENU_ITEMS = [
   {
     "id": "m_glass",
@@ -358,7 +819,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": true,
     "desc": "Soft soya chaap chunks marinated in rich cashew cream & char-grilled.",
-    "image": "images/dishes/v_soya_malai.jpg"
+    "image": "images/dishes/v_soya_malai.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "v_dahi_kabab",
@@ -376,7 +851,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": true,
     "desc": "Juicy fresh cottage cheese cubes marinated in Kashmiri red chili & hung curd.",
-    "image": "images/dishes/v_paneer_tikka.jpg"
+    "image": "images/dishes/v_paneer_tikka.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "nv_masala_omelette",
@@ -430,7 +919,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": false,
     "desc": "Silky Awadhi chicken mince and lentil patties infused with whole spices.",
-    "image": "images/dishes/nv_chicken_shami.jpg"
+    "image": "images/dishes/nv_chicken_shami.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "nv_chicken_seekh",
@@ -439,7 +942,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": false,
     "desc": "Minced chicken seasoned with fresh herbs, skewered & charcoal-grilled in tandoor.",
-    "image": "images/dishes/nv_chicken_seekh.jpg"
+    "image": "images/dishes/nv_chicken_seekh.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "nv_chicken_boti",
@@ -448,7 +965,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": false,
     "desc": "Tender boneless chicken boti marinated in spiced curd and charcoal grilled.",
-    "image": "images/dishes/nv_chicken_tikka.jpg"
+    "image": "images/dishes/nv_chicken_tikka.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "nv_chicken_tikka",
@@ -457,7 +988,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": false,
     "desc": "Succulent boneless chicken thigh chunks steeped in tandoori masala & roasted.",
-    "image": "images/dishes/nv_chicken_tikka.jpg"
+    "image": "images/dishes/nv_chicken_tikka.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "nv_chicken_malai",
@@ -466,7 +1011,21 @@ const MENU_ITEMS = [
     "price": 391,
     "isVeg": false,
     "desc": "Creamy boneless chicken kebab marinated with cream, cheese, white pepper.",
-    "image": "images/dishes/nv_chicken_malai.jpg"
+    "image": "images/dishes/nv_chicken_malai.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 391
+      }
+    ]
   },
   {
     "id": "nv_chicken_lollipop",
@@ -475,7 +1034,21 @@ const MENU_ITEMS = [
     "price": 499,
     "isVeg": false,
     "desc": "Frenched chicken winglets tossed in tangy Schezwan sauce.",
-    "image": "images/dishes/nv_chicken_lollipop.jpg"
+    "image": "images/dishes/nv_chicken_lollipop.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 329
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 499
+      }
+    ]
   },
   {
     "id": "nv_amritsari_fish",
@@ -484,7 +1057,21 @@ const MENU_ITEMS = [
     "price": 449,
     "isVeg": false,
     "desc": "Fresh river sole fish fillets coated in carom-infused besan batter and fried crisp.",
-    "image": "images/dishes/nv_amritsari_fish.jpg"
+    "image": "images/dishes/nv_amritsari_fish.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 299
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 449
+      }
+    ]
   },
   {
     "id": "nv_fish_tikka",
@@ -493,43 +1080,73 @@ const MENU_ITEMS = [
     "price": 449,
     "isVeg": false,
     "desc": "Boneless fish cubes marinated in yellow mustard, yogurt and char-grilled.",
-    "image": "images/dishes/nv_fish_tikka.jpg"
+    "image": "images/dishes/nv_fish_tikka.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 299
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 449
+      }
+    ]
   },
   {
-    "id": "nv_chilli_mutton_half",
-    "name": "Chilli Mutton (Half)",
-    "category": "nonveg_starters",
-    "price": 399,
-    "isVeg": false,
-    "desc": "Tender boneless mutton cubes tossed with capsicum, onions & spicy chillies.",
-    "image": "images/dishes/nv_mutton_seekh.jpg"
-  },
-  {
-    "id": "nv_chilli_mutton_full",
-    "name": "Chilli Mutton (Full)",
+    "id": "nv_chilli_mutton",
+    "name": "Chilli Mutton",
     "category": "nonveg_starters",
     "price": 499,
     "isVeg": false,
-    "desc": "Full portion spicy wok-tossed mutton cubes with oriental chillies & herbs.",
-    "image": "images/dishes/nv_mutton_seekh.jpg"
+    "desc": "Tender boneless mutton cubes tossed with capsicum, onions & spicy oriental chillies.",
+    "image": "images/dishes/nv_mutton_seekh.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 399
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 499
+      }
+    ]
   },
   {
-    "id": "nv_tandoori_chicken_half",
-    "name": "Tandoori Chicken (Half)",
-    "category": "nonveg_starters",
-    "price": 399,
-    "isVeg": false,
-    "desc": "Traditional bone-in chicken marinated in hung curd, Kashmiri deghi mirch & spices.",
-    "image": "images/dishes/nv_tandoori_chicken_half.jpg"
-  },
-  {
-    "id": "nv_tandoori_chicken_full",
-    "name": "Tandoori Chicken (Full)",
+    "id": "nv_tandoori_chicken",
+    "name": "Tandoori Chicken",
     "category": "nonveg_starters",
     "price": 679,
     "isVeg": false,
-    "desc": "Full whole chicken marinated overnight and slow-roasted in clay tandoor.",
-    "image": "images/dishes/nv_tandoori_chicken_full.jpg"
+    "desc": "Traditional bone-in chicken marinated in hung curd, Kashmiri deghi mirch & spices, slow-roasted in clay tandoor.",
+    "image": "images/dishes/nv_tandoori_chicken_half.jpg",
+    "portions": [
+      {
+        "key": "quarter",
+        "label": "Quarter",
+        "short": "Qtr",
+        "price": 249
+      },
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 399
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 679
+      }
+    ]
   },
   {
     "id": "v_spring_roll",
@@ -565,7 +1182,21 @@ const MENU_ITEMS = [
     "price": 389,
     "isVeg": true,
     "desc": "Vegetable dumplings wok-tossed with chopped garlic, green chilies & soya sauce.",
-    "image": "images/dishes/v_manchurian.jpg"
+    "image": "images/dishes/v_manchurian.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 259
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 389
+      }
+    ]
   },
   {
     "id": "p_veg_arrabbiata",
@@ -610,7 +1241,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": true,
     "desc": "Button mushrooms batter-fried and tossed in dark soya, capsicum & chilies.",
-    "image": "images/dishes/v_chilli_mushroom.jpg"
+    "image": "images/dishes/v_chilli_mushroom.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "v_chilli_paneer",
@@ -619,7 +1264,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": true,
     "desc": "Crisp cottage cheese cubes stir-fried with diced bell peppers, scallions & chilli sauce.",
-    "image": "images/dishes/v_chilli_paneer.jpg"
+    "image": "images/dishes/v_chilli_paneer.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "nv_chilli_chicken",
@@ -628,7 +1287,21 @@ const MENU_ITEMS = [
     "price": 391,
     "isVeg": false,
     "desc": "Classic Kolkata-style chicken cubes stir-fried with garlic, ginger, and green chillies.",
-    "image": "images/dishes/nv_chilli_chicken.jpg"
+    "image": "images/dishes/nv_chilli_chicken.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 391
+      }
+    ]
   },
   {
     "id": "mc_steamed_rice",
@@ -637,7 +1310,21 @@ const MENU_ITEMS = [
     "price": 231,
     "isVeg": true,
     "desc": "Fluffy steamed long-grain aromatic Dehraduni basmati rice.",
-    "image": "images/dishes/mc_steamed_rice.jpg"
+    "image": "images/dishes/mc_steamed_rice.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 149
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 231
+      }
+    ]
   },
   {
     "id": "mc_dal_tadka",
@@ -646,7 +1333,21 @@ const MENU_ITEMS = [
     "price": 319,
     "isVeg": true,
     "desc": "Arhar dal tempered with desi ghee, cumin seeds, garlic, dried red chilies.",
-    "image": "images/dishes/mc_dal_tadka.jpg"
+    "image": "images/dishes/mc_dal_tadka.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 209
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 319
+      }
+    ]
   },
   {
     "id": "mc_veg_biryani",
@@ -655,7 +1356,21 @@ const MENU_ITEMS = [
     "price": 319,
     "isVeg": true,
     "desc": "Fragrant basmati layered with seasonal veggies & aromatic spices, served with raita.",
-    "image": "images/dishes/mc_veg_biryani.jpg"
+    "image": "images/dishes/mc_veg_biryani.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 219
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 319
+      }
+    ]
   },
   {
     "id": "mc_egg_curry",
@@ -664,7 +1379,21 @@ const MENU_ITEMS = [
     "price": 369,
     "isVeg": false,
     "desc": "Four shallow-fried hard-boiled eggs simmered in homestyle spiced onion-tomato curry.",
-    "image": "images/dishes/mc_egg_curry.jpg"
+    "image": "images/dishes/mc_egg_curry.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half (2 Pcs)",
+        "short": "Half",
+        "price": 219
+      },
+      {
+        "key": "full",
+        "label": "Full (4 Pcs)",
+        "short": "Full",
+        "price": 369
+      }
+    ]
   },
   {
     "id": "mc_dal_makhani",
@@ -673,7 +1402,21 @@ const MENU_ITEMS = [
     "price": 379,
     "isVeg": true,
     "desc": "Slow-cooked whole black urad lentils simmered overnight with cream & white butter.",
-    "image": "images/dishes/mc_dal_makhani.jpg"
+    "image": "images/dishes/mc_dal_makhani.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 249
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 379
+      }
+    ]
   },
   {
     "id": "mc_paneer_butter",
@@ -682,7 +1425,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": true,
     "desc": "Fresh cottage cheese cubes in rich velvety tomato-butter makhani gravy.",
-    "image": "images/dishes/mc_paneer_butter.jpg"
+    "image": "images/dishes/mc_paneer_butter.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "mc_kadai_paneer",
@@ -691,7 +1448,21 @@ const MENU_ITEMS = [
     "price": 399,
     "isVeg": true,
     "desc": "Cottage cheese tossed with bell peppers and freshly ground kadai spices.",
-    "image": "images/dishes/mc_paneer_butter.jpg"
+    "image": "images/dishes/mc_paneer_butter.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 269
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 399
+      }
+    ]
   },
   {
     "id": "mc_chicken_biryani",
@@ -700,7 +1471,21 @@ const MENU_ITEMS = [
     "price": 449,
     "isVeg": false,
     "desc": "Traditional chicken dum biryani with saffron basmati rice.",
-    "image": "images/dishes/mc_chicken_biryani.jpg"
+    "image": "images/dishes/mc_chicken_biryani.jpg",
+    "portions": [
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 289
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 449
+      }
+    ]
   },
   {
     "id": "mc_chicken_curry",
@@ -709,7 +1494,27 @@ const MENU_ITEMS = [
     "price": 489,
     "isVeg": false,
     "desc": "Homestyle dhaba chicken cooked in rich onion-tomato gravy.",
-    "image": "images/dishes/mc_chicken_curry.jpg"
+    "image": "images/dishes/mc_chicken_curry.jpg",
+    "portions": [
+      {
+        "key": "quarter",
+        "label": "Quarter",
+        "short": "Qtr",
+        "price": 279
+      },
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 399
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 489
+      }
+    ]
   },
   {
     "id": "mc_chicken_rara",
@@ -718,7 +1523,27 @@ const MENU_ITEMS = [
     "price": 489,
     "isVeg": false,
     "desc": "Succulent chicken pieces simmered in spicy minced keema gravy.",
-    "image": "images/dishes/mc_chicken_curry.jpg"
+    "image": "images/dishes/mc_chicken_curry.jpg",
+    "portions": [
+      {
+        "key": "quarter",
+        "label": "Quarter",
+        "short": "Qtr",
+        "price": 279
+      },
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 399
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 489
+      }
+    ]
   },
   {
     "id": "mc_chicken_jalfrezi",
@@ -727,7 +1552,27 @@ const MENU_ITEMS = [
     "price": 489,
     "isVeg": false,
     "desc": "Tender chicken stir-fried with capsicum, onions & tangy spiced gravy.",
-    "image": "images/dishes/mc_chicken_curry.jpg"
+    "image": "images/dishes/mc_chicken_curry.jpg",
+    "portions": [
+      {
+        "key": "quarter",
+        "label": "Quarter",
+        "short": "Qtr",
+        "price": 279
+      },
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 399
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 489
+      }
+    ]
   },
   {
     "id": "mc_butter_chicken",
@@ -736,7 +1581,27 @@ const MENU_ITEMS = [
     "price": 489,
     "isVeg": false,
     "desc": "Classic tandoori chicken simmered in rich creamy butter-tomato gravy.",
-    "image": "images/dishes/mc_butter_chicken.jpg"
+    "image": "images/dishes/mc_butter_chicken.jpg",
+    "portions": [
+      {
+        "key": "quarter",
+        "label": "Quarter",
+        "short": "Qtr",
+        "price": 279
+      },
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 399
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 489
+      }
+    ]
   },
   {
     "id": "mc_kadhai_chicken",
@@ -745,7 +1610,27 @@ const MENU_ITEMS = [
     "price": 489,
     "isVeg": false,
     "desc": "Spicy chicken cooked in iron wok with bell peppers and roasted coriander.",
-    "image": "images/dishes/mc_butter_chicken.jpg"
+    "image": "images/dishes/mc_butter_chicken.jpg",
+    "portions": [
+      {
+        "key": "quarter",
+        "label": "Quarter",
+        "short": "Qtr",
+        "price": 279
+      },
+      {
+        "key": "half",
+        "label": "Half",
+        "short": "Half",
+        "price": 399
+      },
+      {
+        "key": "full",
+        "label": "Full",
+        "short": "Full",
+        "price": 489
+      }
+    ]
   },
   {
     "id": "b_rumali_roti",
@@ -901,3 +1786,7 @@ const MENU_ITEMS = [
     "image": "images/dishes/x_smoke_large.jpg"
   }
 ];
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { CATEGORIES, TOP_HITS_IDS, QUICK_BAR, MENU_ITEM_ALIASES, RESTAURANT_TABLES, MENU_ITEMS };
+}
