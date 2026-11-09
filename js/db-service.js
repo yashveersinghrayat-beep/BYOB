@@ -451,8 +451,13 @@ const DB_SERVICE = {
     try {
       const [tblRes, kotRes] = await Promise.all([
         client.from('tables').select('id,name,status,current_subtotal,updated_at').neq('status', 'vacant'),
-        client.from('kots').select('id,table_id,waiter_name,status,created_at,kot_items(id,item_id,name,price,qty,is_void,is_bar,notes)').in('status', ['pending', 'preparing', 'ready', 'served'])
+        client.from('kots').select('id,table_id,waiter_name,status,created_at,kot_items(*)').in('status', ['pending', 'preparing', 'ready', 'served'])
       ]);
+
+      if (kotRes.error) {
+        console.warn('reconcileSupabase kot error:', kotRes.error);
+        return;
+      }
 
       const cloudOccupiedTables = tblRes.data || [];
       const cloudKots = kotRes.data || [];
