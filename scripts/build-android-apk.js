@@ -46,7 +46,8 @@ if (fs.existsSync(BUILD_DIR)) {
 }
 fs.mkdirSync(BUILD_DIR, { recursive: true });
 
-const srcDir = path.join(BUILD_DIR, 'src', 'com', 'onyx', 'pos');
+const packageParts = activeLoc.packageId.split('.');
+const srcDir = path.join(BUILD_DIR, 'src', ...packageParts);
 const resDir = path.join(BUILD_DIR, 'res');
 const valuesDir = path.join(resDir, 'values');
 const xmlDir = path.join(resDir, 'xml');
@@ -62,8 +63,9 @@ fs.mkdirSync(assetsDir, { recursive: true });
 fs.mkdirSync(objDir, { recursive: true });
 
 // Copy App Icons
-fs.copyFileSync(path.join(ROOT_DIR, 'icons', 'icon-512.png'), path.join(mipmapDir, 'ic_launcher.png'));
-fs.copyFileSync(path.join(ROOT_DIR, 'icons', 'icon-192.png'), path.join(mipmapDir, 'ic_launcher_round.png'));
+const webSrcDir = activeLoc.code === 'aditya' ? path.join(ROOT_DIR, 'aditya-mall') : ROOT_DIR;
+fs.copyFileSync(path.join(webSrcDir, 'icons', 'icon-512.png'), path.join(mipmapDir, 'ic_launcher.png'));
+fs.copyFileSync(path.join(webSrcDir, 'icons', 'icon-192.png'), path.join(mipmapDir, 'ic_launcher_round.png'));
 
 // Copy Web Assets into assets/
 function copyRecursive(src, dest) {
@@ -77,14 +79,14 @@ function copyRecursive(src, dest) {
   }
 }
 
-copyRecursive(path.join(ROOT_DIR, 'index.html'), path.join(assetsDir, 'index.html'));
-copyRecursive(path.join(ROOT_DIR, 'css'), path.join(assetsDir, 'css'));
-copyRecursive(path.join(ROOT_DIR, 'js'), path.join(assetsDir, 'js'));
-copyRecursive(path.join(ROOT_DIR, 'icons'), path.join(assetsDir, 'icons'));
-copyRecursive(path.join(ROOT_DIR, 'images'), path.join(assetsDir, 'images'));
-copyRecursive(path.join(ROOT_DIR, 'manifest.json'), path.join(assetsDir, 'manifest.json'));
-if (fs.existsSync(path.join(ROOT_DIR, 'sw.js'))) {
-  fs.copyFileSync(path.join(ROOT_DIR, 'sw.js'), path.join(assetsDir, 'sw.js'));
+copyRecursive(path.join(webSrcDir, 'index.html'), path.join(assetsDir, 'index.html'));
+copyRecursive(path.join(webSrcDir, 'css'), path.join(assetsDir, 'css'));
+copyRecursive(path.join(webSrcDir, 'js'), path.join(assetsDir, 'js'));
+copyRecursive(path.join(webSrcDir, 'icons'), path.join(assetsDir, 'icons'));
+copyRecursive(path.join(webSrcDir, 'images'), path.join(assetsDir, 'images'));
+copyRecursive(path.join(webSrcDir, 'manifest.json'), path.join(assetsDir, 'manifest.json'));
+if (fs.existsSync(path.join(webSrcDir, 'sw.js'))) {
+  fs.copyFileSync(path.join(webSrcDir, 'sw.js'), path.join(assetsDir, 'sw.js'));
 }
 
 // 2. Android Resources
@@ -187,7 +189,7 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 fs.writeFileSync(path.join(BUILD_DIR, 'AndroidManifest.xml'), manifestContent);
 
 // 4. Java Sources (Separate top-level classes to prevent D8 inner-class parameter metadata bug)
-const posNativeBridgeJava = `package com.onyx.pos;
+const posNativeBridgeJava = `package ${activeLoc.packageId};
 
 import android.content.Intent;
 import android.net.Uri;
@@ -267,7 +269,7 @@ public class PosNativeBridge {
 `;
 fs.writeFileSync(path.join(srcDir, 'PosNativeBridge.java'), posNativeBridgeJava);
 
-const posWebChromeClientJava = `package com.onyx.pos;
+const posWebChromeClientJava = `package ${activeLoc.packageId};
 
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -296,7 +298,7 @@ public class PosWebChromeClient extends WebChromeClient {
 `;
 fs.writeFileSync(path.join(srcDir, 'PosWebChromeClient.java'), posWebChromeClientJava);
 
-const posWebViewClientJava = `package com.onyx.pos;
+const posWebViewClientJava = `package ${activeLoc.packageId};
 
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -342,7 +344,7 @@ public class PosWebViewClient extends WebViewClient {
 `;
 fs.writeFileSync(path.join(srcDir, 'PosWebViewClient.java'), posWebViewClientJava);
 
-const mainActivityJava = `package com.onyx.pos;
+const mainActivityJava = `package ${activeLoc.packageId};
 
 import android.app.Activity;
 import android.app.DownloadManager;
@@ -656,8 +658,16 @@ try {
     fs.copyFileSync(finalApk, path.join(publicDir, 'byob-pos-latest.apk'));
     console.log(`   🌐 Web Download: Copied to public/${activeLoc.apkName} & public/ONYX_POS.apk`);
   }
+  if (activeLoc.code === 'aditya') {
+    const adityaDir = path.join(ROOT_DIR, 'aditya-mall');
+    if (fs.existsSync(adityaDir)) {
+      fs.copyFileSync(finalApk, path.join(adityaDir, activeLoc.apkName));
+      fs.copyFileSync(finalApk, path.join(adityaDir, 'ONYX_POS.apk'));
+      console.log(`   🌐 Web Download: Copied to aditya-mall/${activeLoc.apkName} & aditya-mall/ONYX_POS.apk`);
+    }
+  }
 } catch (e) {
-  console.warn('Could not copy to public:', e.message);
+  console.warn('Could not copy to public/aditya-mall:', e.message);
 }
 
 console.log('\n🎉 ==============================================================');

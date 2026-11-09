@@ -1,0 +1,943 @@
+/* BYOB INDIRAPURAM - App & Web POS Design System */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-main: #0a0b0f;
+  --bg-surface: #12151e;
+  --bg-surface-elevated: #1a1e2b;
+  --border-color: #242b3d;
+  --text-main: #ffffff;
+  --text-muted: #9ba3b8;
+  --primary: #f59e0b;
+  --primary-hover: #d97706;
+  --veg: #22c55e;
+  --nonveg: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  min-height: 100vh;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.web-view-active,
+body.mgr-view-active {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+#view-web-container {
+  overflow-y: visible !important;
+  min-height: calc(100vh - 65px);
+}
+
+@media (max-width: 640px) {
+  body.app-view-active {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+  }
+}
+
+body.app-view-active #main-app-header > div {
+  flex-wrap: nowrap !important;
+}
+
+body.app-view-active #hdr-viewport-toggle {
+  display: none !important;
+}
+
+body.app-view-active #btn-app-mgr-unlock {
+  display: none !important;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Mangal', sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-size: 15px;
+  line-height: 1.5;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#main-app-header {
+  flex-shrink: 0 !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+#hdr-viewport-toggle {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-x !important;
+}
+
+#hdr-viewport-toggle::-webkit-scrollbar {
+  display: none !important;
+}
+
+.view-tab-btn {
+  flex: 1 1 0% !important;
+  min-width: 95px !important;
+  white-space: nowrap !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+@media (min-width: 768px) {
+  .view-tab-btn {
+    flex: 0 1 auto !important;
+    min-width: auto !important;
+  }
+}
+
+/* On mobile screens, when manager console is active, hide brand text block to give room to Section breadcrumbs */
+@media (max-width: 639px) {
+  body.mgr-view-active #main-app-header .brand-title-block {
+    display: none !important;
+  }
+  #hdr-manager-section-pill {
+    max-width: 140px !important;
+  }
+}
+
+/* Mobile Viewport Width & Smart Auto-Adjusting Header */
+@media (max-width: 767px) {
+  html, body {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  #main-app-header {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  #main-app-header > div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    row-gap: 6px !important;
+  }
+  #main-app-header > div > div:nth-child(1) {
+    order: 1 !important;
+    max-width: calc(100% - 130px) !important;
+    flex-shrink: 1 !important;
+  }
+  #main-app-header > div > div:nth-child(2) {
+    order: 2 !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+  }
+  #hdr-viewport-toggle {
+    order: 3 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    padding: 3px !important;
+  }
+  #hdr-viewport-toggle .view-tab-btn {
+    flex: 1 0 auto !important;
+    min-width: 105px !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+  #header-lang-toggle button {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  #view-app-container,
+  #view-web-container,
+  #view-manager-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: #333a4d;
+  border-radius: 999px;
+}
+
+/* Veg / Non-Veg Badges */
+.badge-veg {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--veg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: rgba(34, 197, 94, 0.15);
+  flex-shrink: 0;
+}
+.badge-veg::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--veg);
+  border-radius: 50%;
+}
+
+.badge-nonveg {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--nonveg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: rgba(239, 68, 68, 0.15);
+  flex-shrink: 0;
+}
+.badge-nonveg::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--nonveg);
+  border-radius: 50%;
+}
+
+/* ==========================================================================
+   SAFE AREA & TOUCH ERGONOMICS FOR MOBILE & ANDROID APK
+   Ensures bottom action bars, floating order buttons, action sheets & modals
+   are NEVER cut off or obscured by Android gesture/navigation bar
+   ========================================================================== */
+.pb-safe {
+  padding-bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 14px)) !important;
+}
+
+.pb-safe-lg {
+  padding-bottom: max(22px, calc(env(safe-area-inset-bottom, 0px) + 18px)) !important;
+}
+
+.pb-safe-grid {
+  padding-bottom: max(34px, calc(env(safe-area-inset-bottom, 0px) + 28px)) !important;
+}
+
+.pb-safe-sheet {
+  padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 24px)) !important;
+}
+
+/* Responsive Handheld Terminal Layout (Edge-to-Edge on Mobile, Ergonomic Professional Workstation on Desktop) */
+#view-app-container:not(.hidden) {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: stretch !important;
+  align-items: stretch !important;
+  background: #080a10 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.app-frame {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: #0b0e17 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+}
+
+@media (min-width: 1024px) {
+  #view-app-container:not(.hidden) {
+    padding: 10px 16px !important;
+    align-items: center !important;
+  }
+  .app-frame {
+    max-width: 1060px !important;
+    border-radius: 20px !important;
+    border: 1px solid #1f2738 !important;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.7) !important;
+  }
+}
+
+/* Vertical Category Rail (Left in Waiter Mode) */
+.category-rail {
+  width: 78px;
+  background: #131620;
+  border-right: 1px solid #252b3b;
+  overflow-y: auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+}
+
+.rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ba3b8;
+  transition: all 0.15s ease;
+  text-align: center;
+  line-height: 1.15;
+  border: 1px solid transparent;
+}
+.rail-btn:active {
+  transform: scale(0.95);
+}
+.rail-btn.active {
+  background: #f59e0b;
+  color: #000000;
+  border-color: #fbbf24;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+/* High-Speed Waiter Order Tile */
+.speed-tile {
+  background: #151824;
+  border: 1.5px solid #273044;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+@media (max-width: 420px) {
+  .category-rail {
+    width: 68px;
+    padding: 4px 2px;
+  }
+  .rail-btn {
+    padding: 6px 2px;
+    font-size: 9px;
+  }
+  .speed-tile {
+    padding: 8px;
+    gap: 6px;
+  }
+}
+.speed-tile:hover {
+  border-color: #4b587a;
+  background: #1c2132;
+}
+.speed-tile.has-qty {
+  border-color: #f59e0b !important;
+  background: #281d0c !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.3) !important;
+}
+
+/* ================= LUXURY HIGH-CONTRAST RESTAURANT TABLE CARDS ================= */
+.floor-table-card {
+  border-radius: 16px;
+  transition: all 0.16s ease-in-out;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  min-height: 94px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.floor-table-card:active {
+  transform: scale(0.97);
+}
+
+/* 1. 🟢 SLEEK EMERALD (VACANT / FREE TABLE) */
+.table-card-free {
+  background: linear-gradient(145deg, #0d2218 0%, #06140e 100%) !important;
+  border: 1.5px solid #10b981 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18) !important;
+  color: #ffffff !important;
+}
+.table-card-free:hover {
+  border-color: #34d399 !important;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35) !important;
+}
+
+/* 2. 🔴 SLEEK CRIMSON (OCCUPIED / ACTIVE RUNNING ORDERS) */
+.table-card-occupied {
+  background: linear-gradient(145deg, #2b0e14 0%, #17070b 100%) !important;
+  border: 1.5px solid #ef4444 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.22) !important;
+  color: #ffffff !important;
+}
+.table-card-occupied:hover {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.45) !important;
+}
+
+/* 2B. 🧾 VIBRANT AMBER/GOLD (BILL PRINTED / AWAITING SETTLEMENT) */
+.table-card-billed {
+  background: linear-gradient(145deg, #2d1a06 0%, #180d02 100%) !important;
+  border: 2px solid #f59e0b !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3), inset 0 0 10px rgba(245, 158, 11, 0.1) !important;
+  color: #ffffff !important;
+}
+.table-card-billed:hover {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5) !important;
+}
+
+.table-card-selected-billed {
+  background: linear-gradient(145deg, #3d2308 0%, #1f1103 100%) !important;
+  border: 3px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.7) !important;
+  color: #ffffff !important;
+}
+
+/* 3A. 🟡 SELECTED FREE TABLE */
+.table-card-selected-free {
+  background: linear-gradient(145deg, #0d2e1f 0%, #061c13 100%) !important;
+  border: 3px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.7) !important;
+  color: #ffffff !important;
+}
+
+/* 3B. 🟡 SELECTED OCCUPIED TABLE */
+.table-card-selected-occupied {
+  background: linear-gradient(145deg, #57101b 0%, #32070e 100%) !important;
+  border: 3.5px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.8), inset 0 0 12px rgba(251, 191, 36, 0.25) !important;
+  color: #ffffff !important;
+}
+
+/* Fallback for selected table */
+.table-card-selected {
+  border: 3.5px solid #fbbf24 !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.8) !important;
+}
+
+/* Pulse animation for live sync */
+@keyframes syncPulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+.sync-pulse {
+  animation: syncPulse 2s infinite ease-in-out;
+}
+
+/* ================= EPSON 80MM THERMAL RECEIPT SYSTEM ================= */
+.epson-receipt {
+  width: 290px;
+  max-width: 100%;
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-size: 10.5px;
+  line-height: 1.32;
+  padding: 12px 10px;
+  margin: 0 auto;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  position: relative;
+  letter-spacing: -0.2px;
+}
+
+.epson-receipt hr {
+  border: none;
+  border-top: 1px dashed #000000 !important;
+  margin: 5px 0;
+}
+
+.epson-receipt .double-hr {
+  border: none;
+  border-top: 2px solid #000000 !important;
+  margin: 5px 0;
+}
+
+/* Thermal printer continuous 80mm roll zero-margin sheet rules (Exact 80x294mm Driver Preset - Zero Paper Waste) */
+@page {
+  size: 80mm 294mm !important;
+  margin: 0mm !important;
+}
+
+@media print {
+  @page {
+    size: 80mm 294mm !important;
+    margin: 0mm !important;
+  }
+
+  html, body {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    height: auto !important;
+    max-height: 294mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'JetBrains Mono', 'Courier New', Courier, monospace !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    overflow: hidden !important;
+  }
+
+  /* Completely remove all app frames, navbars, sidebars, headers from printable flow */
+  body > *:not(#epson-modal) {
+    display: none !important;
+  }
+
+  #epson-modal,
+  #epson-modal.hidden {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    height: auto !important;
+    max-height: 294mm !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  #epson-modal > div {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #epson-print-wrapper {
+    display: block !important;
+    position: static !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    padding: 0mm !important;
+    margin: 0 auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-sizing: border-box !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .epson-receipt {
+    width: 72mm !important;
+    max-width: 72mm !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    padding: 1mm 1mm 0mm 1mm !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 9.5px !important;
+    line-height: 1.2 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .qr-img {
+    width: 50px !important;
+    height: 50px !important;
+    display: block !important;
+    margin: 0 auto !important;
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
+  }
+
+  .epson-receipt * {
+    color: #000000 !important;
+  }
+
+  /* Hide print buttons and back controls during printing */
+  #epson-modal button,
+  #epson-modal .mt-3,
+  #epson-modal .print-hide {
+    display: none !important;
+  }
+}
+
+/* Hide scrollbar helper */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbar for Preference Modals & Drawers */
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: #0f121a;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #2b354b;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
+.pref-chip {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ================= MANAGER SLIDING HOVER SIDEBAR & HEADER INTEGRATION ================= */
+/* STRICT SECURITY & CONTEXT ISOLATION:
+   The Manager Sidebar, hover zone, trigger pill, and backdrop are STRICTLY restricted to Manager Dashboard.
+   In Waiter Mobile view ('app'), Customer Web view ('web'), or when console is locked, they are COMPLETELY DISABLED. */
+#mgr-sidebar-hover-zone,
+#mgr-sidebar-trigger-pill,
+#mgr-sliding-sidebar,
+#mgr-sidebar-backdrop {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* STRICTLY ACTIVE ONLY WHEN body has .mgr-view-active (Manager Console unlocked & active) */
+body.mgr-view-active #mgr-sliding-sidebar {
+  display: flex !important;
+  visibility: visible !important;
+}
+
+body.mgr-view-active #mgr-sidebar-backdrop {
+  display: block !important;
+  position: fixed;
+  top: 57px;
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 57px);
+  background: rgba(3, 5, 8, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 47;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  visibility: visible !important;
+}
+
+body.mgr-view-active #mgr-sidebar-backdrop.active {
+  opacity: 1;
+  pointer-events: auto !important;
+}
+
+body.mgr-view-active #mgr-sliding-sidebar {
+  display: flex !important;
+  visibility: visible !important;
+  position: fixed;
+  top: 57px;
+  left: 0;
+  width: 290px;
+  height: calc(100vh - 57px);
+  z-index: 48;
+  background: rgba(14, 18, 27, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid #232c3f;
+  border-top: 1px solid #232c3f;
+  box-shadow: 12px 0 45px rgba(0, 0, 0, 0.85);
+  transform: translateX(-100%);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
+  flex-direction: column;
+  pointer-events: auto !important;
+}
+
+body.mgr-view-active #mgr-sliding-sidebar.open,
+body.mgr-view-active #mgr-sliding-sidebar.pinned {
+  transform: translateX(0);
+}
+
+/* Morphing Animated Hamburger Button in Header */
+#hdr-sidebar-toggle-btn {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#hdr-sidebar-toggle-btn:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+}
+
+#hdr-sidebar-toggle-btn .hdr-bar {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s, background-color 0.2s;
+}
+
+#hdr-sidebar-toggle-btn.is-active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.2));
+  border-color: #f59e0b;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.5);
+}
+
+#hdr-sidebar-toggle-btn.is-active .bar-top {
+  transform: translateY(5px) rotate(45deg);
+  background-color: #fbbf24;
+}
+
+#hdr-sidebar-toggle-btn.is-active .bar-mid {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+#hdr-sidebar-toggle-btn.is-active .bar-bot {
+  transform: translateY(-5px) rotate(-45deg);
+  background-color: #fbbf24;
+}
+
+/* Header border pulse when sidebar is open */
+body.mgr-sidebar-open #main-app-header {
+  border-bottom-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+.mgr-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.mgr-nav-item:hover {
+  background: rgba(245, 158, 11, 0.12);
+  color: #ffffff;
+  border-color: rgba(245, 158, 11, 0.3);
+  transform: translateX(4px);
+}
+
+.mgr-nav-item.active {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000000;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  border-color: #fbbf24;
+}
+
+.mgr-nav-item.active:hover {
+  color: #000000;
+  transform: none;
+}
+
+/* ==========================================================================
+   ROCK-SOLID MOBILE & POS ORIENTATION STABILITY
+   Strictly prevents headers, table grids, or bottom docks from shifting
+   ========================================================================== */
+
+#app-container:not(.hidden),
+#view-app-container:not(.hidden) {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#app-screen-tables:not(.hidden),
+#app-screen-menu:not(.hidden),
+#app-screen-review:not(.hidden),
+#app-screen-bill:not(.hidden) {
+  flex: 1 1 0% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+#app-floor-grid,
+#app-items-container,
+#review-scroll-container,
+#bill-scroll-container {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
+
+#app-floor-grid::-webkit-scrollbar,
+#app-items-container::-webkit-scrollbar,
+#review-scroll-container::-webkit-scrollbar,
+#bill-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+#app-floor-grid::-webkit-scrollbar-track,
+#app-items-container::-webkit-scrollbar-track,
+#review-scroll-container::-webkit-scrollbar-track,
+#bill-scroll-container::-webkit-scrollbar-track {
+  background: rgba(10, 14, 22, 0.4);
+}
+#app-floor-grid::-webkit-scrollbar-thumb,
+#app-items-container::-webkit-scrollbar-thumb,
+#review-scroll-container::-webkit-scrollbar-thumb,
+#bill-scroll-container::-webkit-scrollbar-thumb {
+  background: #252f44;
+  border-radius: 999px;
+}
+#app-floor-grid::-webkit-scrollbar-thumb:hover,
+#app-items-container::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
+#app-screen-tables.hidden,
+#app-screen-menu.hidden,
+#app-screen-review.hidden,
+#app-screen-bill.hidden,
+#app-container.hidden,
+#view-app-container.hidden,
+#view-web-container.hidden,
+#view-manager-container.hidden {
+  display: none !important;
+}
+
+#floor-bottom-dock,
+#app-bottom-bar,
+#app-menu-bottom-bar {
+  flex-shrink: 0 !important;
+  position: relative !important;
+  z-index: 40 !important;
+}
+
+#app-floor-grid {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+@media screen and (orientation: landscape) and (max-height: 540px) {
+  #floor-bottom-dock,
+  #app-bottom-bar {
+    padding: 6px 12px !important;
+    gap: 4px !important;
+  }
+  #floor-bottom-dock .text-3xl {
+    font-size: 1.25rem !important;
+  }
+  #app-floor-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 4-Step Dedicated Workflow Styles */
+.kitchen-note-chip {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.kitchen-note-chip.active {
+  background-color: #f59e0b !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
+}
+
+#table-action-sheet {
+  transition: opacity 0.2s ease;
+}
+
+#app-items-container {
+  flex: 1 1 0% !important;
+  height: auto !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-bottom: 12px !important;
+}
+
+#app-menu-bottom-bar {
+  flex-shrink: 0 !important;
+  z-index: 40 !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+}
+
+#app-menu-bottom-bar:not(.hidden) {
+  display: flex !important;
+}
+
+
+
+
