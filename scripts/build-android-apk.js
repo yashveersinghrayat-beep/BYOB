@@ -302,6 +302,7 @@ const posWebViewClientJava = `package ${activeLoc.packageId};
 
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
@@ -337,6 +338,13 @@ public class PosWebViewClient extends WebViewClient {
     @Override
     public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
         if (request != null && request.isForMainFrame()) {
+            view.loadUrl(LOCAL_FALLBACK);
+        }
+    }
+
+    @Override
+    public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+        if (request != null && request.isForMainFrame() && errorResponse != null && errorResponse.getStatusCode() >= 400) {
             view.loadUrl(LOCAL_FALLBACK);
         }
     }
