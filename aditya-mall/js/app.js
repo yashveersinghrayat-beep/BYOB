@@ -2736,12 +2736,74 @@ const APP = {
       } else if (this.state.subMode === 'speed') {
         // High-Speed Waiter Tiles (Instant 1-Tap)
         appContainer.innerHTML = items.map(item => {
-          const inCart = currentCart.find(c => c.id === item.id);
-          const qty = inCart ? inCart.qty : 0;
+          const hasPortions = Array.isArray(item.portions) && item.portions.length > 0;
           const isVeg = this.isItemVeg(item);
-          const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
           const addBtnLabel = (typeof I18N !== 'undefined') ? I18N.t('addBtn', '+ Add') : '+ Add';
+
+          if (hasPortions) {
+            const totalPortionQty = currentCart.reduce((sum, c) => (c.baseItemId === item.id || (c.id && c.id.startsWith(item.id + '::'))) ? sum + c.qty : sum, 0);
+            const minPrice = Math.min(...item.portions.map(p => p.price));
+            const maxPrice = Math.max(...item.portions.map(p => p.price));
+
+            return `
+              <div class="speed-tile ${totalPortionQty > 0 ? 'has-qty' : ''} p-2.5 rounded-2xl flex flex-col gap-2 bg-[#131622] border ${totalPortionQty > 0 ? 'border-amber-400/80 bg-[#1e1910]' : 'border-[#242c40] hover:border-[#384564]'} transition-all">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onclick="APP.openPortionModal('${item.id}')">
+                    <div class="w-12 h-12 rounded-xl overflow-hidden bg-neutral-900 border border-[#2b3447] flex-shrink-0 relative shadow-sm cursor-pointer group" onclick="event.stopPropagation(); APP.openPhotoModal('${item.id}')" title="Tap to preview dish">
+                      <img src="${item.image}" alt="${displayName}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-200">
+                      <span class="${isVeg ? 'badge-veg' : 'badge-nonveg'} absolute top-1 left-1 ring-1 ring-black shadow"></span>
+                    </div>
+
+                    <div class="truncate flex-1 min-w-0">
+                      <div class="text-xs sm:text-sm font-black text-white truncate leading-tight">${displayName}</div>
+                      <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-xs font-black text-amber-400 font-mono">₹${minPrice} - ₹${maxPrice}</span>
+                        ${item.category ? `<span class="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">• ${item.category}</span>` : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onclick="APP.openPortionModal('${item.id}')"
+                    class="h-7 px-2.5 rounded-xl bg-[#1c2234] hover:bg-[#28314a] text-amber-300 font-bold text-[11px] border border-amber-400/30 flex items-center gap-1 shrink-0">
+                    <span>Sizes</span>
+                    ${totalPortionQty > 0 ? `<span class="w-4 h-4 rounded-full bg-amber-400 text-black text-[10px] font-mono font-black flex items-center justify-center">${totalPortionQty}</span>` : ''}
+                  </button>
+                </div>
+
+                <!-- 1-Tap Inline Portion Chips -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[#1f2638]">
+                  ${item.portions.map(p => {
+                    const pKey = `${item.id}::${p.key}`;
+                    const pInCart = currentCart.find(c => c.id === pKey);
+                    const pQty = pInCart ? pInCart.qty : 0;
+                    return `
+                      <button 
+                        type="button" 
+                        onclick="event.stopPropagation(); APP.addItem('${item.id}', '${p.key}')" 
+                        class="flex-1 py-1 px-2 rounded-xl text-[10px] font-black border transition-all active:scale-95 flex items-center justify-between gap-1 ${
+                          pQty > 0 
+                            ? 'bg-amber-400 text-black border-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
+                            : 'bg-[#181d2a] text-neutral-300 hover:text-amber-300 border-[#2b354b]'
+                        }">
+                        <span>${p.label}</span>
+                        <div class="flex items-center gap-1">
+                          <span class="font-mono ${pQty > 0 ? 'text-black' : 'text-amber-400'}">₹${p.price}</span>
+                          ${pQty > 0 ? `<span class="px-1 py-0.2 bg-black text-amber-300 rounded text-[9px] font-mono font-black">${pQty}</span>` : ''}
+                        </div>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }
+
+          // Single-Portion Item in Speed Mode
+          const inCart = currentCart.find(c => c.id === item.id);
+          const qty = inCart ? inCart.qty : 0;
+          const noteText = (inCart && inCart.notes) ? inCart.notes : '';
 
           return `
             <div class="speed-tile ${qty > 0 ? 'has-qty' : ''} p-2.5 rounded-2xl flex items-center justify-between gap-3 bg-[#131622] border border-[#242c40] hover:border-[#384564] transition-all">
@@ -2797,13 +2859,73 @@ const APP = {
       } else {
         // Visual Photos Mode
         appContainer.innerHTML = items.map(item => {
-          const inCart = currentCart.find(c => c.id === item.id);
-          const qty = inCart ? inCart.qty : 0;
+          const hasPortions = Array.isArray(item.portions) && item.portions.length > 0;
           const isVeg = this.isItemVeg(item);
-          const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
           const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
           const addBtnLabel = (typeof I18N !== 'undefined') ? I18N.t('addBtn', '+ Add') : '+ Add';
+
+          if (hasPortions) {
+            const totalPortionQty = currentCart.reduce((sum, c) => (c.baseItemId === item.id || (c.id && c.id.startsWith(item.id + '::'))) ? sum + c.qty : sum, 0);
+            const minPrice = Math.min(...item.portions.map(p => p.price));
+            const maxPrice = Math.max(...item.portions.map(p => p.price));
+
+            return `
+              <div class="menu-card p-3 flex flex-col gap-2">
+                <div class="flex gap-3 items-center justify-between">
+                  <div class="flex-1 pr-2 cursor-pointer" onclick="APP.openPortionModal('${item.id}')">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <span class="${isVeg ? 'badge-veg' : 'badge-nonveg'}"></span>
+                      <h3 class="text-xs font-bold text-white leading-snug">${displayName}</h3>
+                    </div>
+                    <div class="text-xs font-bold text-amber-400 font-mono mb-1">₹${minPrice} - ₹${maxPrice}</div>
+                    <p class="text-[10px] text-neutral-400 line-clamp-2">${item.desc || item.description || ''}</p>
+                  </div>
+
+                  <div class="flex flex-col items-center flex-shrink-0 w-20">
+                    <div class="w-16 h-16 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800 mb-1 cursor-pointer group relative shadow-md" onclick="APP.openPhotoModal('${item.id}')" title="Tap to preview dish">
+                      <img src="${item.image}" alt="${displayName}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-200">
+                    </div>
+                    <button 
+                      onclick="APP.openPortionModal('${item.id}')"
+                      class="w-full py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[10px] font-bold">
+                      ${totalPortionQty > 0 ? `Sizes (${totalPortionQty})` : 'Sizes'}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 1-Tap Portion Chips -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-[#1f2638]">
+                  ${item.portions.map(p => {
+                    const pKey = `${item.id}::${p.key}`;
+                    const pInCart = currentCart.find(c => c.id === pKey);
+                    const pQty = pInCart ? pInCart.qty : 0;
+                    return `
+                      <button 
+                        type="button" 
+                        onclick="event.stopPropagation(); APP.addItem('${item.id}', '${p.key}')" 
+                        class="flex-1 py-1 px-2 rounded-lg text-[10px] font-black border transition-all active:scale-95 flex items-center justify-between gap-1 ${
+                          pQty > 0 
+                            ? 'bg-amber-400 text-black border-amber-300 shadow' 
+                            : 'bg-[#181d2a] text-neutral-300 hover:text-amber-300 border-[#2b354b]'
+                        }">
+                        <span>${p.label}</span>
+                        <div class="flex items-center gap-1">
+                          <span class="font-mono ${pQty > 0 ? 'text-black' : 'text-amber-400'}">₹${p.price}</span>
+                          ${pQty > 0 ? `<span class="px-1 py-0.2 bg-black text-amber-300 rounded text-[9px] font-mono font-black">${pQty}</span>` : ''}
+                        </div>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }
+
+          // Single-portion item in Visual mode
+          const inCart = currentCart.find(c => c.id === item.id);
+          const qty = inCart ? inCart.qty : 0;
+          const noteText = (inCart && inCart.notes) ? inCart.notes : '';
 
           return `
             <div class="menu-card p-3 flex gap-3 items-center justify-between">
@@ -2872,13 +2994,75 @@ const APP = {
         `;
       } else {
         webContainer.innerHTML = items.map(item => {
-          const inCart = currentCart.find(c => c.id === item.id);
-          const qty = inCart ? inCart.qty : 0;
+          const hasPortions = Array.isArray(item.portions) && item.portions.length > 0;
           const isVeg = this.isItemVeg(item);
-          const noteText = (inCart && inCart.notes) ? inCart.notes : '';
           const isBarItem = item.is_bar || item.category === 'mixers' || item.category_id === 'mixers' || item.id.startsWith('m_') || item.id.startsWith('qb_');
           const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
           const addBtnLabel = (typeof I18N !== 'undefined') ? I18N.t('addBtn', '+ ADD') : '+ ADD';
+
+          if (hasPortions) {
+            const totalPortionQty = currentCart.reduce((sum, c) => (c.baseItemId === item.id || (c.id && c.id.startsWith(item.id + '::'))) ? sum + c.qty : sum, 0);
+            const minPrice = Math.min(...item.portions.map(p => p.price));
+            const maxPrice = Math.max(...item.portions.map(p => p.price));
+
+            return `
+              <div class="menu-card p-3.5 flex flex-col gap-2 rounded-2xl transition-all ${
+                totalPortionQty > 0 ? 'border-2 border-amber-400 bg-[#251a09] shadow-[0_0_15px_rgba(245,158,11,0.25)]' : 'border border-[#23293a] bg-[#131620]'
+              }">
+                <div class="flex gap-3 items-center justify-between">
+                  <div class="flex-1 pr-2 cursor-pointer" onclick="APP.openPortionModal('${item.id}')">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <span class="${isVeg ? 'badge-veg' : 'badge-nonveg'}"></span>
+                      <h3 class="text-sm font-bold text-white leading-snug">${displayName}</h3>
+                    </div>
+                    <div class="text-sm font-bold text-amber-400 font-mono mb-1">₹${minPrice} - ₹${maxPrice}</div>
+                    <p class="text-xs text-neutral-400 line-clamp-2">${item.desc || item.description || ''}</p>
+                  </div>
+
+                  <div class="flex flex-col items-center flex-shrink-0 w-24">
+                    <div class="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 mb-1.5 cursor-pointer group relative shadow-md" onclick="APP.openPhotoModal('${item.id}')" title="Tap to preview dish">
+                      <img src="${item.image}" alt="${displayName}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop';" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-200">
+                    </div>
+                    <button 
+                      onclick="APP.openPortionModal('${item.id}')"
+                      class="w-full py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500 hover:text-black text-amber-300 border border-amber-400/40 text-xs font-bold transition-all">
+                      ${totalPortionQty > 0 ? `Sizes (${totalPortionQty})` : 'Choose Size'}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 1-Tap Portion Chips for Counter / POS -->
+                <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-[#1f2638]">
+                  ${item.portions.map(p => {
+                    const pKey = `${item.id}::${p.key}`;
+                    const pInCart = currentCart.find(c => c.id === pKey);
+                    const pQty = pInCart ? pInCart.qty : 0;
+                    return `
+                      <button 
+                        type="button" 
+                        onclick="event.stopPropagation(); APP.addItem('${item.id}', '${p.key}')" 
+                        class="flex-1 py-1.5 px-2.5 rounded-xl text-xs font-black border transition-all active:scale-95 flex items-center justify-between gap-1.5 ${
+                          pQty > 0 
+                            ? 'bg-amber-400 text-black border-amber-300 shadow' 
+                            : 'bg-[#181d2a] text-neutral-300 hover:text-amber-300 border-[#2f3a52]'
+                        }">
+                        <span>${p.label}</span>
+                        <div class="flex items-center gap-1">
+                          <span class="font-mono ${pQty > 0 ? 'text-black' : 'text-amber-400'}">₹${p.price}</span>
+                          ${pQty > 0 ? `<span class="px-1.5 py-0.2 bg-black text-amber-300 rounded text-[10px] font-mono font-black">${pQty}</span>` : ''}
+                        </div>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }
+
+          // Single-portion item in Web POS
+          const inCart = currentCart.find(c => c.id === item.id);
+          const qty = inCart ? inCart.qty : 0;
+          const noteText = (inCart && inCart.notes) ? inCart.notes : '';
 
           return `
             <div class="menu-card p-3.5 flex gap-3 items-center justify-between rounded-2xl transition-all ${
@@ -2947,7 +3131,7 @@ const APP = {
     }
   },
 
-  setCategory(catId) {
+    setCategory(catId) {
     this.state.activeCategory = catId;
     this.renderCategories();
     this.renderMenuItems();
@@ -3009,26 +3193,58 @@ const APP = {
     this.renderMenuItems();
   },
 
-  // Add Item to Current Waiter's Local Round Cart
-  addItem(itemId) {
+  // Smart Add Item to Current Waiter's Local Round Cart (Supports Quarter / Half / Full Portions)
+  addItem(itemId, portionKey = null) {
     this.haptic('light');
     this.playBeep('add');
     const allItems = (window.DB && window.DB.menuItems && window.DB.menuItems.length > 0) 
       ? window.DB.menuItems 
       : MENU_ITEMS;
-    const item = allItems.find(m => m.id === itemId) || QUICK_BAR.find(q => q.id === itemId);
+
+    let targetId = itemId;
+    let targetPortion = portionKey;
+    if (typeof MENU_ITEM_ALIASES !== 'undefined' && MENU_ITEM_ALIASES[itemId]) {
+      targetId = MENU_ITEM_ALIASES[itemId].targetId;
+      if (!targetPortion) targetPortion = MENU_ITEM_ALIASES[itemId].portionKey;
+    }
+
+    const item = allItems.find(m => m.id === targetId) || QUICK_BAR.find(q => q.id === targetId);
     if (!item) return;
 
+    // If item has portions but none was specified, open the Smart Portion Modal
+    if (Array.isArray(item.portions) && item.portions.length > 0 && !targetPortion) {
+      this.openPortionModal(item.id);
+      return;
+    }
+
     const cart = this.getLocalCart();
-    const existing = cart.find(c => c.id === itemId);
+    let cartKey = item.id;
+    let itemPrice = item.price;
+    let itemName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
+    let portionLabel = null;
+
+    if (targetPortion && Array.isArray(item.portions)) {
+      const pObj = item.portions.find(p => p.key === targetPortion);
+      if (pObj) {
+        cartKey = `${item.id}::${targetPortion}`;
+        itemPrice = pObj.price;
+        portionLabel = pObj.label;
+        itemName = `${itemName} (${pObj.label})`;
+      }
+    }
+
+    const existing = cart.find(c => c.id === cartKey);
     if (existing) {
       existing.qty += 1;
     } else {
       cart.push({
-        id: item.id,
-        name: item.name,
-        price: item.price,
+        id: cartKey,
+        baseItemId: item.id,
+        name: itemName,
+        price: itemPrice,
         qty: 1,
+        portion: targetPortion || null,
+        portion_label: portionLabel || null,
         category: item.category || item.category_id || 'general',
         notes: ''
       });
@@ -3038,7 +3254,81 @@ const APP = {
     this.renderMenuItems();
     this.updateCartUI();
     this.renderFloorTables();
-    this.showToast(`+1 ${item.name} (${this.getTable().name})`);
+    this.showToast(`+1 ${itemName} (${this.getTable().name})`);
+  },
+
+  // Open Smart Portion Modal (Quarter / Half / Full Bottom Sheet)
+  openPortionModal(itemId) {
+    this.haptic('selection');
+    const allItems = (window.DB && window.DB.menuItems && window.DB.menuItems.length > 0) 
+      ? window.DB.menuItems 
+      : MENU_ITEMS;
+    const item = allItems.find(m => m.id === itemId);
+    if (!item || !Array.isArray(item.portions) || item.portions.length === 0) return;
+
+    const modal = document.getElementById('portion-modal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('portion-modal-title');
+    const dietBadgeEl = document.getElementById('portion-modal-diet-badge');
+    const optionsEl = document.getElementById('portion-modal-options');
+    const currentCart = this.getLocalCart();
+
+    const isVeg = this.isItemVeg(item);
+    if (dietBadgeEl) {
+      dietBadgeEl.className = isVeg ? 'badge-veg' : 'badge-nonveg';
+    }
+    if (titleEl) {
+      const displayName = (typeof I18N !== 'undefined') ? I18N.getDishName(item) : item.name;
+      titleEl.textContent = displayName;
+    }
+
+    if (optionsEl) {
+      optionsEl.innerHTML = item.portions.map(p => {
+        const pKey = `${item.id}::${p.key}`;
+        const pCart = currentCart.find(c => c.id === pKey);
+        const pQty = pCart ? pCart.qty : 0;
+        return `
+          <div class="flex items-center justify-between p-3 rounded-2xl bg-[#171c28] border ${pQty > 0 ? 'border-amber-400 bg-[#251e12] shadow-md' : 'border-[#293245]'} transition-all">
+            <div>
+              <div class="text-sm font-black text-white flex items-center gap-2">
+                <span>${p.label} Plate</span>
+                ${pQty > 0 ? `<span class="px-2 py-0.5 rounded-full bg-amber-400 text-black text-[11px] font-mono font-black">${pQty} in cart</span>` : ''}
+              </div>
+              <div class="text-xs font-bold text-amber-400 font-mono mt-0.5">₹${p.price}</div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              ${pQty > 0 ? `
+                <div class="flex items-center bg-[#150f05] border border-amber-400 rounded-xl p-0.5 shadow-sm">
+                  <button type="button" onclick="APP.changeQty('${pKey}', -1); APP.openPortionModal('${item.id}');" class="w-8 h-8 rounded-lg bg-[#2b1c08] text-amber-300 font-black text-sm flex items-center justify-center active:scale-90">-</button>
+                  <span class="text-xs font-black text-amber-300 font-mono w-7 text-center">${pQty}</span>
+                  <button type="button" onclick="APP.changeQty('${pKey}', 1); APP.openPortionModal('${item.id}');" class="w-8 h-8 rounded-lg bg-amber-400 text-black font-black text-sm flex items-center justify-center active:scale-90">+</button>
+                </div>
+              ` : `
+                <button 
+                  type="button" 
+                  onclick="APP.addItem('${item.id}', '${p.key}'); APP.openPortionModal('${item.id}');"
+                  class="h-8 px-4 bg-gradient-to-r from-amber-500/20 to-amber-500/30 hover:from-amber-500 hover:to-amber-600 hover:text-black text-amber-300 font-black text-xs rounded-xl border border-amber-500/50 transition-all flex items-center gap-1 active:scale-95 shadow-sm">
+                  + Add ${p.short || p.label}
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  },
+
+  closePortionModal() {
+    const modal = document.getElementById('portion-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
   },
 
   changeQty(itemId, delta) {
