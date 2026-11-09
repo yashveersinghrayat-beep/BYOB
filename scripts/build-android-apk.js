@@ -639,9 +639,9 @@ console.log('📐 Step 6: Aligning APK bytes with zipalign...');
 const alignedApk = path.join(BUILD_DIR, 'aligned.apk');
 execSync(`"${ZIPALIGN}" -v -p 4 "${baseApk}" "${alignedApk}"`, { stdio: 'ignore' });
 
-// Step 7: Create Keystore & Sign APK
+// Step 7: Create Keystore & Sign APK (Use Persistent Keystore for Consistent Signatures)
 console.log('✍️ Step 7: Signing APK with apksigner...');
-const keystore = path.join(BUILD_DIR, 'debug.keystore');
+const keystore = path.join(ROOT_DIR, 'scripts', 'debug.keystore');
 if (!fs.existsSync(keystore)) {
   execSync(`"${KEYTOOL}" -genkey -v -keystore "${keystore}" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=ONYX POS,O=Restaurant,C=IN"`, { stdio: 'ignore' });
 }

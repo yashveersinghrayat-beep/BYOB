@@ -2,8 +2,8 @@
 // Seamlessly connects Frontend to Native SQLite Backend via REST API & SSE Realtime Stream
 
 let _ACTIVE_API_BASE = (typeof window !== 'undefined' && (window.location.protocol === 'http:' || window.location.protocol === 'https:'))
-  ? (window.location.hostname.includes('vercel.app') ? '' : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://byob-adityamall.vercel.app'))
-  : 'https://byob-adityamall.vercel.app';
+  ? (window.location.hostname.includes('vercel.app') ? '' : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://byob-aditya-mall.vercel.app'))
+  : 'https://byob-aditya-mall.vercel.app';
 
 function getApiBase() {
   if (typeof window !== 'undefined' && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
@@ -11,7 +11,7 @@ function getApiBase() {
       return '';
     }
   }
-  return _ACTIVE_API_BASE || 'https://byob-adityamall.vercel.app';
+  return _ACTIVE_API_BASE || 'https://byob-aditya-mall.vercel.app';
 }
 
 const DB_SERVICE = {
