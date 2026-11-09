@@ -4,8 +4,25 @@
 const fs = require('fs');
 const path = require('path');
 
-const SUPABASE_URL = 'https://wxsabwhabitqmzkplhyk.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa';
+// Branch Registry for Multi-Location Monitoring
+const BRANCH_REGISTRY = {
+  gyankhand: {
+    name: 'BYOB Gyan Khand 2 (Indirapuram)',
+    url: 'https://wxsabwhabitqmzkplhyk.supabase.co',
+    key: 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa'
+  },
+  aditya: {
+    name: 'BYOB Aditya Mall (Indirapuram)',
+    url: process.env.ADITYA_SUPABASE_URL || 'PENDING_ADITYA_SETUP',
+    key: process.env.ADITYA_SUPABASE_KEY || 'PENDING_ADITYA_SETUP'
+  }
+};
+
+const branchArg = (process.argv.find(a => a.startsWith('--branch=')) || '--branch=gyankhand').split('=')[1].toLowerCase();
+const activeBranch = BRANCH_REGISTRY[branchArg] || BRANCH_REGISTRY.gyankhand;
+
+const SUPABASE_URL = activeBranch.url;
+const SUPABASE_KEY = activeBranch.key;
 
 const HEADERS = {
   'apikey': SUPABASE_KEY,

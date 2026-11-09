@@ -19,6 +19,27 @@ const KEYTOOL = path.join(JDK_BIN, 'keytool.exe');
 
 console.log('🤖 ONYX COMMERCIAL ANDROID APK COMPILER 🤖\n');
 
+// Multi-Location Branch Resolver
+const locationArg = (process.argv.find(a => a.startsWith('--location=')) || '--location=gyankhand').split('=')[1].toLowerCase();
+const LOCATIONS = {
+  gyankhand: {
+    code: 'gyankhand',
+    appName: 'BYOB Gyan Khand',
+    packageId: 'com.onyx.pos',
+    serverUrl: 'https://byob-yashveersinghrayat-5191s-projects.vercel.app?platform=android_apk&branch=gyankhand',
+    apkName: 'ONYX_POS_GYAN_KHAND.apk'
+  },
+  aditya: {
+    code: 'aditya',
+    appName: 'BYOB Aditya Mall',
+    packageId: 'com.onyx.byob.aditya',
+    serverUrl: 'https://byob-adityamall.vercel.app?platform=android_apk&branch=aditya',
+    apkName: 'ONYX_POS_ADITYA_MALL.apk'
+  }
+};
+const activeLoc = LOCATIONS[locationArg] || LOCATIONS.gyankhand;
+console.log(`📍 Compiling Android APK for: [${activeLoc.appName}] (${activeLoc.packageId})\n`);
+
 // 1. Prepare directory structure
 if (fs.existsSync(BUILD_DIR)) {
   fs.rmSync(BUILD_DIR, { recursive: true, force: true });
@@ -69,7 +90,7 @@ if (fs.existsSync(path.join(ROOT_DIR, 'sw.js'))) {
 // 2. Android Resources
 fs.writeFileSync(path.join(valuesDir, 'strings.xml'), `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ONYX POS</string>
+    <string name="app_name">${activeLoc.appName}</string>
 </resources>`);
 
 fs.writeFileSync(path.join(valuesDir, 'colors.xml'), `<?xml version="1.0" encoding="utf-8"?>
@@ -98,7 +119,7 @@ fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), `<?xml versio
 // 3. AndroidManifest.xml
 const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.onyx.pos"
+    package="${activeLoc.packageId}"
     android:versionCode="12"
     android:versionName="5.2">
 
@@ -343,7 +364,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity implements DownloadListener, Runnable {
     private WebView webView;
-    private static final String SERVER_URL = "https://byob-yashveersinghrayat-5191s-projects.vercel.app?platform=android_apk";
+    private static final String SERVER_URL = "${activeLoc.serverUrl}";
     private static final int PERMISSION_REQ_CODE = 101;
     public PermissionRequest pendingWebPermissionRequest;
 
@@ -615,29 +636,35 @@ if (!fs.existsSync(keystore)) {
   execSync(`"${KEYTOOL}" -genkey -v -keystore "${keystore}" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=ONYX POS,O=Restaurant,C=IN"`, { stdio: 'ignore' });
 }
 
+const branchApk = path.join(ROOT_DIR, activeLoc.apkName);
 const finalApk = path.join(ROOT_DIR, 'ONYX_POS.apk');
-const desktopApk = path.join(process.env.USERPROFILE, 'Desktop', 'ONYX_POS.apk');
+const desktopBranchApk = path.join(process.env.USERPROFILE, 'Desktop', activeLoc.apkName);
+const desktopDefaultApk = path.join(process.env.USERPROFILE, 'Desktop', 'ONYX_POS.apk');
 
 execSync(`"${APKSIGNER}" sign --ks "${keystore}" --ks-pass pass:android --out "${finalApk}" "${alignedApk}"`, { stdio: 'inherit' });
 
-// Copy to Desktop and public downloads folder
-fs.copyFileSync(finalApk, desktopApk);
+// Copy to Branch APK and Desktop
+fs.copyFileSync(finalApk, branchApk);
+fs.copyFileSync(finalApk, desktopBranchApk);
+fs.copyFileSync(finalApk, desktopDefaultApk);
+
 try {
   const publicDir = path.join(ROOT_DIR, 'public');
   if (fs.existsSync(publicDir)) {
+    fs.copyFileSync(finalApk, path.join(publicDir, activeLoc.apkName));
     fs.copyFileSync(finalApk, path.join(publicDir, 'ONYX_POS.apk'));
     fs.copyFileSync(finalApk, path.join(publicDir, 'byob-pos-latest.apk'));
-    console.log('   🌐 Web Download: Copied to public/ONYX_POS.apk & public/byob-pos-latest.apk');
+    console.log(`   🌐 Web Download: Copied to public/${activeLoc.apkName} & public/ONYX_POS.apk`);
   }
 } catch (e) {
   console.warn('Could not copy to public:', e.message);
 }
 
 console.log('\n🎉 ==============================================================');
-console.log('   💎 ANDROID APK BUILT & SIGNED SUCCESSFULLY!');
+console.log(`   💎 ANDROID APK BUILT FOR [${activeLoc.appName}]!`);
 console.log('--------------------------------------------------------------');
-console.log(`   📱 Project APK: ${finalApk}`);
-console.log(`   💻 Desktop APK: ${desktopApk}`);
+console.log(`   📱 Location APK: ${branchApk}`);
+console.log(`   💻 Desktop APK:  ${desktopBranchApk}`);
 const stats = fs.statSync(finalApk);
 console.log(`   📦 APK File Size: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
 console.log('==============================================================\n');

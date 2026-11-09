@@ -4,6 +4,12 @@
 // ==============================================================================
 
 window.ONYX_CLOUD_CONFIG = {
+  // Location & Branch Configuration (Multi-Branch Isolation)
+  branchId: 'gyan_khand_2',
+  branchCode: 'GK2',
+  branchName: 'BYOB Gyan Khand 2 (Indirapuram)',
+  branchLocation: 'Plot 14, Dr. Sushila Naiyyar Marg, Gyan Khand 2, Indirapuram, Ghaziabad',
+
   // Permanently in-built Supabase 24/7 Cloud Credentials
   supabaseUrl: 'https://wxsabwhabitqmzkplhyk.supabase.co',
   supabaseAnonKey: 'sb_publishable_mcrWV1LngJD6FwDPBI1qjg_lcl8SLsa',
