@@ -64,17 +64,21 @@ const TOP_HITS_IDS = [
   "v_paneer_tikka",
   "nv_chicken_tikka",
   "mc_dal_makhani",
+  "mc_paneer_butter",
+  "mc_chicken_curry",
+  "nv_chilli_chicken",
+  "nv_chicken_lollipop",
+  "nv_chicken_seekh",
+  "mc_chicken_biryani",
+  "b_butter_naan",
+  "v_crispy_corn",
+  "v_peanut_masala",
+  "v_masala_papad",
   "m_ice",
   "m_soda",
   "m_glass",
   "m_water",
-  "m_soft_can",
-  "v_peanut_masala",
-  "v_masala_papad",
-  "v_crispy_corn",
-  "nv_chilli_chicken",
-  "nv_chicken_seekh",
-  "b_butter_naan"
+  "m_soft_can"
 ];
 
 // Quick 1-tap re-order chips in POS

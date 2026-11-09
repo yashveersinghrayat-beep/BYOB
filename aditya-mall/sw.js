@@ -1,15 +1,15 @@
 // Service Worker for ONYX Hospitality Engine - Aditya Mall
-const CACHE_NAME = 'onyx-aditya-cache-v30';
+const CACHE_NAME = 'onyx-aditya-cache-v31';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/css/styles.css',
-  '/js/cloud-config.js?v=6.0',
-  '/js/telemetry.js?v=6.0',
-  '/js/menu-data.js?v=6.0',
-  '/js/i18n.js?v=6.0',
-  '/js/db-service.js?v=6.0',
-  '/js/app.js?v=6.0',
+  '/js/cloud-config.js?v=7.0',
+  '/js/telemetry.js?v=7.0',
+  '/js/menu-data.js?v=7.0',
+  '/js/i18n.js?v=7.0',
+  '/js/db-service.js?v=7.0',
+  '/js/app.js?v=7.0',
   '/manifest.json'
 ];
 

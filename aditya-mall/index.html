@@ -243,8 +243,19 @@
         </div>
       </div>
 
-      <!-- 2. RIGHT CONTROLS: LANGUAGE SWITCHER & BADGES (Order 2 on mobile - pinned top right, Order 3 on desktop) -->
+      <!-- 2. RIGHT CONTROLS: QUICK MENU, LANGUAGE SWITCHER & BADGES (Order 2 on mobile - pinned top right, Order 3 on desktop) -->
       <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 order-2 md:order-3">
+        <!-- Direct Quick Menu Toggle in Header -->
+        <button 
+          id="hdr-menu-quick-btn" 
+          type="button"
+          onclick="APP.toggleMenuOrTables()" 
+          class="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-400/50 text-amber-300 text-xs font-black transition-all shadow active:scale-95 cursor-pointer flex-shrink-0"
+          title="Toggle Menu / Tables">
+          <span>🍽️</span>
+          <span id="hdr-menu-quick-label" class="text-[11px]">Menu</span>
+        </button>
+
         <!-- Live Cloud Sync Dot for Mobile -->
         <div id="hdr-live-dot" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.9)] animate-pulse flex-shrink-0 lg:hidden" title="Live & Synchronized"></div>
 
@@ -430,6 +441,16 @@
         <!-- 3-COLUMNS COMPACT TABLES GRID (Fits entire floor on screen without endless scroll) -->
         <div id="app-floor-grid" class="flex-1 overflow-y-auto p-3 pb-safe-grid grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
           <!-- Rendered dynamically via JS -->
+        </div>
+
+        <!-- QUICK DIRECT MENU BAR ON TABLES SCREEN -->
+        <div class="p-2.5 bg-[#121520] border-t border-[#23293a] flex items-center justify-between gap-2.5 z-30 flex-shrink-0">
+          <button 
+            type="button" 
+            onclick="APP.openMenuForSelectedTable()" 
+            class="flex-1 py-2.5 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wide rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <span>🍽️ Open Menu & Smart Portions (88 Items) →</span>
+          </button>
         </div>
 
       </div>
@@ -697,13 +718,13 @@
   <!-- ================= VIEW 2: WEB & COUNTER POS VIEW (EXPANSIVE) ================= -->
   <div id="view-web-container" class="max-w-7xl mx-auto px-4 py-5 hidden">
     
-    <!-- Table Selector Bar for Web POS (3 Floors • 42 Tables) -->
+    <!-- Table Selector Bar for Web POS (3 Floors • 33 Tables) -->
     <div class="bg-[#131620] border border-[#23293a] rounded-2xl p-3.5 mb-4">
       <div class="flex flex-wrap items-center justify-between gap-2.5 mb-2.5">
         <div class="flex items-center gap-2">
           <h2 class="text-xs font-black uppercase tracking-wider text-neutral-200 flex items-center gap-2">
             <span>🪑 Floor Tables</span>
-            <span class="text-[10px] text-amber-400 font-mono font-bold bg-[#1d2232] px-2 py-0.5 rounded-full border border-amber-400/30">42 Tables</span>
+            <span class="text-[10px] text-amber-400 font-mono font-bold bg-[#1d2232] px-2 py-0.5 rounded-full border border-amber-400/30">33 Tables</span>
           </h2>
         </div>
         
@@ -4919,14 +4940,14 @@
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-2 rounded-xl text-xs font-bold shadow-xl z-50 hidden transition-all"></div>
 
-  <!-- Core Dependencies & App Engine (Cache-Busted v6.0) -->
-  <script src="js/supabase.js?v=6.0"></script>
-  <script src="js/cloud-config.js?v=6.0"></script>
-  <script src="js/telemetry.js?v=6.0"></script>
-  <script src="js/menu-data.js?v=6.0"></script>
-  <script src="js/i18n.js?v=6.0"></script>
-  <script src="js/db-service.js?v=6.0"></script>
-  <script src="js/app.js?v=6.0"></script>
+  <!-- Core Dependencies & App Engine (Cache-Busted v7.0) -->
+  <script src="js/supabase.js?v=7.0"></script>
+  <script src="js/cloud-config.js?v=7.0"></script>
+  <script src="js/telemetry.js?v=7.0"></script>
+  <script src="js/menu-data.js?v=7.0"></script>
+  <script src="js/i18n.js?v=7.0"></script>
+  <script src="js/db-service.js?v=7.0"></script>
+  <script src="js/app.js?v=7.0"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

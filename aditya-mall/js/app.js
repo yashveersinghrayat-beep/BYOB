@@ -600,7 +600,7 @@ const APP = {
   },
 
   checkFreshStartReset() {
-    const FRESH_KEY = 'onyx_fresh_start_aditya_v6';
+    const FRESH_KEY = 'onyx_fresh_start_aditya_v7';
     if (typeof localStorage !== 'undefined' && localStorage.getItem(FRESH_KEY) !== '1') {
       try {
         localStorage.removeItem('onyx_pending_carts');
@@ -609,6 +609,7 @@ const APP = {
         localStorage.removeItem('onyx_sync_queue');
         localStorage.removeItem('onyx_orders_cache');
         localStorage.removeItem('onyx_kots_cache');
+        localStorage.removeItem('onyx_menu_cache');
         if (typeof caches !== 'undefined') {
           caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
         }
@@ -1533,6 +1534,22 @@ const APP = {
   },
 
   // ================= 3. TABLE NAVIGATION (4-STEP WORKFLOW ENGINE) =================
+  toggleMenuOrTables() {
+    this.haptic('selection');
+    if (this.state.currentView === 'app') {
+      if (this.state.appScreen === 'menu') {
+        this.goToTables();
+      } else {
+        this.openMenuForSelectedTable();
+      }
+    } else {
+      const webMenu = document.getElementById('web-menu-list');
+      if (webMenu) {
+        webMenu.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  },
+
   // Step 1: Open Floor Tables Screen
   goToTables(push = true) {
     this.state.appScreen = "tables";
@@ -1545,6 +1562,9 @@ const APP = {
     if (screenMenu) { screenMenu.classList.add('hidden'); screenMenu.style.setProperty('display', 'none', 'important'); }
     if (screenReview) { screenReview.classList.add('hidden'); screenReview.style.setProperty('display', 'none', 'important'); }
     if (screenBill) { screenBill.classList.add('hidden'); screenBill.style.setProperty('display', 'none', 'important'); }
+
+    const hdrMenuLabel = document.getElementById('hdr-menu-quick-label');
+    if (hdrMenuLabel) hdrMenuLabel.textContent = "Menu (88)";
 
     if (push && typeof history !== 'undefined') {
       if (window.location.hash !== '#tables') {
@@ -1598,6 +1618,9 @@ const APP = {
     if (screenMenu) { screenMenu.classList.remove('hidden'); screenMenu.style.setProperty('display', 'flex', 'important'); }
     if (screenReview) { screenReview.classList.add('hidden'); screenReview.style.setProperty('display', 'none', 'important'); }
     if (screenBill) { screenBill.classList.add('hidden'); screenBill.style.setProperty('display', 'none', 'important'); }
+
+    const hdrMenuLabel = document.getElementById('hdr-menu-quick-label');
+    if (hdrMenuLabel) hdrMenuLabel.textContent = "Tables (33)";
 
     if (push && typeof history !== 'undefined') {
       if (window.location.hash !== '#menu') {
@@ -2664,7 +2687,14 @@ const APP = {
     const isSearching = (this.state.searchQuery || '').trim().length > 0;
     if (!isSearching) {
       if (this.state.activeCategory === 'top_hits') {
-        items = items.filter(i => TOP_HITS_IDS.includes(i.id) || i.is_top_hit === 1);
+        items = items.filter(i => TOP_HITS_IDS.includes(i.id) || i.is_top_hit === true || i.is_top_hit === 1);
+        items.sort((a, b) => {
+          let idxA = TOP_HITS_IDS.indexOf(a.id);
+          let idxB = TOP_HITS_IDS.indexOf(b.id);
+          if (idxA === -1) idxA = 999;
+          if (idxB === -1) idxB = 999;
+          return idxA - idxB;
+        });
       } else if (this.state.activeCategory !== 'all') {
         items = items.filter(i => (i.category === this.state.activeCategory) || (i.category_id === this.state.activeCategory));
       }
