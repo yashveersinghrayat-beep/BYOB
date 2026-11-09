@@ -1,22 +1,15 @@
-// Service Worker for ONYX Hospitality Engine
-const CACHE_NAME = 'onyx-cache-v18';
+// Service Worker for ONYX Hospitality Engine - Aditya Mall
+const CACHE_NAME = 'onyx-aditya-cache-v20';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/css/styles.css',
-  '/js/cloud-config.js',
-  '/js/telemetry.js',
-  '/js/menu-data.js',
-  '/js/db-service.js',
-  '/js/app.js',
-  '/manifest.json',
-  '/icons/icon.svg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/favicon.png',
-  '/icons/apple-touch-icon.png',
-  '/icons/payment-qr.png',
-  '/icons/payment-qr.svg'
+  '/js/cloud-config.js?v=5.3',
+  '/js/telemetry.js?v=5.3',
+  '/js/menu-data.js?v=5.3',
+  '/js/db-service.js?v=5.3',
+  '/js/app.js?v=5.3',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
