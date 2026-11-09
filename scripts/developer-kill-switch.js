@@ -12,8 +12,8 @@ const BRANCH_REGISTRY = {
   },
   aditya: {
     name: 'BYOB Aditya Mall (Indirapuram)',
-    url: process.env.ADITYA_SUPABASE_URL || 'PENDING_ADITYA_SETUP',
-    key: process.env.ADITYA_SUPABASE_KEY || 'PENDING_ADITYA_SETUP'
+    url: process.env.ADITYA_SUPABASE_URL || 'https://ekvksqsondvyeaoidgcw.supabase.co',
+    key: process.env.ADITYA_SUPABASE_KEY || 'sb_publishable_sVxPP8HbMna3levjlyeLlA_BGxpyyT4'
   }
 };
 

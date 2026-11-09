@@ -11,8 +11,8 @@ window.ONYX_CLOUD_CONFIG = {
   branchLocation: 'Aditya Mega Mall, CBD Ground, Indirapuram, Ghaziabad',
 
   // Supabase 24/7 Cloud Credentials for Aditya Mall
-  supabaseUrl: 'https://PENDING_ADITYA_SUPABASE.supabase.co',
-  supabaseAnonKey: 'PENDING_ADITYA_ANON_KEY',
+  supabaseUrl: 'https://ekvksqsondvyeaoidgcw.supabase.co',
+  supabaseAnonKey: 'sb_publishable_sVxPP8HbMna3levjlyeLlA_BGxpyyT4',
   mode: 'cloud',
 
   _clientInstance: null,
