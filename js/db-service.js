@@ -370,11 +370,15 @@ const DB_SERVICE = {
 
       if (tblRes.data && tblRes.data.length > 0) {
         this.tables = tblRes.data.map(t => {
-          const norm = (id) => String(id || '').replace(/^T-0?/, '');
-          const isTableVacant = (t.status === 'vacant');
-          const tableKots = isTableVacant 
-            ? [] 
-            : (kotRes.data || []).filter(k => (k.table_id === t.id || norm(k.table_id) === norm(t.id)) && k.status !== 'billed' && k.status !== 'cancelled');
+          const norm = (id) => String(id || '').replace(/^T-0*/i, '').trim();
+          
+          // CRITICAL: NEVER discard active KOTs based on stale tables.status!
+          // If active KOTs exist in database for this table, the table IS OCCUPIED!
+          const tableKots = (kotRes.data || []).filter(k => 
+            (k.table_id === t.id || norm(k.table_id) === norm(t.id)) && 
+            k.status !== 'billed' && 
+            k.status !== 'cancelled'
+          );
 
           const placedOrders = [];
           tableKots.forEach(k => {
@@ -386,8 +390,8 @@ const DB_SERVICE = {
                   item_id: ki.item_id,
                   kot_id: k.id,
                   name: ki.name,
-                  price: parseFloat(ki.price),
-                  qty: ki.qty,
+                  price: parseFloat(ki.price || 0),
+                  qty: parseInt(ki.qty || 1, 10),
                   notes: ki.notes || '',
                   is_bar: ki.is_bar ? 1 : 0
                 });
@@ -395,6 +399,8 @@ const DB_SERVICE = {
             }
           });
           const calculatedSubtotal = placedOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+          const hasActiveOrders = placedOrders.length > 0;
+          const isOccupied = hasActiveOrders || t.status === 'occupied' || t.status === 'bill_printed';
           
           let waiterName = '';
           let firstSeatedTime = null;
@@ -406,6 +412,17 @@ const DB_SERVICE = {
           });
           if (!waiterName && tableKots.length > 0) waiterName = tableKots[0].waiter_name || '';
 
+          // CRITICAL: Protect In-Flight Punches from being reverted by intermediate replication lag
+          const existingLocal = (this.tables || []).find(x => x.id === t.id || norm(x.id) === norm(t.id));
+          const hasInFlightPunch = existingLocal && existingLocal._lastPunchedAt && (Date.now() - existingLocal._lastPunchedAt < 10000);
+          if (hasInFlightPunch && (existingLocal.placedOrders || []).length > placedOrders.length) {
+            return {
+              ...existingLocal,
+              status: 'occupied',
+              occupiedSince: existingLocal.occupiedSince || firstSeatedTime || new Date().toISOString()
+            };
+          }
+
           return {
             id: t.id,
             name: t.name,
@@ -413,13 +430,13 @@ const DB_SERVICE = {
             landmark: t.landmark,
             seats: t.seats,
             sort_order: t.sort_order,
-            status: (!isTableVacant && (t.status === 'occupied' || calculatedSubtotal > 0)) ? 'occupied' : 'vacant',
+            status: isOccupied ? (t.status === 'bill_printed' ? 'bill_printed' : 'occupied') : 'vacant',
             placedOrders,
-            currentSubtotal: isTableVacant ? 0 : (calculatedSubtotal || parseFloat(t.current_subtotal) || 0),
+            currentSubtotal: isOccupied ? (calculatedSubtotal || parseFloat(t.current_subtotal) || 0) : 0,
             waiterName: waiterName || '',
             firstSeatedTime: firstSeatedTime || null,
-            occupiedSince: isTableVacant ? null : (t.occupied_since || firstSeatedTime || null),
-            occupied_since: isTableVacant ? null : (t.occupied_since || firstSeatedTime || null),
+            occupiedSince: isOccupied ? (t.occupied_since || firstSeatedTime || null) : null,
+            occupied_since: isOccupied ? (t.occupied_since || firstSeatedTime || null) : null,
             kotCount: tableKots.length
           };
         });
@@ -450,7 +467,7 @@ const DB_SERVICE = {
     this._isReconciling = true;
     try {
       const [tblRes, kotRes] = await Promise.all([
-        client.from('tables').select('id,name,status,current_subtotal,updated_at').neq('status', 'vacant'),
+        client.from('tables').select('id,name,status,current_subtotal,updated_at'),
         client.from('kots').select('id,table_id,waiter_name,status,created_at,kot_items(*)').in('status', ['pending', 'preparing', 'ready', 'served'])
       ]);
 
@@ -459,42 +476,51 @@ const DB_SERVICE = {
         return;
       }
 
-      const cloudOccupiedTables = tblRes.data || [];
+      const cloudTables = tblRes.data || [];
       const cloudKots = kotRes.data || [];
 
       const norm = (id) => String(id || '').replace(/^T-0*/i, '').trim();
       let hasChanges = false;
 
       for (const t of this.tables) {
-        const cloudT = cloudOccupiedTables.find(ct => ct.id === t.id || norm(ct.id) === norm(t.id));
-        if (cloudT) {
-          const targetStatus = cloudT.status || 'occupied';
-          const targetSub = parseFloat(cloudT.current_subtotal) || 0;
-          const matchingKots = cloudKots.filter(k => k.table_id === t.id || norm(k.table_id) === norm(t.id));
-          const placedOrders = [];
-          let earliestTime = null;
+        const cloudT = cloudTables.find(ct => ct.id === t.id || norm(ct.id) === norm(t.id));
+        const matchingKots = cloudKots.filter(k => k.table_id === t.id || norm(k.table_id) === norm(t.id));
+        const placedOrders = [];
+        let earliestTime = null;
 
-          matchingKots.forEach(k => {
-            if (k.created_at && (!earliestTime || k.created_at < earliestTime)) earliestTime = k.created_at;
-            if (Array.isArray(k.kot_items)) {
-              k.kot_items.forEach(ki => {
-                if (ki.is_void) return;
-                placedOrders.push({
-                  id: ki.id,
-                  item_id: ki.item_id,
-                  kot_id: k.id,
-                  name: ki.name,
-                  price: parseFloat(ki.price),
-                  qty: ki.qty,
-                  notes: ki.notes || '',
-                  is_bar: ki.is_bar ? 1 : 0
-                });
+        matchingKots.forEach(k => {
+          if (k.created_at && (!earliestTime || k.created_at < earliestTime)) earliestTime = k.created_at;
+          if (Array.isArray(k.kot_items)) {
+            k.kot_items.forEach(ki => {
+              if (ki.is_void) return;
+              placedOrders.push({
+                id: ki.id,
+                item_id: ki.item_id,
+                kot_id: k.id,
+                name: ki.name,
+                price: parseFloat(ki.price || 0),
+                qty: parseInt(ki.qty || 1, 10),
+                notes: ki.notes || '',
+                is_bar: ki.is_bar ? 1 : 0
               });
-            }
-          });
+            });
+          }
+        });
 
-          const calcSub = placedOrders.reduce((s, it) => s + (it.price * it.qty), 0);
-          const finalSub = calcSub || targetSub;
+        const calcSub = placedOrders.reduce((s, it) => s + (it.price * it.qty), 0);
+        const hasActiveKots = placedOrders.length > 0;
+        const isOccupied = hasActiveKots || (cloudT && cloudT.status !== 'vacant');
+
+        // CRITICAL: Protect In-Flight Punches from being reverted while cloud commits
+        const hasInFlightPunch = t._lastPunchedAt && (Date.now() - t._lastPunchedAt < 10000);
+        if (hasInFlightPunch && (t.placedOrders || []).length > placedOrders.length) {
+          // Keep local placedOrders and subtotal until cloud is fully updated
+          continue;
+        }
+
+        if (isOccupied) {
+          const targetStatus = hasActiveKots ? (cloudT?.status === 'bill_printed' ? 'bill_printed' : 'occupied') : (cloudT?.status || 'occupied');
+          const finalSub = calcSub || (parseFloat(cloudT?.current_subtotal) || 0);
 
           if (t.status !== targetStatus || t.currentSubtotal !== finalSub || (t.placedOrders || []).length !== placedOrders.length) {
             t.status = targetStatus;
@@ -507,7 +533,11 @@ const DB_SERVICE = {
             hasChanges = true;
           }
         } else {
-          // Table should be vacant in cloud
+          // Table has NO active KOTs in cloud AND is vacant in cloud tables
+          if (hasInFlightPunch) {
+            // In-flight punch in progress, preserve local state until cloud confirms
+            continue;
+          }
           if (t.status !== 'vacant' || (t.currentSubtotal && t.currentSubtotal > 0) || (t.placedOrders && t.placedOrders.length > 0)) {
             t.status = 'vacant';
             t.currentSubtotal = 0;
@@ -647,6 +677,7 @@ const DB_SERVICE = {
       this.tables.push(t);
     }
     t.status = 'occupied';
+    t._lastPunchedAt = Date.now();
     if (!t.occupiedSince) {
       t.occupiedSince = data.timestamp || new Date().toISOString();
       t.occupied_since = t.occupiedSince;
@@ -1195,6 +1226,7 @@ const DB_SERVICE = {
       this.tables.push(t);
     }
     t.status = 'occupied';
+    t._lastPunchedAt = Date.now();
     if (!t.occupiedSince) {
       t.occupiedSince = new Date().toISOString();
       t.occupied_since = t.occupiedSince;
@@ -1234,16 +1266,18 @@ const DB_SERVICE = {
           const rawTid = String(tableId || '');
           const tidNum = rawTid.replace(/\D/g, '');
           const altTid = tidNum ? `T-${tidNum.padStart(2, '0')}` : rawTid;
-          const tidVariants = Array.from(new Set([rawTid, tidNum, `T-${tidNum}`, altTid])).filter(Boolean);
 
-          await client.from('kots').insert([{
+          // 1. Insert parent KOT first (satisfies foreign key constraint)
+          const { error: kotErr } = await client.from('kots').insert([{
             id: kotId,
             table_id: altTid,
             table_name: tableName,
             waiter_name: assignedWaiter,
             status: 'pending'
           }]);
+          if (kotErr) console.warn('Supabase KOT insert notice:', kotErr);
 
+          // 2. Insert line items
           const kotItems = items.map(it => ({
             kot_id: kotId,
             item_id: it.id,
@@ -1253,14 +1287,16 @@ const DB_SERVICE = {
             is_bar: it.is_bar ? true : false,
             notes: it.notes || ''
           }));
-          await client.from('kot_items').insert(kotItems);
+          const { error: itemsErr } = await client.from('kot_items').insert(kotItems);
+          if (itemsErr) console.warn('Supabase kot_items insert notice:', itemsErr);
 
-          for (const tid of tidVariants) {
-            await client.from('tables').update({
-              status: 'occupied',
-              current_subtotal: newSubtotal
-            }).eq('id', tid);
-          }
+          // 3. Update table status and subtotal
+          const { error: tblErr } = await client.from('tables').update({
+            status: 'occupied',
+            current_subtotal: newSubtotal,
+            updated_at: new Date().toISOString()
+          }).eq('id', altTid);
+          if (tblErr) console.warn('Supabase table update notice:', tblErr);
 
           return { id: kotId, items };
         } catch (e) {
