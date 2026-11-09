@@ -178,6 +178,9 @@ class AdityaPrinterBridge {
 
     console.log(`⚡ [Aditya Bridge] Realtime KOT Broadcast Received: ${kotId} (${payload.tableName || payload.tableId})`);
     this.printKot(payload);
+    if (kotId) {
+      this.markKotActiveInCloud(kotId);
+    }
   }
 
   // --- Fallback Poller for Any Pending KOTs in Supabase Cloud ---
@@ -228,7 +231,7 @@ class AdityaPrinterBridge {
       await fetch(`${CONFIG.supabaseUrl}/rest/v1/kots?id=eq.${encodeURIComponent(kotId)}`, {
         method: 'PATCH',
         headers: HEADERS,
-        body: JSON.stringify({ status: 'active', updated_at: new Date().toISOString() })
+        body: JSON.stringify({ status: 'active' })
       });
     } catch (e) { }
   }
