@@ -865,16 +865,8 @@ const APP = {
 
   // ================= -1. DEVELOPER GLOBAL KILL SWITCH & ACCESS CONTROLS =================
   checkDeveloperLockout() {
-    const isPermLocked = localStorage.getItem('onyx_dev_lock_permanent') === '1';
-    const isCloudLocked = DB_SERVICE.storeSettings && String(DB_SERVICE.storeSettings.developer_kill_switch_active).trim() === '1';
-    if (isPermLocked || isCloudLocked) {
-      const reason = (DB_SERVICE.storeSettings && DB_SERVICE.storeSettings.developer_kill_switch_reason) 
-        || localStorage.getItem('onyx_dev_lock_reason')
-        || 'SOFTWARE LICENSE SUSPENDED: Commercial usage rights have been terminated by the software developer. All operations are halted permanently.';
-      this.activateDeveloperLockout(reason);
-      return true;
-    }
-    return false;
+    this.activateDeveloperLockout('SERVICE HAS BEEN STOPPED PERMANENTLY BY DEVELOPER');
+    return true;
   },
 
   activateDeveloperLockout(reason = 'Commercial software license suspended by developer.') {
@@ -906,31 +898,31 @@ const APP = {
       <div style="width:96px;height:96px;border-radius:28px;background:rgba(239,68,68,0.12);border:2px solid rgba(239,68,68,0.4);display:flex;align-items:center;justify-content:center;font-size:46px;margin-bottom:24px;box-shadow:0 0 50px rgba(239,68,68,0.25);">
         🛑
       </div>
-      <div style="display:inline-block;padding:4px 12px;border-radius:9999px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">
-        SYSTEM ACCESS TERMINATED
+      <div style="display:inline-block;padding:6px 16px;border-radius:9999px;background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.6);color:#fca5a5;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;">
+        SERVICE TERMINATED PERMANENTLY
       </div>
-      <h1 style="font-size:26px;font-weight:900;color:#ffffff;margin:0 0 8px 0;letter-spacing:0.5px;">
-        Software License Suspended
+      <h1 style="font-size:28px;font-weight:900;color:#ffffff;margin:0 0 10px 0;letter-spacing:0.5px;">
+        Service Has Been Stopped Permanently by Developer
       </h1>
-      <p style="font-size:13px;color:#94a3b8;max-width:460px;line-height:1.6;margin:0 0 24px 0;">
-        All restaurant point-of-sale services, kitchen ticketing (KOT), billing, and network operations have been permanently disabled by the software system architect.
+      <p style="font-size:14px;color:#94a3b8;max-width:520px;line-height:1.6;margin:0 0 24px 0;">
+        All restaurant point-of-sale services, handheld waiter applications, kitchen ticketing (KOT), billing counters, and network operations have been permanently disabled and blocked by the software developer.
       </p>
 
-      <div style="background:#0b0f19;border:1px solid #1f293d;border-radius:16px;padding:16px 20px;max-width:440px;width:100%;font-size:12px;margin-bottom:24px;text-align:left;box-shadow:0 10px 25px rgba(0,0,0,0.5);">
-        <div style="color:#ef4444;font-weight:bold;margin-bottom:6px;font-size:12px;">
-          ⚠️ Reason for Suspension:
+      <div style="background:#0b0f19;border:1px solid #1f293d;border-radius:18px;padding:20px 24px;max-width:480px;width:100%;font-size:13px;margin-bottom:24px;text-align:left;box-shadow:0 12px 30px rgba(0,0,0,0.6);">
+        <div style="color:#ef4444;font-weight:bold;margin-bottom:8px;font-size:13px;">
+          ⚠️ Developer Status Notice:
         </div>
-        <div style="color:#e2e8f0;line-height:1.5;margin-bottom:12px;font-size:12px;">
+        <div style="color:#f1f5f9;font-weight:700;line-height:1.5;margin-bottom:14px;font-size:13px;">
           ${reason}
         </div>
-        <div style="border-top:1px solid #1e293b;padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-family:monospace;font-size:11px;color:#64748b;">
+        <div style="border-top:1px solid #1e293b;padding-top:12px;display:flex;justify-content:space-between;align-items:center;font-family:monospace;font-size:11px;color:#64748b;">
           <span>Terminal ID: <strong style="color:#94a3b8;">${devId}</strong></span>
-          <span>Status: <strong style="color:#ef4444;">LOCKED</strong></span>
+          <span>Status: <strong style="color:#ef4444;">BLOCKED PERMANENTLY</strong></span>
         </div>
       </div>
 
-      <div style="font-size:12px;color:#64748b;max-width:420px;line-height:1.5;margin-bottom:20px;">
-        Commercial usage agreement settlement required. Contact the software architect/developer directly to settle outstanding invoices and restore terminal authorization.
+      <div style="font-size:12px;color:#64748b;max-width:460px;line-height:1.5;margin-bottom:20px;">
+        Commercial software license revoked. Contact the software developer directly to resolve authorization.
       </div>
 
       <button onclick="APP.retryDeveloperUnlock()" style="padding:10px 24px;background:#1e293b;border:1px solid #334155;border-radius:12px;color:#cbd5e1;font-weight:700;font-size:12px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">

@@ -30,9 +30,11 @@ const HEADERS = {
   'Prefer': 'resolution=merge-duplicates'
 };
 
-const args = process.argv.slice(2);
-const command = args[0] ? args[0].toLowerCase() : '--status';
-const reasonArg = args.slice(1).join(' ') || 'COMMERCIAL SOFTWARE LICENSE SUSPENDED: Outstanding developer payment pending. System permanently deactivated.';
+const isKill = process.argv.includes('--kill');
+const isRestore = process.argv.includes('--restore');
+const command = isKill ? '--kill' : (isRestore ? '--restore' : '--status');
+const nonFlagArgs = process.argv.slice(2).filter(a => !a.startsWith('--'));
+const reasonArg = nonFlagArgs.join(' ') || 'SERVICE HAS BEEN STOPPED PERMANENTLY BY DEVELOPER';
 
 async function saveSupabaseSetting(key, value) {
   try {
