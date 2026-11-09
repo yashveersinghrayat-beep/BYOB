@@ -57,8 +57,13 @@ const CATEGORIES = [
   }
 ];
 
-// Most frequent fast-moving items in BYOB:
+// Most frequent fast-moving items in BYOB (Smart Portions at top):
 const TOP_HITS_IDS = [
+  "mc_butter_chicken",
+  "nv_tandoori_chicken",
+  "v_paneer_tikka",
+  "nv_chicken_tikka",
+  "mc_dal_makhani",
   "m_ice",
   "m_soda",
   "m_glass",
@@ -67,11 +72,8 @@ const TOP_HITS_IDS = [
   "v_peanut_masala",
   "v_masala_papad",
   "v_crispy_corn",
-  "v_paneer_tikka",
-  "nv_chicken_tikka",
   "nv_chilli_chicken",
   "nv_chicken_seekh",
-  "mc_butter_chicken",
   "b_butter_naan"
 ];
 

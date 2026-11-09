@@ -600,7 +600,7 @@ const APP = {
   },
 
   checkFreshStartReset() {
-    const FRESH_KEY = 'onyx_fresh_start_production_clean_v2';
+    const FRESH_KEY = 'onyx_fresh_start_aditya_v6';
     if (typeof localStorage !== 'undefined' && localStorage.getItem(FRESH_KEY) !== '1') {
       try {
         localStorage.removeItem('onyx_pending_carts');
@@ -609,6 +609,9 @@ const APP = {
         localStorage.removeItem('onyx_sync_queue');
         localStorage.removeItem('onyx_orders_cache');
         localStorage.removeItem('onyx_kots_cache');
+        if (typeof caches !== 'undefined') {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
         this.state.localCarts = {};
         localStorage.setItem(FRESH_KEY, '1');
       } catch (e) {}
