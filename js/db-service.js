@@ -414,7 +414,7 @@ const DB_SERVICE = {
 
           // CRITICAL: Protect In-Flight Punches from being reverted by intermediate replication lag
           const existingLocal = (this.tables || []).find(x => x.id === t.id || norm(x.id) === norm(t.id));
-          const hasInFlightPunch = existingLocal && existingLocal._lastPunchedAt && (Date.now() - existingLocal._lastPunchedAt < 10000);
+          const hasInFlightPunch = existingLocal && (existingLocal._isPunchPending || (existingLocal._lastPunchedAt && (Date.now() - existingLocal._lastPunchedAt < 10000)));
           if (hasInFlightPunch && (existingLocal.placedOrders || []).length > placedOrders.length) {
             return {
               ...existingLocal,
@@ -512,7 +512,7 @@ const DB_SERVICE = {
         const isOccupied = hasActiveKots || (cloudT && cloudT.status !== 'vacant');
 
         // CRITICAL: Protect In-Flight Punches from being reverted while cloud commits
-        const hasInFlightPunch = t._lastPunchedAt && (Date.now() - t._lastPunchedAt < 10000);
+        const hasInFlightPunch = t._isPunchPending || (t._lastPunchedAt && (Date.now() - t._lastPunchedAt < 10000));
         if (hasInFlightPunch && (t.placedOrders || []).length > placedOrders.length) {
           // Keep local placedOrders and subtotal until cloud is fully updated
           continue;
@@ -678,6 +678,7 @@ const DB_SERVICE = {
     }
     t.status = 'occupied';
     t._lastPunchedAt = Date.now();
+    t._isPunchPending = true;
     if (!t.occupiedSince) {
       t.occupiedSince = data.timestamp || new Date().toISOString();
       t.occupied_since = t.occupiedSince;
@@ -745,6 +746,8 @@ const DB_SERVICE = {
       t.currentSubtotal = 0;
       t.occupiedSince = null;
       t.occupied_since = null;
+      t._lastPunchedAt = 0;
+      delete t._isPunchPending;
     }
     this.kots = this.kots.filter(k => k.table_id !== data.tableId && norm(k.table_id) !== norm(data.tableId));
     this.saveLocalTables();
@@ -1227,6 +1230,7 @@ const DB_SERVICE = {
     }
     t.status = 'occupied';
     t._lastPunchedAt = Date.now();
+    t._isPunchPending = true;
     if (!t.occupiedSince) {
       t.occupiedSince = new Date().toISOString();
       t.occupied_since = t.occupiedSince;
@@ -1275,7 +1279,10 @@ const DB_SERVICE = {
             waiter_name: assignedWaiter,
             status: 'pending'
           }]);
-          if (kotErr) console.warn('Supabase KOT insert notice:', kotErr);
+          if (kotErr) {
+            console.warn('Supabase KOT insert error:', kotErr);
+            throw kotErr;
+          }
 
           // 2. Insert line items
           const kotItems = items.map(it => ({
@@ -1288,7 +1295,12 @@ const DB_SERVICE = {
             notes: it.notes || ''
           }));
           const { error: itemsErr } = await client.from('kot_items').insert(kotItems);
-          if (itemsErr) console.warn('Supabase kot_items insert notice:', itemsErr);
+          if (itemsErr) {
+            console.warn('Supabase kot_items insert error, rolling back parent KOT:', itemsErr);
+            // ROLLBACK: Delete orphan KOT slip so empty order does not remain in database
+            await client.from('kots').delete().eq('id', kotId);
+            throw itemsErr;
+          }
 
           // 3. Update table status and subtotal
           const { error: tblErr } = await client.from('tables').update({
@@ -1298,9 +1310,11 @@ const DB_SERVICE = {
           }).eq('id', altTid);
           if (tblErr) console.warn('Supabase table update notice:', tblErr);
 
+          delete t._isPunchPending;
           return { id: kotId, items };
         } catch (e) {
           console.warn('Supabase cloud punch notice:', e);
+          delete t._isPunchPending;
         }
       }
     }
@@ -1473,6 +1487,8 @@ const DB_SERVICE = {
       t.paymentStatus = null;
       t.occupiedSince = null;
       t.occupied_since = null;
+      t._lastPunchedAt = 0;
+      delete t._isPunchPending;
     }
     this.kots = this.kots.filter(k => k.table_id !== billData.tableId && norm(k.table_id) !== norm(billData.tableId));
     this.saveLocalTables();
