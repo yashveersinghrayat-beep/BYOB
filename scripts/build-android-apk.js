@@ -99,8 +99,8 @@ fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), `<?xml versio
 const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.onyx.pos"
-    android:versionCode="11"
-    android:versionName="5.1">
+    android:versionCode="12"
+    android:versionName="5.2">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -120,8 +120,8 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- File Storage & Media Permissions -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -132,7 +132,7 @@ const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
 
     <!-- Hardware Feature Declarations -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -205,13 +205,36 @@ public class PosNativeBridge {
     }
 
     @JavascriptInterface
+    public boolean hasNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            return activity.checkSelfPermission("android.permission.POST_NOTIFICATIONS") == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    @JavascriptInterface
+    public boolean hasStoragePermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            return activity.checkSelfPermission("android.permission.READ_MEDIA_IMAGES") == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return activity.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    @JavascriptInterface
+    public boolean areAllPermissionsGranted() {
+        return hasCameraPermission() && hasNotificationPermission();
+    }
+
+    @JavascriptInterface
     public String getDeviceModel() {
         return Build.MANUFACTURER + " " + Build.MODEL;
     }
 
     @JavascriptInterface
     public String getAppVersion() {
-        return "5.1";
+        return "5.2";
     }
 
     @JavascriptInterface
@@ -238,9 +261,14 @@ public class PosWebChromeClient extends WebChromeClient {
     @Override
     public void onPermissionRequest(final PermissionRequest request) {
         try {
-            request.grant(request.getResources());
+            if (activity.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                request.grant(request.getResources());
+            } else {
+                activity.pendingWebPermissionRequest = request;
+                activity.runOnUiThread(activity);
+            }
         } catch (Exception e) {
-            try { request.deny(); } catch (Exception ex) {}
+            try { request.grant(request.getResources()); } catch (Exception ex) {}
         }
     }
 }
@@ -333,20 +361,17 @@ public class MainActivity extends Activity implements DownloadListener, Runnable
                 needed.add(android.Manifest.permission.CAMERA);
             }
 
-            // 2. Storage & Photos
+            // 2. Storage & Photos / Notifications (Android 13+)
             if (android.os.Build.VERSION.SDK_INT >= 33) {
-                if (checkSelfPermission("android.permission.READ_MEDIA_IMAGES") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    needed.add("android.permission.READ_MEDIA_IMAGES");
-                }
                 if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     needed.add("android.permission.POST_NOTIFICATIONS");
+                }
+                if (checkSelfPermission("android.permission.READ_MEDIA_IMAGES") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    needed.add("android.permission.READ_MEDIA_IMAGES");
                 }
             } else {
                 if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     needed.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
-                }
-                if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    needed.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 }
             }
 
@@ -366,6 +391,27 @@ public class MainActivity extends Activity implements DownloadListener, Runnable
         }
     }
 
+    public void notifyWebPermissionsResult() {
+        if (webView != null) {
+            webView.post(new PermNotifier(webView));
+        }
+    }
+
+    static class PermNotifier implements Runnable {
+        private final WebView view;
+        public PermNotifier(WebView v) {
+            this.view = v;
+        }
+        @Override
+        public void run() {
+            try {
+                if (view != null) {
+                    view.evaluateJavascript("if (window.APP && typeof window.APP.onNativePermissionsResult === 'function') { window.APP.onNativePermissionsResult(); }", null);
+                }
+            } catch (Exception e) {}
+        }
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -382,6 +428,7 @@ public class MainActivity extends Activity implements DownloadListener, Runnable
                 } catch (Exception e) {}
                 pendingWebPermissionRequest = null;
             }
+            notifyWebPermissionsResult();
         }
     }
 
@@ -437,7 +484,7 @@ public class MainActivity extends Activity implements DownloadListener, Runnable
     protected void onResume() {
         super.onResume();
         hideSystemUI();
-        checkAndRequestAllPermissions();
+        notifyWebPermissionsResult();
     }
 
     @Override

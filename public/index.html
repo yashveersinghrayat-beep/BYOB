@@ -4772,6 +4772,98 @@
     </div>
   </div>
 
+  <!-- ================= MASTER MODAL 11: DEVICE PERMISSIONS GATEWAY ================= -->
+  <div id="permission-modal" class="fixed inset-0 z-[95] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 hidden select-none animate-in fade-in duration-200">
+    <div class="bg-[#10141f] border-2 border-emerald-500/70 w-full max-w-md rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+      <!-- Ambient background glows -->
+      <div class="absolute -top-16 -right-16 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-40 h-40 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Icon -->
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500/30 to-emerald-400/10 border border-emerald-500/50 flex items-center justify-center text-3xl mb-3 shadow-lg shadow-emerald-950/40">
+        🛡️
+      </div>
+
+      <h3 class="text-xl font-black text-white tracking-wide" id="permission-modal-title">
+        Permissions Required
+      </h3>
+      <p class="text-xs text-neutral-400 mt-1 mb-4" id="permission-modal-subtitle">
+        Allow access to take customer payment photos and receive order sound beeps.<br>
+        <span class="text-amber-400 font-medium">बिल और पेमेंट प्रूफ की फोटो लेने के लिए अनुमति दें।</span>
+      </p>
+
+      <!-- Permissions List with Live Badges -->
+      <div class="w-full space-y-2.5 mb-5 text-left">
+        <!-- 1. Camera -->
+        <div class="p-3 rounded-2xl bg-[#161a26] border border-[#262f45] flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-2xl shrink-0">📷</span>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-white">Camera Access / कैमरा</div>
+              <div class="text-[10px] text-neutral-400 truncate">Capture UPI & cash payment proof slips</div>
+            </div>
+          </div>
+          <span id="perm-camera-badge" class="px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-rose-500/20 text-rose-400 border border-rose-500/40">
+            🔴 NEEDED
+          </span>
+        </div>
+
+        <!-- 2. Notifications & Sound -->
+        <div class="p-3 rounded-2xl bg-[#161a26] border border-[#262f45] flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-2xl shrink-0">🔔</span>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-white">Alerts & Sound / घंटी व आवाज</div>
+              <div class="text-[10px] text-neutral-400 truncate">Kitchen punch beeps & floor notifications</div>
+            </div>
+          </div>
+          <span id="perm-notify-badge" class="px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-rose-500/20 text-rose-400 border border-rose-500/40">
+            🔴 NEEDED
+          </span>
+        </div>
+
+        <!-- 3. Hardware & Storage (Printers & Receipts) -->
+        <div class="p-3 rounded-2xl bg-[#161a26] border border-[#262f45] flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-2xl shrink-0">🖨️</span>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-white">Printer & Local Data / प्रिंटर</div>
+              <div class="text-[10px] text-neutral-400 truncate">Thermal receipts & high-speed Wi-Fi bridge</div>
+            </div>
+          </div>
+          <span id="perm-device-badge" class="px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+            🟢 READY
+          </span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="w-full space-y-2.5">
+        <!-- 1-Click Allow All Button -->
+        <button 
+          id="btn-grant-all-permissions"
+          type="button"
+          onclick="APP.requestAllAppPermissions()"
+          class="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 hover:brightness-110 active:scale-95 text-black font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-emerald-950/40 flex items-center justify-center gap-2 cursor-pointer">
+          <span>⚡ GRANT ALL PERMISSIONS (अनुमति दें)</span>
+        </button>
+
+        <!-- Direct Phone Settings Button (Shown if denied / blocked) -->
+        <button 
+          id="btn-open-app-settings"
+          type="button"
+          onclick="APP.openPhoneAppSettings()"
+          class="w-full py-3 px-4 rounded-xl bg-[#1b2130] hover:bg-[#252d42] border border-[#333e59] text-neutral-300 font-bold text-xs uppercase tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer">
+          <span>⚙️ Open Phone App Settings (सेटिंग्स खोलें)</span>
+        </button>
+
+        <p id="perm-error-hint" class="text-[11px] text-amber-300/90 leading-tight hidden mt-1">
+          ⚠️ If browser or phone blocked the pop-up, tap "Open Phone App Settings" above, select Permissions, and allow Camera.
+        </p>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= DISH PHOTO ZOOM & DETAILS MODAL ================= -->
   <div id="dish-photo-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
     <div class="bg-[#12151e] border border-[#2b3347] w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">

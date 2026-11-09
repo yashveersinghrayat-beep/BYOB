@@ -416,6 +416,7 @@ const APP = {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         this.requestWakeLock();
+        this.checkAndEnforcePermissions(false);
         if (window.DB && typeof window.DB.reconcileSupabase === 'function') {
           window.DB.reconcileSupabase();
         }
@@ -423,6 +424,7 @@ const APP = {
     });
 
     window.addEventListener('focus', () => {
+      this.checkAndEnforcePermissions(false);
       if (window.DB && typeof window.DB.reconcileSupabase === 'function') {
         window.DB.reconcileSupabase();
       }
@@ -832,12 +834,8 @@ const APP = {
       return;
     }
 
-    // 0C. Auto request all native permissions on Android APK launch
-    if (window.PosAndroid && typeof window.PosAndroid.requestAllPermissions === 'function') {
-      try {
-        window.PosAndroid.requestAllPermissions();
-      } catch (e) {}
-    }
+    // 0C. Check & Enforce Device Permissions Gateway (Camera, Sounds, Notifications)
+    this.checkAndEnforcePermissions(true);
 
     this.checkFreshStartReset();
     this.loadLocalCarts(); // Restore draft carts on reload (Item 9)
@@ -1045,6 +1043,237 @@ const APP = {
     }
   },
 
+  // ================= 0. DEVICE PERMISSIONS GATEWAY =================
+  async checkCameraPermission() {
+    // 1. Android Native APK Bridge
+    if (window.PosAndroid && typeof window.PosAndroid.hasCameraPermission === 'function') {
+      try {
+        return !!window.PosAndroid.hasCameraPermission();
+      } catch (e) {
+        console.warn('Native camera check failed:', e);
+      }
+    }
+
+    // 2. Web Permissions API
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const res = await navigator.permissions.query({ name: 'camera' });
+        if (res.state === 'granted') {
+          localStorage.setItem('onyx_camera_granted', '1');
+          return true;
+        }
+        if (res.state === 'denied') {
+          localStorage.removeItem('onyx_camera_granted');
+          return false;
+        }
+      } catch (e) {
+        // Fallback for browsers not supporting { name: 'camera' }
+      }
+    }
+
+    // 3. MediaDevices enumeration check
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+        // On desktop cashier stations without any camera hardware attached, do not block
+        const isMobile = window.innerWidth < 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (videoDevices.length === 0 && !isMobile) {
+          return true;
+        }
+
+        // When permission is granted, device labels are populated (non-empty strings)
+        const hasGrantedLabel = videoDevices.some(d => d.label && d.label.length > 0);
+        if (hasGrantedLabel) {
+          localStorage.setItem('onyx_camera_granted', '1');
+          return true;
+        }
+      } catch (e) {}
+    }
+
+    // 4. LocalStorage memory flag
+    if (localStorage.getItem('onyx_camera_granted') === '1') {
+      return true;
+    }
+
+    return false;
+  },
+
+  async checkNotificationPermission() {
+    if (window.PosAndroid && typeof window.PosAndroid.hasNotificationPermission === 'function') {
+      try {
+        return !!window.PosAndroid.hasNotificationPermission();
+      } catch (e) {}
+    }
+
+    if ('Notification' in window) {
+      return Notification.permission === 'granted';
+    }
+
+    return true;
+  },
+
+  async checkAndEnforcePermissions(promptIfNeeded = false) {
+    const modal = document.getElementById('permission-modal');
+    const camBadge = document.getElementById('perm-camera-badge');
+    const notifBadge = document.getElementById('perm-notify-badge');
+    const devBadge = document.getElementById('perm-device-badge');
+    const hint = document.getElementById('perm-error-hint');
+
+    const [hasCam, hasNotif] = await Promise.all([
+      this.checkCameraPermission(),
+      this.checkNotificationPermission()
+    ]);
+
+    if (camBadge) {
+      if (hasCam) {
+        camBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        camBadge.textContent = '🟢 GRANTED';
+      } else {
+        camBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse';
+        camBadge.textContent = '🔴 NEEDED';
+      }
+    }
+
+    if (notifBadge) {
+      if (hasNotif) {
+        notifBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        notifBadge.textContent = '🟢 GRANTED';
+      } else {
+        notifBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-amber-500/20 text-amber-400 border border-amber-500/40';
+        notifBadge.textContent = '🟡 RECOMMENDED';
+      }
+    }
+
+    if (devBadge) {
+      if (window.PosAndroid) {
+        devBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        devBadge.textContent = '🟢 NATIVE APK';
+      } else {
+        devBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black font-mono tracking-wider shrink-0 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        devBadge.textContent = '🟢 WEB ENGINE';
+      }
+    }
+
+    const allGranted = hasCam && hasNotif;
+
+    if (allGranted) {
+      if (modal && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+        this.showToast('✅ All Permissions Active! Ready to take orders.', 'success');
+        this.playBeep(880, 0.1);
+      }
+      return true;
+    }
+
+    const isMobileDevice = window.innerWidth < 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!hasCam || (isMobileDevice && !allGranted)) {
+      if (modal) {
+        modal.classList.remove('hidden');
+        if (hint && ('Notification' in window && Notification.permission === 'denied')) {
+          hint.classList.remove('hidden');
+        }
+      }
+      if (promptIfNeeded && window.PosAndroid && typeof window.PosAndroid.requestAllPermissions === 'function') {
+        try {
+          window.PosAndroid.requestAllPermissions();
+        } catch (e) {}
+      }
+      return false;
+    }
+
+    return true;
+  },
+
+  async requestAllAppPermissions() {
+    const btn = document.getElementById('btn-grant-all-permissions');
+    const hint = document.getElementById('perm-error-hint');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ Requesting Permissions...</span>';
+    }
+
+    // 1. Android Native APK Bridge
+    if (window.PosAndroid && typeof window.PosAndroid.requestAllPermissions === 'function') {
+      try {
+        window.PosAndroid.requestAllPermissions();
+      } catch (e) {
+        console.warn('Native requestAllPermissions error:', e);
+      }
+    }
+
+    // 2. Request Camera Access (prompts OS dialog on Chrome Android / WebView)
+    let camSuccess = false;
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } }
+        });
+        camSuccess = true;
+        localStorage.setItem('onyx_camera_granted', '1');
+        // Stop stream immediately to save battery & turn off green camera dot
+        stream.getTracks().forEach(t => t.stop());
+      }
+    } catch (err) {
+      console.warn('UserMedia permission request error:', err.message);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        if (hint) {
+          hint.classList.remove('hidden');
+          hint.textContent = '⚠️ Camera permission was denied. Tap "Open Phone App Settings" below to turn ON Camera access.';
+        }
+      }
+    }
+
+    // 3. Request Notification Permission
+    try {
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        await Notification.requestPermission();
+      }
+    } catch (notifErr) {
+      console.warn('Notification permission request error:', notifErr);
+    }
+
+    // 4. Unlock AudioContext on this user interaction
+    try {
+      this.initAudio();
+    } catch (e) {}
+
+    // 5. Evaluate results after short delay
+    setTimeout(async () => {
+      const isOk = await this.checkAndEnforcePermissions(false);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ GRANT ALL PERMISSIONS (अनुमति दें)</span>';
+      }
+      if (isOk) {
+        this.showToast('✅ All permissions granted! Ready to operate.', 'success');
+      } else if (!camSuccess && hint) {
+        hint.classList.remove('hidden');
+      }
+    }, 600);
+  },
+
+  openPhoneAppSettings() {
+    // 1. If inside native Android APK
+    if (window.PosAndroid && typeof window.PosAndroid.openAppSettings === 'function') {
+      try {
+        window.PosAndroid.openAppSettings();
+        return;
+      } catch (e) {
+        console.warn('Failed to open native settings:', e);
+      }
+    }
+
+    // 2. Web / PWA browser environment instructions
+    alert('📱 How to allow permissions in browser:\n\n1. Tap the 🔒 or ⚙️ (lock/tune) icon in your browser address bar at the top.\n2. Tap "Permissions" or "Site Settings".\n3. Set Camera and Notifications to "Allow".\n4. Return here and tap "Grant All Permissions".');
+  },
+
+  onNativePermissionsResult() {
+    console.log('🔔 Received onNativePermissionsResult from Android OS');
+    this.checkAndEnforcePermissions(false);
+  },
+
   // ================= 1. NATIVE PHONE GESTURE & BROWSER HISTORY NAVIGATION =================
   setupHistoryNavigation() {
     if (typeof history === 'undefined' || typeof window === 'undefined') return;
@@ -1062,6 +1291,16 @@ const APP = {
         history.pushState({ screen: 'force_update' }, '', '#update');
         return;
       }
+
+      // Master Modal 11: Device Permissions Gateway - strictly enforce permission grant before dismiss
+      const permModal = document.getElementById('permission-modal');
+      if (permModal && !permModal.classList.contains('hidden')) {
+        history.pushState({ screen: 'permissions' }, '', '#permissions');
+        this.haptic('error');
+        this.showToast('⚠️ Please tap "Grant All Permissions" to proceed.');
+        return;
+      }
+
       // 1. Check open utility / master modals first
       const phoneModal = document.getElementById('phone-connect-modal');
       if (phoneModal && !phoneModal.classList.contains('hidden')) {
