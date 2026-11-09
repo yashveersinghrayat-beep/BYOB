@@ -4894,19 +4894,19 @@
   <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-2 rounded-xl text-xs font-bold shadow-xl z-50 hidden transition-all"></div>
 
   <!-- Core Dependencies & App Engine -->
-  <script src="/js/supabase.js?v=5.1"></script>
-  <script src="/js/cloud-config.js?v=5.1"></script>
-  <script src="/js/telemetry.js?v=5.1"></script>
-  <script src="/js/menu-data.js?v=5.1"></script>
-  <script src="/js/i18n.js?v=5.1"></script>
-  <script src="/js/db-service.js?v=5.1"></script>
-  <script src="/js/app.js?v=5.1"></script>
+  <script src="js/supabase.js?v=5.2"></script>
+  <script src="js/cloud-config.js?v=5.2"></script>
+  <script src="js/telemetry.js?v=5.2"></script>
+  <script src="js/menu-data.js?v=5.2"></script>
+  <script src="js/i18n.js?v=5.2"></script>
+  <script src="js/db-service.js?v=5.2"></script>
+  <script src="js/app.js?v=5.2"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('sw.js')
           .then(reg => console.log('✅ ServiceWorker Registered'))
           .catch(err => console.log('ServiceWorker registration failed:', err));
       });

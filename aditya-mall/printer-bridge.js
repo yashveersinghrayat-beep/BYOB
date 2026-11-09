@@ -7,6 +7,20 @@
 
 const http = require('http');
 const net = require('net');
+const fs = require('fs');
+const path = require('path');
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.apk': 'application/vnd.android.package-archive'
+};
 
 // Resilience guards to keep the bridge running 24/7 without crashes
 process.on('uncaughtException', (err) => {
@@ -455,8 +469,16 @@ class AdityaPrinterBridge {
     });
   }
 
-  // HTTP Diagnostic Server on Port 3001
+  // HTTP Diagnostic Server & POS Web Host on Port 3001
   startHttpServer() {
+    const parseBody = (req) => new Promise((resolve) => {
+      let b = '';
+      req.on('data', c => b += c);
+      req.on('end', () => {
+        try { resolve(JSON.parse(b)); } catch (e) { resolve({}); }
+      });
+    });
+
     const server = http.createServer(async (req, res) => {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -496,12 +518,49 @@ class AdityaPrinterBridge {
         return res.end(JSON.stringify({ success: r.success, result: r }));
       }
 
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not Found');
+      // Direct Order Punch endpoint for Web & Android
+      if (url.pathname === '/api/orders/punch' && req.method === 'POST') {
+        const payload = await parseBody(req);
+        const kotId = payload.id || 'KOT-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
+        console.log(`📥 [Aditya Server] Direct KOT Punch received: #${kotId} for ${payload.tableName || payload.tableId}`);
+        const r = await this.printKot({
+          kotId,
+          id: kotId,
+          tableId: payload.tableId,
+          tableName: payload.tableName,
+          waiterName: payload.waiterName,
+          items: payload.items || []
+        });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ success: true, kot: { id: kotId }, printed: r.success }));
+      }
+
+      // Static File Serving for Aditya Mall App
+      let reqPath = url.pathname;
+      if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
+      const adityaDir = path.resolve(__dirname);
+      const filePath = path.join(adityaDir, reqPath.replace(/^\/aditya-mall/, ''));
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+      fs.readFile(filePath, (err, content) => {
+        if (err) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('404 Not Found');
+        } else {
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          });
+          res.end(content);
+        }
+      });
     });
 
     server.listen(CONFIG.httpPort, '0.0.0.0', () => {
-      console.log(`📡 [Aditya Bridge] Local HTTP API ready on http://localhost:${CONFIG.httpPort}`);
+      console.log(`📡 [Aditya Bridge] Local HTTP API & Web POS running on:`);
+      console.log(`   💻 Billing Counter / Browser: http://localhost:${CONFIG.httpPort}`);
+      console.log(`   📱 Waiter Phones: http://192.168.1.6:${CONFIG.httpPort}`);
     });
   }
 }
