@@ -33,7 +33,7 @@ const LOCATIONS = {
     code: 'aditya',
     appName: 'BYOB Aditya Mall',
     packageId: 'com.onyx.byob.aditya',
-    serverUrl: 'https://byob-adityamall.vercel.app?platform=android_apk&branch=aditya',
+    serverUrl: 'https://byob-aditya-mall.vercel.app?platform=android_apk&branch=aditya',
     apkName: 'ONYX_POS_ADITYA_MALL.apk'
   }
 };

@@ -22,3 +22,4 @@ echo.
 cd /d "%~dp0"
 node aditya-mall/printer-bridge.js
 pause
+
