@@ -15,7 +15,10 @@ function getApiBase() {
 }
 
 const DB_SERVICE = {
-  mode: 'sqlite_server', // 'supabase_cloud' | 'sqlite_server' | 'offline_fallback'
+  mode: 'supabase_cloud', // 100% Supabase Cloud First for Aditya Mall
+  isCloud() {
+    return this.mode === 'supabase_cloud' || (typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured());
+  },
   sse: null,
   cloudChannel: null,
   currentUser: {
@@ -572,6 +575,9 @@ const DB_SERVICE = {
   },
 
   broadcastRealtime(event, payload) {
+    if (!this.cloudChannel && typeof ONYX_CLOUD_CONFIG !== 'undefined' && ONYX_CLOUD_CONFIG.isConfigured()) {
+      this.subscribeSupabaseRealtime();
+    }
     if (!this.cloudChannel) return;
     try {
       this.cloudChannel.send({
@@ -903,7 +909,9 @@ const DB_SERVICE = {
   },
 
   loadLocalFallback() {
-    this.mode = 'offline_fallback';
+    if (typeof ONYX_CLOUD_CONFIG === 'undefined' || !ONYX_CLOUD_CONFIG.isConfigured()) {
+      this.mode = 'offline_fallback';
+    }
     const saved = localStorage.getItem('onyx_local_tables');
     let loadedFromStorage = false;
     if (saved) {
@@ -1004,7 +1012,7 @@ const DB_SERVICE = {
       if (typeof APP !== 'undefined' && APP.showToast) {
         APP.showToast(`🔄 Synced ${syncedCount} offline order(s) with Server!`);
       }
-      if (this.mode === 'supabase_cloud') this.loadSupabaseData();
+      if (this.isCloud()) this.loadSupabaseData();
       else this.loadInitialData();
     }
   },
@@ -1070,7 +1078,7 @@ const DB_SERVICE = {
 
       this.sse.addEventListener('BILL_UPDATED', (e) => {
         try {
-          if (this.mode === 'supabase_cloud') this.loadSupabaseData();
+          if (this.isCloud()) this.loadSupabaseData();
       else this.loadInitialData();
         } catch (err) {}
       });
@@ -1263,7 +1271,7 @@ const DB_SERVICE = {
     });
 
     // 2. Supabase Cloud Sync Branch
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -1441,7 +1449,7 @@ const DB_SERVICE = {
     this.broadcastRealtime('TABLE_STATUS_CHANGED', { tableId, status, paymentProof });
     this.broadcastRealtime('TABLE_STATUS_UPDATED', { tableId, status, paymentProof });
     try {
-      if (this.mode === 'supabase_cloud') {
+      if (this.isCloud()) {
         const client = ONYX_CLOUD_CONFIG.getClient();
         if (client) {
           const upd = { status, updated_at: new Date().toISOString() };
@@ -1506,7 +1514,7 @@ const DB_SERVICE = {
     });
 
     // 2. Supabase Cloud Sync Branch (Sanitized for Schema)
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -1625,7 +1633,7 @@ const DB_SERVICE = {
   // Manager Bill Modification (Audit-Trailed)
   async updateBill(editData) {
     // 1. Supabase Cloud Sync Branch
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -1749,7 +1757,7 @@ const DB_SERVICE = {
 
   // Fetch Bill Modification Audit Logs
   async getBillEditLogs(billId = null) {
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -1809,7 +1817,7 @@ const DB_SERVICE = {
       authorizedBy: managerPin === '1234' ? 'Manager (PIN: 1234)' : `Admin/Manager (PIN: ${managerPin})`
     });
 
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -1912,7 +1920,7 @@ const DB_SERVICE = {
   },
 
   async getVoidLogs(limit = 100) {
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -2005,7 +2013,7 @@ const DB_SERVICE = {
     // 1. Instant Realtime Broadcast (<25ms)
     this.broadcastRealtime('MENU_STOCK_CHANGED', { itemId, inStock: inStock ? 1 : 0 });
 
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -2046,7 +2054,7 @@ const DB_SERVICE = {
     // 1. Instant Realtime Broadcast (<25ms)
     this.broadcastRealtime('MENU_UPDATED', { item: normalized });
 
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -2089,7 +2097,7 @@ const DB_SERVICE = {
     // 1. Instant Realtime Broadcast (<25ms)
     this.broadcastRealtime('TABLES_UPDATED', { tables: this.tables });
 
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -2137,7 +2145,7 @@ const DB_SERVICE = {
     // 1. Instant Realtime Broadcast (<25ms)
     this.broadcastRealtime('TABLES_UPDATED', { tables: this.tables });
 
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -2357,7 +2365,7 @@ const DB_SERVICE = {
     let endDate = params && typeof params === 'object' ? params.endDate : null;
     let date = typeof params === 'string' ? params : (params && typeof params === 'object' ? params.date : null);
 
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       const client = ONYX_CLOUD_CONFIG.getClient();
       if (client) {
         try {
@@ -2601,7 +2609,7 @@ const DB_SERVICE = {
 
   emitStatus() {
     let modeLabel = 'Native SQLite WAL Engine';
-    if (this.mode === 'supabase_cloud') {
+    if (this.isCloud()) {
       modeLabel = '☁️ Supabase Cloud (Live)';
     } else if (this.mode === 'sqlite_server') {
       modeLabel = '💻 Local SQLite Server';
